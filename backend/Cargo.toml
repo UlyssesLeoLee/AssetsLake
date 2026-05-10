@@ -1,0 +1,74 @@
+[package]
+name = "assetslake-backend"
+version = "0.1.0"
+edition = "2021"
+authors = ["AssetsLake Team"]
+description = "AssetsLake — AI Art Asset Management System — Rust/Actix-Web Backend"
+
+[[bin]]
+name = "assetslake-backend"
+path = "src/main.rs"
+
+[dependencies]
+# Web framework
+actix-web = { version = "4", features = ["macros"] }
+actix-multipart = "0.7"
+actix-cors = "0.7"
+actix-rt = "2"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+futures-util = "0.3"
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+
+# MinIO / S3
+aws-config = "1"
+aws-sdk-s3 = "1"
+aws-credential-types = "1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# UUIDs and identifiers
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging / tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-actix-web = "0.7"
+
+# Config
+dotenvy = "0.15"
+
+# Hashing
+sha2 = "0.10"
+hex = "0.4"
+
+# MIME detection
+mime_guess = "2"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+
+# Byte utilities
+bytes = "1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,116 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: assetslake-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-assetslake}
+      POSTGRES_USER: ${POSTGRES_USER:-assetslake}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-assetslake_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../database/migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-assetslake} -d ${POSTGRES_DB:-assetslake}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - assetslake-net
+
+  minio:
+    image: minio/minio:latest
+    container_name: assetslake-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin_secret}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - assetslake-net
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: assetslake-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin_secret};
+        mc mb --ignore-existing local/${MINIO_BUCKET:-art-assets};
+        mc anonymous set download local/${MINIO_BUCKET:-art-assets};
+        echo 'MinIO bucket initialized.';
+      "
+    networks:
+      - assetslake-net
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: assetslake-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-assetslake}:${POSTGRES_PASSWORD:-assetslake_secret}@postgres:5432/${POSTGRES_DB:-assetslake}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin_secret}
+      MINIO_BUCKET: ${MINIO_BUCKET:-art-assets}
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      RUST_LOG: ${RUST_LOG:-info}
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-500}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    networks:
+      - assetslake-net
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+        NEXT_PUBLIC_MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
+        NEXT_PUBLIC_MINIO_BUCKET: ${MINIO_BUCKET:-art-assets}
+    container_name: assetslake-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
+      NEXT_PUBLIC_MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
+      NEXT_PUBLIC_MINIO_BUCKET: ${MINIO_BUCKET:-art-assets}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - assetslake-net
+
+volumes:
+  postgres_data:
+  minio_data:
+
+networks:
+  assetslake-net:
+    driver: bridge
