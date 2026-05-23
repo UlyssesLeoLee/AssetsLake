@@ -1,0 +1,59 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: assetslake-api-gateway
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: assetslake-api-gateway
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: assetslake-assets-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: assetslake-assets-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: assetslake-production-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: assetslake-production-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: assetslake-projects-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: assetslake-projects-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: assetslake-verification-email
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: assetslake-verification-email
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: assetslake-frontend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: assetslake-frontend

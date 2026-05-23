@@ -1,15 +1,28 @@
-import axios, { AxiosProgressEvent } from 'axios';
+import axios, { AxiosHeaders, AxiosProgressEvent } from 'axios';
 import type {
   ApiResponse,
   Asset,
+  AnalyzeAssetResponse,
+  AssetAiInsight,
   AssetFilters,
   AssetSummary,
+  AssetVersionDiff,
+  AssetVersionSummary,
   PaginatedResponse,
   UpdateAssetRequest,
   UploadResult,
 } from '@/types/asset';
+import { getAiRequestHeaders } from '@/lib/aiSettings';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const AI_HEADER_ENDPOINTS = [
+  '/api/management/chat',
+  '/api/management/rag/search',
+  '/api/management/replica-actions',
+  '/api/data-lake/query/sql',
+  '/api/data-lake/query/cypher',
+  '/api/project-management/automation',
+];
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -17,6 +30,20 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+apiClient.interceptors.request.use((config) => {
+  const url = typeof config.url === 'string' ? config.url : '';
+  const shouldAttachAiHeaders = AI_HEADER_ENDPOINTS.some((endpoint) => url.includes(endpoint));
+
+  if (shouldAttachAiHeaders) {
+    const headers = AxiosHeaders.from(config.headers);
+    Object.entries(getAiRequestHeaders()).forEach(([key, value]) => {
+      headers.set(key, value);
+    });
+    config.headers = headers;
+  }
+  return config;
 });
 
 apiClient.interceptors.response.use(
@@ -65,6 +92,25 @@ export const assetsApi = {
     return data.data;
   },
 
+  versions: async (id: string): Promise<AssetVersionSummary[]> => {
+    const { data } = await apiClient.get<ApiResponse<AssetVersionSummary[]>>(
+      `/api/assets/${id}/versions`
+    );
+    return data.data;
+  },
+
+  compareVersions: async (
+    id: string,
+    base: number,
+    head: number
+  ): Promise<AssetVersionDiff> => {
+    const params = new URLSearchParams({ base: String(base), head: String(head) });
+    const { data } = await apiClient.get<ApiResponse<AssetVersionDiff>>(
+      `/api/assets/${id}/versions/compare?${params.toString()}`
+    );
+    return data.data;
+  },
+
   upload: async (
     formData: FormData,
     onProgress?: (progress: number) => void
@@ -92,6 +138,20 @@ export const assetsApi = {
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/api/assets/${id}`);
+  },
+
+  insights: async (id: string): Promise<AssetAiInsight[]> => {
+    const { data } = await apiClient.get<ApiResponse<AssetAiInsight[]>>(
+      `/api/assets/${id}/insights`
+    );
+    return data.data;
+  },
+
+  analyze: async (id: string): Promise<AnalyzeAssetResponse> => {
+    const { data } = await apiClient.post<ApiResponse<AnalyzeAssetResponse>>(
+      `/api/assets/${id}/analyze`
+    );
+    return data.data;
   },
 };
 

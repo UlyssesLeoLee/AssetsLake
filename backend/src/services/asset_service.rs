@@ -1,14 +1,15 @@
 use bytes::Bytes;
 use sha2::{Digest, Sha256};
 use sqlx::PgPool;
-use tracing::{info, instrument, warn};
+use tracing::{info, instrument};
 use uuid::Uuid;
 
 use crate::{
     config::AppConfig,
     errors::AppError,
     models::asset::{
-        Asset, AssetQuery, AssetSummary, AssetType, UpdateAssetRequest, UploadResult,
+        Asset, AssetQuery, AssetSummary, AssetType, AssetVersionDiff, AssetVersionSummary,
+        UpdateAssetRequest, UploadResult,
     },
     repositories::asset_repository::{AssetRepository, CreateAssetParams},
     services::storage_service::StorageService,
@@ -20,6 +21,17 @@ pub struct AssetService {
     config: AppConfig,
 }
 
+pub struct UploadAssetInput {
+    pub file_bytes: Bytes,
+    pub original_filename: String,
+    pub mime_type: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub project_id: Option<Uuid>,
+    pub tags: Vec<String>,
+    pub uploader: String,
+}
+
 impl AssetService {
     pub fn new(pool: PgPool, storage: StorageService, config: AppConfig) -> Self {
         Self {
@@ -29,18 +41,19 @@ impl AssetService {
         }
     }
 
-    #[instrument(skip(self, file_bytes), fields(filename = %original_filename, size = file_bytes.len()))]
-    pub async fn upload_asset(
-        &self,
-        file_bytes: Bytes,
-        original_filename: String,
-        mime_type: String,
-        name: Option<String>,
-        description: Option<String>,
-        project_id: Option<Uuid>,
-        tags: Vec<String>,
-        uploader: String,
-    ) -> Result<UploadResult, AppError> {
+    #[instrument(skip(self, input), fields(filename = %input.original_filename, size = input.file_bytes.len()))]
+    pub async fn upload_asset(&self, input: UploadAssetInput) -> Result<UploadResult, AppError> {
+        let UploadAssetInput {
+            file_bytes,
+            original_filename,
+            mime_type,
+            name,
+            description,
+            project_id,
+            tags,
+            uploader,
+        } = input;
+
         // Validate file size
         if file_bytes.len() as u64 > self.config.upload.max_size_bytes {
             return Err(AppError::PayloadTooLarge(format!(
@@ -55,12 +68,9 @@ impl AssetService {
             .unwrap_or("")
             .to_lowercase();
 
-        // Classify asset type from extension first, then MIME
-        let asset_type = if ext.is_empty() {
-            AssetType::from_mime(&mime_type)
-        } else {
-            AssetType::from_extension(&ext)
-        };
+        // Classify asset type from filename first so extensionless code files
+        // such as Dockerfile and Makefile still land in the code data lake.
+        let asset_type = AssetType::from_filename(&original_filename, &mime_type);
 
         // Compute checksum
         let mut hasher = Sha256::new();
@@ -72,9 +82,20 @@ impl AssetService {
         let date_prefix = now.format("%Y/%m/%d");
         let asset_uuid = Uuid::new_v4();
         let object_key = if ext.is_empty() {
-            format!("{}/{}/{}", asset_type_prefix(&asset_type), date_prefix, asset_uuid)
+            format!(
+                "{}/{}/{}",
+                asset_type_prefix(&asset_type),
+                date_prefix,
+                asset_uuid
+            )
         } else {
-            format!("{}/{}/{}.{}", asset_type_prefix(&asset_type), date_prefix, asset_uuid, ext)
+            format!(
+                "{}/{}/{}.{}",
+                asset_type_prefix(&asset_type),
+                date_prefix,
+                asset_uuid,
+                ext
+            )
         };
 
         // Write to MinIO
@@ -164,12 +185,27 @@ impl AssetService {
         self.repo.search(query).await
     }
 
-    pub async fn update_asset(
+    pub async fn update_asset(&self, id: Uuid, req: UpdateAssetRequest) -> Result<Asset, AppError> {
+        self.repo.update(id, &req).await
+    }
+
+    pub async fn list_asset_versions(
         &self,
         id: Uuid,
-        req: UpdateAssetRequest,
-    ) -> Result<Asset, AppError> {
-        self.repo.update(id, &req).await
+    ) -> Result<Vec<AssetVersionSummary>, AppError> {
+        self.repo.list_versions(id).await
+    }
+
+    pub async fn compare_asset_versions(
+        &self,
+        id: Uuid,
+        base: i32,
+        head: i32,
+    ) -> Result<AssetVersionDiff, AppError> {
+        if base < 1 || head < 1 {
+            return Err(AppError::validation("Asset versions must start at 1"));
+        }
+        self.repo.compare_versions(id, base, head).await
     }
 
     pub async fn delete_asset(&self, id: Uuid) -> Result<(), AppError> {
@@ -208,6 +244,7 @@ fn asset_type_prefix(t: &AssetType) -> &'static str {
         AssetType::ConceptArt => "concept_art",
         AssetType::Audio => "audio",
         AssetType::Video => "video",
+        AssetType::Code => "code",
         AssetType::Document => "documents",
         AssetType::Animation => "animations",
         AssetType::Vfx => "vfx",

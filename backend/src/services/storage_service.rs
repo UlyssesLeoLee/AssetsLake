@@ -1,6 +1,6 @@
 use aws_config::Region;
 use aws_credential_types::Credentials;
-use aws_sdk_s3::config::Builder as S3ConfigBuilder;
+use aws_sdk_s3::config::{BehaviorVersion, Builder as S3ConfigBuilder};
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::Client as S3Client;
 use bytes::Bytes;
@@ -26,6 +26,7 @@ impl StorageService {
         );
 
         let s3_config = S3ConfigBuilder::new()
+            .behavior_version(BehaviorVersion::latest())
             .endpoint_url(&cfg.endpoint)
             .region(Region::new("us-east-1"))
             .credentials_provider(creds)
@@ -67,6 +68,26 @@ impl StorageService {
 
         info!(object_key, "Object stored in MinIO");
         Ok(())
+    }
+
+    #[instrument(skip(self), fields(object_key = %object_key))]
+    pub async fn get_object(&self, object_key: &str) -> Result<Bytes, AppError> {
+        let output = self
+            .client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(object_key)
+            .send()
+            .await
+            .map_err(|e| AppError::storage(format!("Failed to get object: {}", e)))?;
+
+        let data = output
+            .body
+            .collect()
+            .await
+            .map_err(|e| AppError::storage(format!("Failed to read object body: {}", e)))?;
+
+        Ok(Bytes::from(data.into_bytes().to_vec()))
     }
 
     #[instrument(skip(self), fields(object_key = %object_key))]

@@ -21,12 +21,51 @@ export function useAsset(id: string) {
   });
 }
 
+export function useAssetVersions(id: string) {
+  return useQuery({
+    queryKey: ['asset-versions', id],
+    queryFn: () => assetsApi.versions(id),
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+}
+
+export function useAssetVersionDiff(id: string, base?: number, head?: number) {
+  return useQuery({
+    queryKey: ['asset-version-diff', id, base, head],
+    queryFn: () => assetsApi.compareVersions(id, base as number, head as number),
+    enabled: !!id && !!base && !!head,
+    staleTime: 60_000,
+  });
+}
+
+export function useAssetInsights(id: string) {
+  return useQuery({
+    queryKey: ['asset-insights', id],
+    queryFn: () => assetsApi.insights(id),
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+}
+
 export function useSearchAssets(filters: AssetFilters = {}) {
   return useQuery({
     queryKey: ['assets-search', filters],
     queryFn: () => assetsApi.search(filters),
     enabled: !!(filters.q && filters.q.length >= 1),
     staleTime: 15_000,
+  });
+}
+
+export function useAnalyzeAsset() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => assetsApi.analyze(id),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.setQueryData(['asset', response.asset.id], response.asset);
+      queryClient.invalidateQueries({ queryKey: ['asset-insights', response.asset.id] });
+    },
   });
 }
 

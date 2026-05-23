@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: assetslake
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - postgres.yaml
+  - minio.yaml
+  - backend-gateway.yaml
+  - backend-microservices.yaml
+  - verification-email-service.yaml
+  - frontend.yaml
+  - autoscaling.yaml
+  - pod-disruption-budgets.yaml
+  - ingress.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: assetslake-db-migrations
+    files:
+      - migrations/001_init_schema.sql
+      - migrations/002_outsourcing_production_management.sql
+      - migrations/003_project_management_planning.sql
+      - migrations/004_project_management_productization.sql
+      - migrations/005_issue_core_loop.sql
+      - migrations/006_asset_code_storage_category.sql
+      - migrations/007_rag_operation_memory.sql
+      - migrations/008_asset_ai_insights.sql
+      - migrations/009_auth_sessions_resource_locks.sql
+      - migrations/010_verification_app.sql

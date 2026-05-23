@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-api-gateway
+  labels:
+    app.kubernetes.io/component: api-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-api-gateway
+  template:
+    metadata:
+      labels:
+        app: assetslake-api-gateway
+        app.kubernetes.io/component: api-gateway
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: gateway
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-api-gateway
+  labels:
+    app.kubernetes.io/component: api-gateway
+spec:
+  selector:
+    app: assetslake-api-gateway
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

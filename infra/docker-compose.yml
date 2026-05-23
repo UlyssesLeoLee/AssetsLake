@@ -1,10 +1,22 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16-alpine
     container_name: assetslake-postgres
     restart: unless-stopped
+    command:
+      [
+        "postgres",
+        "-c",
+        "wal_level=replica",
+        "-c",
+        "max_wal_senders=10",
+        "-c",
+        "hot_standby=on",
+        "-c",
+        "wal_keep_size=256MB",
+        "-c",
+        "hba_file=/etc/postgresql/pg_hba.conf"
+      ]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-assetslake}
       POSTGRES_USER: ${POSTGRES_USER:-assetslake}
@@ -12,10 +24,86 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../database/migrations:/docker-entrypoint-initdb.d:ro
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-assetslake} -d ${POSTGRES_DB:-assetslake}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - assetslake-net
+
+  postgres-replication-init:
+    image: postgres:16-alpine
+    container_name: assetslake-postgres-replication-init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-assetslake}
+      POSTGRES_USER: ${POSTGRES_USER:-assetslake}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-assetslake_secret}
+      POSTGRES_REPLICATION_USER: ${POSTGRES_REPLICATION_USER:-assetslake_replicator}
+      POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-assetslake_replicator_secret}
+      POSTGRES_AI_REPLICA_USER: ${POSTGRES_AI_REPLICA_USER:-assetslake_ai_replica}
+      POSTGRES_AI_REPLICA_PASSWORD: ${POSTGRES_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret}
+    entrypoint: >
+      /bin/sh -c '
+        set -eu;
+        export PGPASSWORD="${POSTGRES_PASSWORD:-assetslake_secret}";
+        until pg_isready -h postgres -U "${POSTGRES_USER:-assetslake}" -d "${POSTGRES_DB:-assetslake}"; do sleep 2; done;
+        if psql -h postgres -U "${POSTGRES_USER:-assetslake}" -d "${POSTGRES_DB:-assetslake}" -tAc "SELECT 1 FROM pg_roles WHERE rolname = '\''${POSTGRES_REPLICATION_USER:-assetslake_replicator}'\''" | grep -q 1; then
+          psql -h postgres -U "${POSTGRES_USER:-assetslake}" -d "${POSTGRES_DB:-assetslake}" -c "ALTER ROLE \"${POSTGRES_REPLICATION_USER:-assetslake_replicator}\" WITH REPLICATION LOGIN PASSWORD '\''${POSTGRES_REPLICATION_PASSWORD:-assetslake_replicator_secret}'\''";
+        else
+          psql -h postgres -U "${POSTGRES_USER:-assetslake}" -d "${POSTGRES_DB:-assetslake}" -c "CREATE ROLE \"${POSTGRES_REPLICATION_USER:-assetslake_replicator}\" WITH REPLICATION LOGIN PASSWORD '\''${POSTGRES_REPLICATION_PASSWORD:-assetslake_replicator_secret}'\''";
+        fi;
+        if psql -h postgres -U "${POSTGRES_USER:-assetslake}" -d "${POSTGRES_DB:-assetslake}" -tAc "SELECT 1 FROM pg_roles WHERE rolname = '\''${POSTGRES_AI_REPLICA_USER:-assetslake_ai_replica}'\''" | grep -q 1; then
+          psql -h postgres -U "${POSTGRES_USER:-assetslake}" -d "${POSTGRES_DB:-assetslake}" -c "ALTER ROLE \"${POSTGRES_AI_REPLICA_USER:-assetslake_ai_replica}\" WITH LOGIN PASSWORD '\''${POSTGRES_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret}'\''";
+        else
+          psql -h postgres -U "${POSTGRES_USER:-assetslake}" -d "${POSTGRES_DB:-assetslake}" -c "CREATE ROLE \"${POSTGRES_AI_REPLICA_USER:-assetslake_ai_replica}\" WITH LOGIN PASSWORD '\''${POSTGRES_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret}'\''";
+        fi;
+        psql -h postgres -U "${POSTGRES_USER:-assetslake}" -d "${POSTGRES_DB:-assetslake}" -c "GRANT pg_monitor TO \"${POSTGRES_AI_REPLICA_USER:-assetslake_ai_replica}\"";
+        psql -h postgres -U "${POSTGRES_USER:-assetslake}" -d "${POSTGRES_DB:-assetslake}" -c "ALTER ROLE \"${POSTGRES_AI_REPLICA_USER:-assetslake_ai_replica}\" SET default_transaction_read_only = on";
+      '
+    networks:
+      - assetslake-net
+
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: assetslake-postgres-replica
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-replication-init:
+        condition: service_completed_successfully
+    environment:
+      PGDATA: /var/lib/postgresql/data
+      POSTGRES_DB: ${POSTGRES_DB:-assetslake}
+      POSTGRES_REPLICATION_USER: ${POSTGRES_REPLICATION_USER:-assetslake_replicator}
+      POSTGRES_REPLICATION_PASSWORD: ${POSTGRES_REPLICATION_PASSWORD:-assetslake_replicator_secret}
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_REPLICA_PORT:-5433}:5432"
+    entrypoint: >
+      /bin/sh -c '
+        set -eu;
+        if [ ! -s "/var/lib/postgresql/data/PG_VERSION" ]; then
+          rm -rf /var/lib/postgresql/data/*;
+          export PGPASSWORD="${POSTGRES_REPLICATION_PASSWORD:-assetslake_replicator_secret}";
+          until pg_basebackup -h postgres -p 5432 -D /var/lib/postgresql/data -U "${POSTGRES_REPLICATION_USER:-assetslake_replicator}" -Fp -Xs -P -R; do
+            echo "Waiting for PostgreSQL primary replication slot...";
+            sleep 2;
+          done;
+          chmod 0700 /var/lib/postgresql/data;
+        fi;
+        exec docker-entrypoint.sh postgres -c hot_standby=on;
+      '
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_REPLICATION_USER:-assetslake_replicator} -d ${POSTGRES_DB:-assetslake}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,6 +131,27 @@ services:
     networks:
       - assetslake-net
 
+  minio-mirror:
+    image: minio/minio:latest
+    container_name: assetslake-minio-mirror
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin_secret}
+    volumes:
+      - minio_mirror_data:/data
+    ports:
+      - "${MINIO_MIRROR_API_PORT:-9010}:9000"
+      - "${MINIO_MIRROR_CONSOLE_PORT:-9011}:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - assetslake-net
+
   minio-init:
     image: minio/mc:latest
     container_name: assetslake-minio-init
@@ -59,6 +168,156 @@ services:
     networks:
       - assetslake-net
 
+  minio-mirror-sync:
+    image: minio/mc:latest
+    container_name: assetslake-minio-mirror-sync
+    restart: unless-stopped
+    depends_on:
+      minio-replica-access-init:
+        condition: service_completed_successfully
+    environment:
+      MINIO_AI_REPLICA_USER: ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica}
+      MINIO_AI_REPLICA_PASSWORD: ${MINIO_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret}
+      MINIO_BUCKET: ${MINIO_BUCKET:-art-assets}
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica} ${MINIO_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret};
+        mc alias set mirror http://minio-mirror:9000 ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica} ${MINIO_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret};
+        mc mirror --overwrite --remove --watch local/${MINIO_BUCKET:-art-assets} mirror/${MINIO_BUCKET:-art-assets};
+      "
+    networks:
+      - assetslake-net
+
+  minio-replica-access-init:
+    image: minio/mc:latest
+    container_name: assetslake-minio-replica-access-init
+    depends_on:
+      minio:
+        condition: service_healthy
+      minio-mirror:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin_secret}
+      MINIO_BUCKET: ${MINIO_BUCKET:-art-assets}
+      MINIO_AI_REPLICA_USER: ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica}
+      MINIO_AI_REPLICA_PASSWORD: ${MINIO_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        mc alias set local-root http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin_secret}
+        mc alias set mirror-root http://minio-mirror:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin_secret}
+        mc mb --ignore-existing local-root/${MINIO_BUCKET:-art-assets}
+        mc mb --ignore-existing mirror-root/${MINIO_BUCKET:-art-assets}
+        printf '%s\n' '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetBucketLocation","s3:GetBucketNotification","s3:ListBucket","s3:ListenBucketNotification"],"Resource":["arn:aws:s3:::${MINIO_BUCKET:-art-assets}"]},{"Effect":"Allow","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::${MINIO_BUCKET:-art-assets}/*"]}]}' > /tmp/ai-primary-read.json
+        mc admin user info local-root ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica} >/dev/null 2>&1 || mc admin user add local-root ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica} ${MINIO_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret}
+        mc admin user info mirror-root ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica} >/dev/null 2>&1 || mc admin user add mirror-root ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica} ${MINIO_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret}
+        mc admin policy detach local-root readonly --user ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica} >/dev/null 2>&1 || true
+        mc admin policy detach local-root ai-primary-read --user ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica} >/dev/null 2>&1 || true
+        mc admin policy rm local-root ai-primary-read >/dev/null 2>&1 || true
+        mc admin policy create local-root ai-primary-read /tmp/ai-primary-read.json
+        mc admin policy attach local-root ai-primary-read --user ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica}
+        mc admin policy attach mirror-root readwrite --user ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica}
+        mc anonymous set download mirror-root/${MINIO_BUCKET:-art-assets}
+    networks:
+      - assetslake-net
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: assetslake-qdrant
+    restart: unless-stopped
+    command: ["./qdrant", "--uri", "http://qdrant:6335"]
+    environment:
+      QDRANT__CLUSTER__ENABLED: "true"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - assetslake-net
+
+  qdrant-replica:
+    image: qdrant/qdrant:latest
+    container_name: assetslake-qdrant-replica
+    restart: unless-stopped
+    command: ["./qdrant", "--bootstrap", "http://qdrant:6335", "--uri", "http://qdrant-replica:6335"]
+    environment:
+      QDRANT__CLUSTER__ENABLED: "true"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    volumes:
+      - qdrant_replica_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - assetslake-net
+
+  qdrant-lb:
+    image: haproxy:2.9-alpine
+    container_name: assetslake-qdrant-lb
+    restart: unless-stopped
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      qdrant-replica:
+        condition: service_healthy
+    volumes:
+      - ./haproxy/qdrant.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+    networks:
+      - assetslake-net
+
+  ha-maintenance:
+    build:
+      context: ./ha-maintenance
+      dockerfile: Dockerfile
+    container_name: assetslake-ha-maintenance
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-replica:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-mirror:
+        condition: service_healthy
+      minio-mirror-sync:
+        condition: service_started
+      qdrant-lb:
+        condition: service_started
+    environment:
+      HA_MAINTENANCE_INTERVAL_SECONDS: ${HA_MAINTENANCE_INTERVAL_SECONDS:-300}
+      HA_MAINTENANCE_MAX_STALENESS_SECONDS: ${HA_MAINTENANCE_MAX_STALENESS_SECONDS:-900}
+      HA_POSTGRES_LAG_WARN_BYTES: ${HA_POSTGRES_LAG_WARN_BYTES:-104857600}
+      HA_QDRANT_COLLECTIONS: ${HA_QDRANT_COLLECTIONS:-assetslake_operation_memories}
+      POSTGRES_DB: ${POSTGRES_DB:-assetslake}
+      POSTGRES_AI_REPLICA_USER: ${POSTGRES_AI_REPLICA_USER:-assetslake_ai_replica}
+      POSTGRES_AI_REPLICA_PASSWORD: ${POSTGRES_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret}
+      MINIO_AI_REPLICA_USER: ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica}
+      MINIO_AI_REPLICA_PASSWORD: ${MINIO_AI_REPLICA_PASSWORD:-assetslake_ai_replica_secret}
+      MINIO_BUCKET: ${MINIO_BUCKET:-art-assets}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant-lb:6333}
+      QDRANT_REPLICA_URL: ${QDRANT_REPLICA_URL:-http://qdrant-replica:6333}
+      QDRANT_REPLICATION_FACTOR: ${QDRANT_REPLICATION_FACTOR:-2}
+    healthcheck:
+      test: ["CMD", "ha-maintenance-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - assetslake-net
+
   backend:
     build:
       context: ../backend
@@ -68,8 +327,18 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-replica:
+        condition: service_healthy
       minio:
         condition: service_healthy
+      minio-mirror:
+        condition: service_healthy
+      minio-mirror-sync:
+        condition: service_started
+      qdrant-lb:
+        condition: service_started
+      ha-maintenance:
+        condition: service_started
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-assetslake}:${POSTGRES_PASSWORD:-assetslake_secret}@postgres:5432/${POSTGRES_DB:-assetslake}
       MINIO_ENDPOINT: http://minio:9000
@@ -79,8 +348,68 @@ services:
       MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
       SERVER_HOST: 0.0.0.0
       SERVER_PORT: 8080
+      SERVER_WORKERS: ${SERVER_WORKERS:-0}
+      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-20}
+      DB_MIN_CONNECTIONS: ${DB_MIN_CONNECTIONS:-2}
+      DB_ACQUIRE_TIMEOUT_SECONDS: ${DB_ACQUIRE_TIMEOUT_SECONDS:-3}
+      RATE_LIMIT_LOGIN_MAX: ${RATE_LIMIT_LOGIN_MAX:-30}
+      RATE_LIMIT_LOGIN_WINDOW_SECONDS: ${RATE_LIMIT_LOGIN_WINDOW_SECONDS:-60}
+      RATE_LIMIT_VERIFICATION_MAX: ${RATE_LIMIT_VERIFICATION_MAX:-10}
+      RATE_LIMIT_VERIFICATION_WINDOW_SECONDS: ${RATE_LIMIT_VERIFICATION_WINDOW_SECONDS:-300}
+      BACKEND_MAINTENANCE_ENABLED: ${BACKEND_MAINTENANCE_ENABLED:-true}
+      BACKEND_MAINTENANCE_INTERVAL_SECONDS: ${BACKEND_MAINTENANCE_INTERVAL_SECONDS:-300}
+      SESSION_RETENTION_HOURS: ${SESSION_RETENTION_HOURS:-168}
+      RELEASED_LOCK_RETENTION_HOURS: ${RELEASED_LOCK_RETENTION_HOURS:-24}
+      VERIFICATION_OUTBOX_RETENTION_HOURS: ${VERIFICATION_OUTBOX_RETENTION_HOURS:-72}
+      ASSETSLAKE_SERVICE: gateway
       RUST_LOG: ${RUST_LOG:-info}
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-500}
+      RAG_MEMORY_ENABLED: ${RAG_MEMORY_ENABLED:-true}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant-lb:6333}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-assetslake_operation_memories}
+      QDRANT_VECTOR_SIZE: ${QDRANT_VECTOR_SIZE:-384}
+      QDRANT_REPLICATION_FACTOR: ${QDRANT_REPLICATION_FACTOR:-2}
+      AI_REPLICA_WRITE_ENABLED: ${AI_REPLICA_WRITE_ENABLED:-true}
+      AI_REPLICA_QDRANT_URL: ${AI_REPLICA_QDRANT_URL:-http://qdrant-replica:6333}
+      AI_REPLICA_ACTION_COLLECTION: ${AI_REPLICA_ACTION_COLLECTION:-assetslake_ai_replica_actions}
+      AI_REPLICA_VECTOR_SIZE: ${AI_REPLICA_VECTOR_SIZE:-64}
+      VERIFICATION_APP_KEY: ${VERIFICATION_APP_KEY:-assetslake}
+      VERIFICATION_OWNER_EMAIL: ${VERIFICATION_OWNER_EMAIL:-hanakagumi@outlook.com}
+      VERIFICATION_EMAIL_FROM: ${VERIFICATION_EMAIL_FROM:-hanakagumi@outlook.com}
+      VERIFICATION_SMS_SENDER: ${VERIFICATION_SMS_SENDER:-AssetsLake}
+      VERIFICATION_CODE_DIGITS: ${VERIFICATION_CODE_DIGITS:-6}
+      VERIFICATION_CODE_TTL_SECONDS: ${VERIFICATION_CODE_TTL_SECONDS:-300}
+      VERIFICATION_DEV_CODE_VISIBLE: ${VERIFICATION_DEV_CODE_VISIBLE:-true}
+      VERIFICATION_EMAIL_PROVIDER: ${VERIFICATION_EMAIL_PROVIDER:-auto}
+      GMAIL_SMTP_HOST: ${GMAIL_SMTP_HOST:-smtp.gmail.com}
+      GMAIL_SMTP_PORT: ${GMAIL_SMTP_PORT:-587}
+      GMAIL_SMTP_USERNAME: ${GMAIL_SMTP_USERNAME:-}
+      GMAIL_SMTP_USER: ${GMAIL_SMTP_USER:-}
+      GMAIL_SMTP_PASSWORD: ${GMAIL_SMTP_PASSWORD:-}
+      GMAIL_SMTP_PASS: ${GMAIL_SMTP_PASS:-}
+      GMAIL_SMTP_FROM_EMAIL: ${GMAIL_SMTP_FROM_EMAIL:-}
+      GMAIL_SMTP_FROM_NAME: ${GMAIL_SMTP_FROM_NAME:-AssetsLake}
+      OUTLOOK_SMTP_HOST: ${OUTLOOK_SMTP_HOST:-smtp-mail.outlook.com}
+      OUTLOOK_SMTP_PORT: ${OUTLOOK_SMTP_PORT:-587}
+      OUTLOOK_SMTP_USERNAME: ${OUTLOOK_SMTP_USERNAME:-}
+      OUTLOOK_SMTP_USER: ${OUTLOOK_SMTP_USER:-}
+      OUTLOOK_SMTP_PASSWORD: ${OUTLOOK_SMTP_PASSWORD:-}
+      OUTLOOK_SMTP_PASS: ${OUTLOOK_SMTP_PASS:-}
+      OUTLOOK_SMTP_FROM_EMAIL: ${OUTLOOK_SMTP_FROM_EMAIL:-}
+      OUTLOOK_SMTP_FROM_NAME: ${OUTLOOK_SMTP_FROM_NAME:-AssetsLake}
+      SMTP_HOST: ${SMTP_HOST:-smtp-mail.outlook.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-hanakagumi@outlook.com}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-AssetsLake}
+      VERIFICATION_SMS_PROVIDER: ${VERIFICATION_SMS_PROVIDER:-local}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      TWILIO_MESSAGING_SERVICE_SID: ${TWILIO_MESSAGING_SERVICE_SID:-}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     networks:
@@ -109,7 +438,11 @@ services:
 
 volumes:
   postgres_data:
+  postgres_replica_data:
   minio_data:
+  minio_mirror_data:
+  qdrant_data:
+  qdrant_replica_data:
 
 networks:
   assetslake-net:

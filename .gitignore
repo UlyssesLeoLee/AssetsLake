@@ -1,0 +1,16 @@
+node_modules/
+.next/
+target/
+dist/
+build/
+*.log
+*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+
+# Playwright generated artifacts
+test-results/
+playwright-report/
+frontend/test-results/
+frontend/playwright-report/

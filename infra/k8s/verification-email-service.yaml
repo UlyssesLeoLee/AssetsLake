@@ -1,0 +1,157 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-verification-email
+  labels:
+    app.kubernetes.io/component: verification-email
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-verification-email
+  template:
+    metadata:
+      labels:
+        app: assetslake-verification-email
+        app.kubernetes.io/component: verification-email
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: verification
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: GMAIL_SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: GMAIL_SMTP_USERNAME
+            - name: GMAIL_SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: GMAIL_SMTP_USER
+            - name: GMAIL_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: GMAIL_SMTP_PASSWORD
+            - name: GMAIL_SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: GMAIL_SMTP_PASS
+            - name: OUTLOOK_SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: OUTLOOK_SMTP_USERNAME
+            - name: OUTLOOK_SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: OUTLOOK_SMTP_USER
+            - name: OUTLOOK_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: OUTLOOK_SMTP_PASSWORD
+            - name: OUTLOOK_SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: OUTLOOK_SMTP_PASS
+            - name: SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: SMTP_USERNAME
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: SMTP_USER
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: SMTP_PASSWORD
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: SMTP_PASS
+            - name: TWILIO_ACCOUNT_SID
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: TWILIO_ACCOUNT_SID
+            - name: TWILIO_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: TWILIO_AUTH_TOKEN
+            - name: TWILIO_FROM_NUMBER
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: TWILIO_FROM_NUMBER
+            - name: TWILIO_MESSAGING_SERVICE_SID
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: TWILIO_MESSAGING_SERVICE_SID
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-verification-email
+  labels:
+    app.kubernetes.io/component: verification-email
+spec:
+  selector:
+    app: assetslake-verification-email
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

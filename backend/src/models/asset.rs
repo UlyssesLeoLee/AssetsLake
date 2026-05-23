@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::FromRow;
 use uuid::Uuid;
 
@@ -25,6 +26,7 @@ pub enum AssetType {
     ConceptArt,
     Audio,
     Video,
+    Code,
     Document,
     Animation,
     Vfx,
@@ -39,10 +41,18 @@ pub enum AssetType {
 
 impl AssetType {
     pub fn from_mime(mime: &str) -> Self {
-        match mime {
+        let normalized = mime
+            .split(';')
+            .next()
+            .unwrap_or(mime)
+            .trim()
+            .to_ascii_lowercase();
+
+        match normalized.as_str() {
             m if m.starts_with("image/") => Self::Texture,
             m if m.starts_with("audio/") => Self::Audio,
             m if m.starts_with("video/") => Self::Video,
+            m if Self::is_code_mime(m) => Self::Code,
             "application/pdf" => Self::Document,
             "application/zip"
             | "application/x-zip-compressed"
@@ -51,6 +61,24 @@ impl AssetType {
             | "application/x-rar-compressed" => Self::Archive,
             "application/octet-stream" => Self::Other,
             _ => Self::Other,
+        }
+    }
+
+    pub fn from_filename(filename: &str, mime: &str) -> Self {
+        let lower_filename = filename.to_ascii_lowercase();
+        if Self::is_code_filename(&lower_filename) {
+            return Self::Code;
+        }
+
+        let ext = std::path::Path::new(filename)
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("");
+
+        if ext.is_empty() {
+            Self::from_mime(mime)
+        } else {
+            Self::from_extension(ext)
         }
     }
 
@@ -72,8 +100,75 @@ impl AssetType {
             "hlsl" | "glsl" | "shader" | "usf" | "ush" => Self::Shader,
             "unity" | "umap" | "level" => Self::Scene,
             "prefab" | "asset" | "uasset" => Self::Prefab,
+            "rs" | "py" | "ipynb" | "js" | "jsx" | "ts" | "tsx" | "mjs" | "cjs" | "java" | "kt"
+            | "kts" | "go" | "rb" | "php" | "cs" | "c" | "cc" | "cpp" | "cxx" | "h" | "hh"
+            | "hpp" | "hxx" | "swift" | "scala" | "sh" | "bash" | "zsh" | "fish" | "ps1"
+            | "bat" | "cmd" | "lua" | "r" | "sql" | "html" | "htm" | "css" | "scss" | "sass"
+            | "less" | "vue" | "svelte" | "toml" | "yaml" | "yml" | "json" | "jsonc" | "xml"
+            | "graphql" | "gql" | "proto" | "gradle" | "cmake" | "tf" | "tfvars" | "sol" | "ex"
+            | "exs" | "erl" | "hrl" | "clj" | "cljs" | "dart" | "fs" | "fsx" => Self::Code,
             _ => Self::Other,
         }
+    }
+
+    fn is_code_mime(mime: &str) -> bool {
+        matches!(
+            mime,
+            "application/javascript"
+                | "application/typescript"
+                | "application/json"
+                | "application/ld+json"
+                | "application/x-ndjson"
+                | "application/xml"
+                | "application/x-sh"
+                | "application/x-yaml"
+                | "text/javascript"
+                | "text/ecmascript"
+                | "text/typescript"
+                | "text/html"
+                | "text/css"
+                | "text/xml"
+                | "text/yaml"
+                | "text/x-yaml"
+                | "text/x-toml"
+                | "text/x-json"
+                | "text/x-rust"
+                | "text/x-python"
+                | "text/x-go"
+                | "text/x-java-source"
+                | "text/x-c"
+                | "text/x-c++src"
+                | "text/x-csharp"
+                | "text/x-php"
+                | "text/x-ruby"
+                | "text/x-shellscript"
+                | "text/x-sql"
+        ) || mime.ends_with("+json")
+            || mime.ends_with("+xml")
+    }
+
+    fn is_code_filename(filename: &str) -> bool {
+        let basename = filename.rsplit(['/', '\\']).next().unwrap_or(filename);
+        matches!(
+            basename,
+            ".babelrc"
+                | ".dockerignore"
+                | ".editorconfig"
+                | ".env"
+                | ".eslintrc"
+                | ".gitignore"
+                | ".npmrc"
+                | ".prettierrc"
+                | "dockerfile"
+                | "makefile"
+                | "cmakelists.txt"
+                | "gemfile"
+                | "jenkinsfile"
+                | "procfile"
+                | "rakefile"
+                | "vagrantfile"
+        ) || basename.starts_with(".env.")
+            || basename.starts_with("dockerfile.")
     }
 }
 
@@ -131,7 +226,76 @@ pub struct AssetSummary {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct AssetVersionSummary {
+    pub id: Uuid,
+    pub asset_id: Uuid,
+    pub version: i32,
+    pub bucket: String,
+    pub object_key: String,
+    pub file_url: String,
+    pub file_size: i64,
+    pub checksum_sha256: Option<String>,
+    pub uploader_id: Option<Uuid>,
+    pub uploader: String,
+    pub change_note: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub branch_name: String,
+    pub commit_sha: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssetVersionDiffItem {
+    pub field: String,
+    pub before: String,
+    pub after: String,
+    pub changed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssetVersionDiff {
+    pub asset_id: Uuid,
+    pub base: AssetVersionSummary,
+    pub head: AssetVersionSummary,
+    pub file_size_delta: i64,
+    pub checksum_changed: bool,
+    pub object_changed: bool,
+    pub changes: Vec<AssetVersionDiffItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct AssetAiInsight {
+    pub id: Uuid,
+    pub asset_id: Uuid,
+    pub modality: String,
+    pub provider: String,
+    pub model: Option<String>,
+    pub status: String,
+    pub summary: String,
+    pub labels: Vec<String>,
+    pub detected_text: Option<String>,
+    pub quality_risks: Vec<String>,
+    pub reuse_suggestions: Vec<String>,
+    pub entities: Value,
+    pub raw_response: Value,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnalyzeAssetResponse {
+    pub asset: Asset,
+    pub insight: AssetAiInsight,
+    pub rag_stored: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AssetVersionCompareQuery {
+    pub base: i32,
+    pub head: i32,
+}
+
 /// Request body for creating/uploading an asset (multipart fields)
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct CreateAssetRequest {
     pub name: Option<String>,

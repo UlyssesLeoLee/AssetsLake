@@ -1,0 +1,87 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: assetslake
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
+spec:
+  rules:
+    - host: assetslake.local
+      http:
+        paths:
+          - path: /api/assets
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-assets-api
+                port:
+                  number: 8080
+          - path: /api/projects
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-projects-api
+                port:
+                  number: 8080
+          - path: /api/issues
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-production-api
+                port:
+                  number: 8080
+          - path: /api/milestones
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-production-api
+                port:
+                  number: 8080
+          - path: /api/delivery-packages
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-production-api
+                port:
+                  number: 8080
+          - path: /api/verification
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-verification-email
+                port:
+                  number: 8080
+          - path: /api/health
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-assets-api
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-frontend
+                port:
+                  number: 3000
+    - host: minio.assetslake.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-minio
+                port:
+                  number: 9000
+    - host: minio-console.assetslake.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-minio
+                port:
+                  number: 9001

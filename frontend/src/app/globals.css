@@ -4,10 +4,15 @@
 
 @layer base {
   :root {
-    --color-surface: #0f1117;
-    --color-surface-secondary: #1a1d27;
-    --color-surface-elevated: #22263a;
-    --color-border: #2d3147;
+    --color-surface: #0b0f14;
+    --color-surface-secondary: #111821;
+    --color-surface-elevated: #172231;
+    --color-border: #293746;
+    --color-ai-blue: #1f7ad8;
+    --color-sakura: #ee8fa8;
+    --color-matcha: #8fb55f;
+    --color-shu: #df754a;
+    --color-washi: #f3ead8;
   }
 
   * {
@@ -20,7 +25,12 @@
 
   body {
     background-color: var(--color-surface);
-    color: #e2e8f0;
+    background-image:
+      linear-gradient(180deg, rgba(243, 234, 216, 0.045), rgba(11, 15, 20, 0) 34rem),
+      linear-gradient(90deg, rgba(243, 234, 216, 0.025) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(243, 234, 216, 0.02) 1px, transparent 1px);
+    background-size: auto, 28px 28px, 28px 28px;
+    color: #e8edf2;
     min-height: 100vh;
   }
 
@@ -30,61 +40,60 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: var(--color-surface-secondary);
+    background: #101820;
   }
   ::-webkit-scrollbar-thumb {
-    background: #374151;
-    border-radius: 3px;
+    background: #365066;
+    border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #4b5563;
+    background: #48677f;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-surface-secondary border border-surface-border rounded-xl;
+    @apply rounded-lg border border-surface-border bg-surface-secondary shadow-[0_14px_40px_rgba(0,0,0,0.16)];
   }
 
   .card-elevated {
-    @apply bg-surface-elevated border border-surface-border rounded-xl;
+    @apply rounded-lg border border-surface-border bg-surface-elevated shadow-[0_14px_40px_rgba(0,0,0,0.18)];
   }
 
   .btn-primary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-500
-           text-white text-sm font-medium rounded-lg transition-colors duration-150
+    @apply inline-flex items-center gap-2 rounded-md border border-brand-400/40 bg-brand-600 px-4 py-2
+           text-sm font-medium text-white shadow-[0_8px_24px_rgba(31,122,216,0.22)] transition-colors duration-150 hover:bg-brand-500
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center gap-2 px-4 py-2 bg-surface-elevated hover:bg-surface-border
-           text-slate-200 text-sm font-medium rounded-lg border border-surface-border
-           transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center gap-2 rounded-md border border-surface-border bg-surface-elevated px-4 py-2
+           text-sm font-medium text-slate-200 transition-colors duration-150 hover:border-brand-500/35 hover:bg-[#1b2a3a]
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center gap-2 px-3 py-1.5 hover:bg-surface-elevated
-           text-slate-300 hover:text-slate-100 text-sm rounded-lg transition-colors duration-150;
+    @apply inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-slate-300 transition-colors duration-150
+           hover:bg-surface-elevated hover:text-slate-100;
   }
 
   .input {
-    @apply w-full px-3 py-2 bg-surface-elevated border border-surface-border rounded-lg
-           text-slate-200 placeholder-slate-500 text-sm
-           focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500/60
+    @apply w-full rounded-md border border-surface-border bg-[#101923] px-3 py-2
+           text-sm text-slate-200 placeholder-slate-500
+           focus:outline-none focus:ring-2 focus:ring-sakura-400/30 focus:border-brand-400/70
            transition-colors duration-150;
   }
 
   .label {
-    @apply block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide;
+    @apply mb-1.5 block text-xs font-medium uppercase text-slate-400;
   }
 
   .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border;
+    @apply inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium;
   }
 
   .tag {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-           bg-brand-500/15 text-brand-300 border border-brand-500/25;
+    @apply inline-flex items-center rounded-full border border-brand-500/25 bg-brand-500/15 px-2 py-0.5 text-xs font-medium text-brand-300;
   }
 
   .section-title {
@@ -98,7 +107,7 @@
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-brand-300 via-sakura-300 to-matcha-300 bg-clip-text text-transparent;
   }
 
   .border-subtle {

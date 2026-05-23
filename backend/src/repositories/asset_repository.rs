@@ -3,7 +3,10 @@ use uuid::Uuid;
 
 use crate::{
     errors::AppError,
-    models::asset::{Asset, AssetQuery, AssetSummary, AssetType, UpdateAssetRequest},
+    models::asset::{
+        Asset, AssetQuery, AssetSummary, AssetType, AssetVersionDiff, AssetVersionDiffItem,
+        AssetVersionSummary, UpdateAssetRequest,
+    },
 };
 
 pub struct AssetRepository {
@@ -59,13 +62,11 @@ impl AssetRepository {
     }
 
     pub async fn find_by_id(&self, id: Uuid) -> Result<Asset, AppError> {
-        sqlx::query_as::<_, Asset>(
-            "SELECT * FROM assets WHERE id = $1 AND deleted_at IS NULL",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or_else(|| AppError::not_found(format!("Asset {} not found", id)))
+        sqlx::query_as::<_, Asset>("SELECT * FROM assets WHERE id = $1 AND deleted_at IS NULL")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?
+            .ok_or_else(|| AppError::not_found(format!("Asset {} not found", id)))
     }
 
     /// List assets with optional filters. Uses separate typed queries per filter combination
@@ -130,10 +131,7 @@ impl AssetRepository {
         Ok((rows, total))
     }
 
-    pub async fn search(
-        &self,
-        query: &AssetQuery,
-    ) -> Result<(Vec<AssetSummary>, i64), AppError> {
+    pub async fn search(&self, query: &AssetQuery) -> Result<(Vec<AssetSummary>, i64), AppError> {
         let q = format!("%{}%", query.q.as_deref().unwrap_or(""));
         let limit = query.page_size();
         let offset = query.offset();
@@ -172,11 +170,7 @@ impl AssetRepository {
         Ok((rows, total))
     }
 
-    pub async fn update(
-        &self,
-        id: Uuid,
-        req: &UpdateAssetRequest,
-    ) -> Result<Asset, AppError> {
+    pub async fn update(&self, id: Uuid, req: &UpdateAssetRequest) -> Result<Asset, AppError> {
         self.find_by_id(id).await?;
 
         sqlx::query_as::<_, Asset>(
@@ -203,6 +197,22 @@ impl AssetRepository {
         .map_err(AppError::from)
     }
 
+    pub async fn update_ai_tags(&self, id: Uuid, ai_tags: &[String]) -> Result<Asset, AppError> {
+        sqlx::query_as::<_, Asset>(
+            r#"
+            UPDATE assets
+            SET ai_tags = $2, updated_at = NOW()
+            WHERE id = $1 AND deleted_at IS NULL
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(ai_tags)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(AppError::from)
+    }
+
     pub async fn soft_delete(&self, id: Uuid) -> Result<(), AppError> {
         let rows = sqlx::query(
             "UPDATE assets SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
@@ -217,6 +227,145 @@ impl AssetRepository {
         }
         Ok(())
     }
+
+    pub async fn list_versions(
+        &self,
+        asset_id: Uuid,
+    ) -> Result<Vec<AssetVersionSummary>, AppError> {
+        self.find_by_id(asset_id).await?;
+
+        sqlx::query_as::<_, AssetVersionSummary>(
+            r#"
+            SELECT
+                av.id,
+                av.asset_id,
+                av.version,
+                av.bucket,
+                av.object_key,
+                av.file_url,
+                av.file_size,
+                av.checksum_sha256,
+                av.uploader_id,
+                av.uploader,
+                av.change_note,
+                av.created_at,
+                CASE
+                    WHEN a.parent_id IS NULL THEN 'main'
+                    ELSE 'branch/' || LEFT(REPLACE(a.parent_id::text, '-', ''), 8)
+                END AS branch_name,
+                LEFT(COALESCE(av.checksum_sha256, REPLACE(av.id::text, '-', '')), 12) AS commit_sha
+            FROM asset_versions av
+            INNER JOIN assets a ON a.id = av.asset_id
+            WHERE av.asset_id = $1
+              AND a.deleted_at IS NULL
+            ORDER BY av.version DESC
+            "#,
+        )
+        .bind(asset_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(AppError::from)
+    }
+
+    pub async fn compare_versions(
+        &self,
+        asset_id: Uuid,
+        base_version: i32,
+        head_version: i32,
+    ) -> Result<AssetVersionDiff, AppError> {
+        let base = self.find_version(asset_id, base_version).await?;
+        let head = self.find_version(asset_id, head_version).await?;
+        let mut changes = vec![];
+
+        push_diff(
+            &mut changes,
+            "object_key",
+            base.object_key.clone(),
+            head.object_key.clone(),
+        );
+        push_diff(
+            &mut changes,
+            "checksum_sha256",
+            base.checksum_sha256
+                .clone()
+                .unwrap_or_else(|| "-".to_string()),
+            head.checksum_sha256
+                .clone()
+                .unwrap_or_else(|| "-".to_string()),
+        );
+        push_diff(
+            &mut changes,
+            "file_size",
+            base.file_size.to_string(),
+            head.file_size.to_string(),
+        );
+        push_diff(
+            &mut changes,
+            "uploader",
+            base.uploader.clone(),
+            head.uploader.clone(),
+        );
+
+        Ok(AssetVersionDiff {
+            asset_id,
+            file_size_delta: head.file_size - base.file_size,
+            checksum_changed: base.checksum_sha256 != head.checksum_sha256,
+            object_changed: base.object_key != head.object_key,
+            base,
+            head,
+            changes,
+        })
+    }
+
+    async fn find_version(
+        &self,
+        asset_id: Uuid,
+        version: i32,
+    ) -> Result<AssetVersionSummary, AppError> {
+        sqlx::query_as::<_, AssetVersionSummary>(
+            r#"
+            SELECT
+                av.id,
+                av.asset_id,
+                av.version,
+                av.bucket,
+                av.object_key,
+                av.file_url,
+                av.file_size,
+                av.checksum_sha256,
+                av.uploader_id,
+                av.uploader,
+                av.change_note,
+                av.created_at,
+                CASE
+                    WHEN a.parent_id IS NULL THEN 'main'
+                    ELSE 'branch/' || LEFT(REPLACE(a.parent_id::text, '-', ''), 8)
+                END AS branch_name,
+                LEFT(COALESCE(av.checksum_sha256, REPLACE(av.id::text, '-', '')), 12) AS commit_sha
+            FROM asset_versions av
+            INNER JOIN assets a ON a.id = av.asset_id
+            WHERE av.asset_id = $1
+              AND av.version = $2
+              AND a.deleted_at IS NULL
+            "#,
+        )
+        .bind(asset_id)
+        .bind(version)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| {
+            AppError::not_found(format!("Asset {} version {} not found", asset_id, version))
+        })
+    }
+}
+
+fn push_diff(changes: &mut Vec<AssetVersionDiffItem>, field: &str, before: String, after: String) {
+    changes.push(AssetVersionDiffItem {
+        field: field.to_string(),
+        changed: before != after,
+        before,
+        after,
+    });
 }
 
 pub struct CreateAssetParams {

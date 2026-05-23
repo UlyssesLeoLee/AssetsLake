@@ -1,12 +1,17 @@
 use actix_multipart::Multipart;
-use actix_web::{delete, get, patch, post, web, HttpResponse};
+use actix_web::{delete, get, patch, post, web, HttpRequest, HttpResponse};
 use bytes::BytesMut;
 use futures_util::StreamExt;
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
     errors::{ApiResponse, AppError, PaginatedResponse},
-    models::asset::{AssetQuery, UpdateAssetRequest},
+    models::asset::{AssetQuery, AssetVersionCompareQuery, UpdateAssetRequest},
+    services::{
+        ai_provider_service::AiProviderConfig, asset_service::UploadAssetInput,
+        rag_memory_service::RagOperationMemoryInput,
+    },
     AppState,
 };
 
@@ -15,6 +20,7 @@ use crate::{
 #[post("/api/assets/upload")]
 pub async fn upload_asset(
     state: web::Data<AppState>,
+    req: HttpRequest,
     mut payload: Multipart,
 ) -> Result<HttpResponse, AppError> {
     let mut file_bytes: Option<bytes::Bytes> = None;
@@ -30,16 +36,15 @@ pub async fn upload_asset(
         let mut field = item.map_err(|e| AppError::validation(e.to_string()))?;
         let field_name = field
             .content_disposition()
-            .get_name()
+            .and_then(|cd| cd.get_name())
             .unwrap_or("")
             .to_string();
 
         match field_name.as_str() {
             "file" => {
-                // Extract filename and content type from the field
-                let cd = field.content_disposition().clone();
-                original_filename = cd
-                    .get_filename()
+                original_filename = field
+                    .content_disposition()
+                    .and_then(|cd| cd.get_filename())
                     .map(sanitize_filename)
                     .unwrap_or_else(|| "upload".to_string());
 
@@ -68,12 +73,10 @@ pub async fn upload_asset(
             "project_id" => {
                 let s = read_field_text(&mut field).await?;
                 if !s.is_empty() {
-                    project_id = Uuid::parse_str(&s)
-                        .map(Some)
-                        .unwrap_or_else(|_| {
-                            tracing::warn!("Invalid project_id UUID: {}", s);
-                            None
-                        });
+                    project_id = Uuid::parse_str(&s).map(Some).unwrap_or_else(|_| {
+                        tracing::warn!("Invalid project_id UUID: {}", s);
+                        None
+                    });
                 }
             }
             "tags" => {
@@ -101,9 +104,10 @@ pub async fn upload_asset(
         return Err(AppError::validation("Uploaded file is empty"));
     }
 
+    let uploader_for_memory = uploader.clone();
     let result = state
         .asset_service
-        .upload_asset(
+        .upload_asset(UploadAssetInput {
             file_bytes,
             original_filename,
             mime_type,
@@ -112,8 +116,32 @@ pub async fn upload_asset(
             project_id,
             tags,
             uploader,
-        )
+        })
         .await?;
+
+    remember_asset_operation(
+        &state,
+        &req,
+        RagOperationMemoryInput::new("asset.uploaded", "Data Lake", "asset")
+            .entity_id(Some(result.asset_id))
+            .actor(uploader_for_memory)
+            .summary(format!("Uploaded asset {}", result.name))
+            .content(format!(
+                "Asset uploaded to data lake. Filename: {}. Type: {:?}. Mime: {}. Tags: {}.",
+                result.original_filename,
+                result.asset_type,
+                result.mime_type,
+                result.tags.join(", ")
+            ))
+            .metadata(json!({
+                "asset_id": result.asset_id,
+                "asset_type": result.asset_type.clone(),
+                "version": result.version,
+                "bucket": result.bucket.clone(),
+                "object_key": result.object_key.clone()
+            })),
+    )
+    .await;
 
     Ok(HttpResponse::Created().json(ApiResponse::ok(result)))
 }
@@ -152,14 +180,73 @@ pub async fn get_asset(
     Ok(HttpResponse::Ok().json(ApiResponse::ok(asset)))
 }
 
+/// GET /api/assets/{id}/versions
+#[get("/api/assets/{id}/versions")]
+pub async fn list_asset_versions(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, AppError> {
+    let versions = state.asset_service.list_asset_versions(*path).await?;
+    Ok(HttpResponse::Ok().json(ApiResponse::ok(versions)))
+}
+
+/// GET /api/assets/{id}/versions/compare?base=1&head=2
+#[get("/api/assets/{id}/versions/compare")]
+pub async fn compare_asset_versions(
+    state: web::Data<AppState>,
+    path: web::Path<Uuid>,
+    query: web::Query<AssetVersionCompareQuery>,
+) -> Result<HttpResponse, AppError> {
+    let diff = state
+        .asset_service
+        .compare_asset_versions(*path, query.base, query.head)
+        .await?;
+    Ok(HttpResponse::Ok().json(ApiResponse::ok(diff)))
+}
+
 /// PATCH /api/assets/{id}
 #[patch("/api/assets/{id}")]
 pub async fn update_asset(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<Uuid>,
     body: web::Json<UpdateAssetRequest>,
 ) -> Result<HttpResponse, AppError> {
-    let asset = state.asset_service.update_asset(*path, body.into_inner()).await?;
+    let request_body = body.into_inner();
+    let requested_tags = request_body.tags.clone();
+    let requested_status = request_body.status.clone();
+    let review_note = request_body.review_note.clone();
+    state
+        .resource_lock_service
+        .ensure_write_allowed(&req, "asset", *path)
+        .await?;
+    let asset = state
+        .asset_service
+        .update_asset(*path, request_body)
+        .await?;
+    remember_asset_operation(
+        &state,
+        &req,
+        RagOperationMemoryInput::new("asset.updated", "Data Lake", "asset")
+            .entity_id(Some(asset.id))
+            .actor("system")
+            .summary(format!("Updated data lake asset {}", asset.name))
+            .content(format!(
+                "Asset metadata updated. Filename: {}. Requested tags: {}. Requested status: {:?}. Review note: {}.",
+                asset.original_filename,
+                requested_tags.unwrap_or_default().join(", "),
+                requested_status,
+                review_note.unwrap_or_else(|| "none".to_string())
+            ))
+            .metadata(json!({
+                "asset_id": asset.id,
+                "asset_type": asset.asset_type.clone(),
+                "version": asset.version,
+                "tags": asset.tags.clone(),
+                "status": asset.status.clone()
+            })),
+    )
+    .await;
     Ok(HttpResponse::Ok().json(ApiResponse::ok(asset)))
 }
 
@@ -167,13 +254,45 @@ pub async fn update_asset(
 #[delete("/api/assets/{id}")]
 pub async fn delete_asset(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, AppError> {
+    state
+        .resource_lock_service
+        .ensure_write_allowed(&req, "asset", *path)
+        .await?;
     state.asset_service.delete_asset(*path).await?;
+    remember_asset_operation(
+        &state,
+        &req,
+        RagOperationMemoryInput::new("asset.deleted", "Data Lake", "asset")
+            .entity_id(Some(*path))
+            .actor("system")
+            .summary("Deleted data lake asset")
+            .content(format!("Asset {} was deleted from the data lake.", *path))
+            .metadata(json!({})),
+    )
+    .await;
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "success": true,
         "message": "Asset deleted"
     })))
+}
+
+async fn remember_asset_operation(
+    state: &web::Data<AppState>,
+    req: &HttpRequest,
+    input: RagOperationMemoryInput,
+) {
+    let ai_config = AiProviderConfig::from_headers(req.headers());
+    let result = state
+        .rag_memory_service
+        .remember_operation(ai_config.as_ref(), input)
+        .await;
+
+    if let Some(error) = result.error {
+        tracing::warn!(error = %error, "Asset operation was not stored in RAG memory");
+    }
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -189,6 +308,12 @@ async fn read_field_text(field: &mut actix_multipart::Field) -> Result<String, A
 
 fn sanitize_filename(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_alphanumeric() || c == '.' || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '.' || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }

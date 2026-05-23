@@ -12,11 +12,7 @@ impl EventPublisherService {
         Self { enabled: false }
     }
 
-    pub async fn publish<T: Serialize + std::fmt::Debug>(
-        &self,
-        topic: &str,
-        event: &T,
-    ) {
+    pub async fn publish<T: Serialize + std::fmt::Debug>(&self, topic: &str, event: &T) {
         if self.enabled {
             tracing::info!(topic, ?event, "[events] Publishing event");
         }
@@ -24,6 +20,7 @@ impl EventPublisherService {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize)]
 pub struct AssetUploadedEvent {
     pub asset_id: uuid::Uuid,
@@ -34,6 +31,7 @@ pub struct AssetUploadedEvent {
     pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize)]
 pub struct AssetDeletedEvent {
     pub asset_id: uuid::Uuid,

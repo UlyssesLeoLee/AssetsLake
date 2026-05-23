@@ -16,6 +16,7 @@ const ASSET_TYPES: AssetType[] = [
   'concept_art',
   'audio',
   'video',
+  'code',
   'document',
   'animation',
   'vfx',

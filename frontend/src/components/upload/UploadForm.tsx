@@ -3,7 +3,7 @@
 import { useState, KeyboardEvent } from 'react';
 import { formatBytes } from '@/lib/utils';
 import { X, Plus, FileIcon, AlertCircle } from 'lucide-react';
-import type { UploadPayload } from '@/app/upload/page';
+import type { UploadPayload } from '@/plugin-groups/asset-library/UploadPage';
 
 interface UploadFormProps {
   file: File;

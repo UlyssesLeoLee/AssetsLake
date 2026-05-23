@@ -5,29 +5,49 @@ const config: Config = {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/plugin-groups/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
       colors: {
-        // Brand palette — dark professional tool aesthetic
+        // Japanese-inspired product palette: sumi ink, ai blue, sakura, matcha, and shu red.
         brand: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+          50: '#eef7ff',
+          100: '#d9edff',
+          200: '#b9ddff',
+          300: '#86c5ff',
+          400: '#4da4f7',
+          500: '#1f7ad8',
+          600: '#185fae',
+          700: '#194c88',
+          800: '#193f6b',
+          900: '#173555',
+          950: '#0b1d30',
+        },
+        sakura: {
+          300: '#f7b7c7',
+          400: '#ee8fa8',
+          500: '#d96c89',
+        },
+        matcha: {
+          300: '#b7d782',
+          400: '#8fb55f',
+          500: '#6f9546',
+        },
+        shu: {
+          300: '#f0a06f',
+          400: '#df754a',
+          500: '#b94f34',
+        },
+        washi: {
+          100: '#f3ead8',
+          200: '#d8c8a8',
         },
         surface: {
-          DEFAULT: '#0f1117',
-          secondary: '#1a1d27',
-          elevated: '#22263a',
-          border: '#2d3147',
+          DEFAULT: '#0b0f14',
+          secondary: '#111821',
+          elevated: '#172231',
+          border: '#293746',
         },
       },
       fontFamily: {

@@ -21,11 +21,7 @@ impl AiIndexService {
 
     /// Search by vector similarity (semantic / image similarity search).
     /// Future: query Qdrant with a vector and return ranked asset IDs.
-    pub async fn vector_search(
-        &self,
-        _query_vector: Vec<f32>,
-        _top_k: usize,
-    ) -> Vec<uuid::Uuid> {
+    pub async fn vector_search(&self, _query_vector: Vec<f32>, _top_k: usize) -> Vec<uuid::Uuid> {
         // TODO: Qdrant client.search(collection, query_vector, top_k)
         vec![]
     }

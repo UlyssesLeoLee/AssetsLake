@@ -7,9 +7,9 @@ import { AppShell } from '@/components/layout/AppShell';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'AssetsLake — AI Art Asset Management',
+  title: 'AssetsLake — Art Outsourcing Production Platform',
   description:
-    'Professional art asset management platform for game studios, animation teams, and outsourcing pipelines.',
+    'Asset management, task flow, vendor delivery, review feedback, version evidence, and AI QA for game art outsourcing.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

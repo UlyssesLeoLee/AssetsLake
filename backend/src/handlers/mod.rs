@@ -1,3 +1,12 @@
+pub mod asset_analysis_handler;
 pub mod asset_handler;
+pub mod auth_handler;
+pub mod data_lake_query_handler;
+pub mod emergence_handler;
 pub mod health_handler;
+pub mod lock_handler;
+pub mod management_handler;
+pub mod production_handler;
 pub mod project_handler;
+pub mod project_management_handler;
+pub mod verification_handler;

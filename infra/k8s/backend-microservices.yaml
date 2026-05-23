@@ -1,0 +1,233 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-assets-api
+  labels:
+    app.kubernetes.io/component: assets-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-assets-api
+  template:
+    metadata:
+      labels:
+        app: assetslake-assets-api
+        app.kubernetes.io/component: assets-api
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: assets
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-assets-api
+  labels:
+    app.kubernetes.io/component: assets-api
+spec:
+  selector:
+    app: assetslake-assets-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-production-api
+  labels:
+    app.kubernetes.io/component: production-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-production-api
+  template:
+    metadata:
+      labels:
+        app: assetslake-production-api
+        app.kubernetes.io/component: production-api
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: production
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 150m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-production-api
+  labels:
+    app.kubernetes.io/component: production-api
+spec:
+  selector:
+    app: assetslake-production-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-projects-api
+  labels:
+    app.kubernetes.io/component: projects-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-projects-api
+  template:
+    metadata:
+      labels:
+        app: assetslake-projects-api
+        app.kubernetes.io/component: projects-api
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: projects
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-projects-api
+  labels:
+    app.kubernetes.io/component: projects-api
+spec:
+  selector:
+    app: assetslake-projects-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

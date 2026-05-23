@@ -147,6 +147,60 @@ curl http://localhost:8080/api/health
 # {"status":"ok","service":"assetslake-backend","version":"0.1.0"}
 ```
 
+### Kubernetes Microservices
+
+The backend image supports route-scoped service roles through `ASSETSLAKE_SERVICE`.
+Docker Compose keeps `gateway` for local compatibility, while Kubernetes runs separate
+Deployments and Services:
+
+| Service Role | Routes |
+|--------------|--------|
+| `assets` | `/api/assets`, `/api/assets/search`, `/api/assets/upload` |
+| `production` | `/api/issues`, `/api/milestones`, `/api/delivery-packages` |
+| `projects` | `/api/projects` |
+
+Kubernetes manifests live under `infra/k8s`:
+
+```bash
+kubectl apply -k infra/k8s
+```
+
+The default Ingress hosts are `assetslake.local`, `minio.assetslake.local`, and
+`minio-console.assetslake.local`. Build or retag local images as
+`assetslake-backend:latest` and `assetslake-frontend:latest` before applying to a
+local cluster.
+
+### Frontend Plugin Groups
+
+Frontend navigation and feature ownership are defined in
+`frontend/src/plugin-groups`. The frontend product architecture is declared as:
+
+`ProductArchitecture -> PluginApp -> PluginGroup -> Plugin -> PluginRoute`
+
+Each product contains multiple plugin apps, each app is composed from multiple
+plugin groups, each group owns multiple plugins, and plugins expose page routes.
+The production app is split into management, planning, execution, timeline,
+reporting, workflow, delivery, and enterprise plugin groups. It includes
+`/management`, `/planning`, `/board`, `/issues`, `/reviews`, `/approvals`,
+`/gantt`, `/calendar`, `/reports`, `/workflow`, `/automation`, `/delivery-packages`,
+and `/enterprise` surfaces. The backend exposes `/api/project-management/*`
+boundaries for plans, epics, sprints, dependencies, issue events, Gantt,
+calendar, reports, workflow, automation, and enterprise controls. The final-phase
+architecture and regression contracts are in place; deep Jira-style behavior
+such as drag scheduling, workflow editing, automation execution, permissions UI,
+notifications, and import/export execution remains staged in the roadmap. The
+phased plan is tracked in
+`docs/project-management-roadmap.md`. App Router pages stay as thin route
+adapters. From `frontend/`, run `pnpm run test:ut` for the architecture unit
+test, `pnpm run test:it` for the cross-layer management contract test,
+`pnpm run test:smoke` for the live backend/MinIO data lake smoke test, or
+`pnpm run test:all` for the frontend test bundle. Set
+`SMOKE_REQUIRE_MANAGEMENT=1` when the deployed backend image includes the
+management intelligence endpoint and that route should be part of live smoke.
+From `backend/`, run
+`cargo +1.91.1-x86_64-pc-windows-msvc test management_intelligence_endpoint_returns_contract`
+to verify the management intelligence endpoint through Actix.
+
 ---
 
 ## Accessing Services
@@ -265,6 +319,10 @@ curl "http://localhost:8080/api/assets?tag=pbr&page=2&page_size=12"
 | Frontend image/video/audio preview | ✅ |
 | Frontend filter sidebar | ✅ |
 | Frontend pagination | ✅ |
+| Plugin app/group architecture through project management Phase 5 | ✅ |
+| Project management planning/productization API boundaries | ✅ |
+| Gantt, calendar, reports, workflow, automation, enterprise route surfaces | ✅ |
+| Issue core loop: edit, comments, work logs, soft delete, planning fields | ✅ |
 | Frontend empty + loading states | ✅ |
 | Docker Compose full stack | ✅ |
 | MinIO bucket auto-init | ✅ |

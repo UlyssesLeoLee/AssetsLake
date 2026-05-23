@@ -6,6 +6,7 @@ export type AssetType =
   | 'concept_art'
   | 'audio'
   | 'video'
+  | 'code'
   | 'document'
   | 'animation'
   | 'vfx'
@@ -65,6 +66,63 @@ export interface AssetSummary {
   status: AssetStatus;
   created_at: string;
   updated_at: string;
+}
+
+export interface AssetVersionSummary {
+  id: string;
+  asset_id: string;
+  version: number;
+  bucket: string;
+  object_key: string;
+  file_url: string;
+  file_size: number;
+  checksum_sha256?: string;
+  uploader_id?: string;
+  uploader: string;
+  change_note?: string;
+  created_at: string;
+  branch_name: string;
+  commit_sha: string;
+}
+
+export interface AssetVersionDiffItem {
+  field: string;
+  before: string;
+  after: string;
+  changed: boolean;
+}
+
+export interface AssetVersionDiff {
+  asset_id: string;
+  base: AssetVersionSummary;
+  head: AssetVersionSummary;
+  file_size_delta: number;
+  checksum_changed: boolean;
+  object_changed: boolean;
+  changes: AssetVersionDiffItem[];
+}
+
+export interface AssetAiInsight {
+  id: string;
+  asset_id: string;
+  modality: string;
+  provider: string;
+  model?: string;
+  status: string;
+  summary: string;
+  labels: string[];
+  detected_text?: string;
+  quality_risks: string[];
+  reuse_suggestions: string[];
+  entities: Record<string, unknown>;
+  raw_response: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface AnalyzeAssetResponse {
+  asset: Asset;
+  insight: AssetAiInsight;
+  rag_stored: boolean;
 }
 
 export interface UploadResult {
@@ -134,6 +192,7 @@ export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   concept_art: 'Concept Art',
   audio: 'Audio',
   video: 'Video',
+  code: 'Code',
   document: 'Document',
   animation: 'Animation',
   vfx: 'VFX',
@@ -159,6 +218,7 @@ export const ACCEPTED_MIME_TYPES: Record<string, string[]> = {
   Textures: ['.png', '.jpg', '.jpeg', '.tga', '.bmp', '.tiff', '.exr', '.hdr', '.psd', '.psb'],
   Audio: ['.wav', '.mp3', '.ogg', '.flac'],
   Video: ['.mp4', '.mov', '.avi', '.mkv'],
+  Code: ['.rs', '.py', '.js', '.ts', '.tsx', '.go', '.java', '.sql', '.json', '.yaml', '.toml'],
   Documents: ['.pdf', '.doc', '.docx'],
   Archives: ['.zip', '.7z', '.tar', '.gz', '.rar'],
 };

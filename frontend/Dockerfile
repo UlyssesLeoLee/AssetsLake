@@ -3,7 +3,11 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci --prefer-offline
+COPY pnpm-lock.yaml* ./
+RUN corepack enable && \
+    if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; \
+    elif [ -f package-lock.json ]; then npm ci --prefer-offline; \
+    else npm install; fi
 
 # ─── Builder ─────────────────────────────────────────────────
 FROM node:20-alpine AS builder
@@ -12,16 +16,18 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-ARG NEXT_PUBLIC_API_URL=http://localhost:8080
+ARG NEXT_PUBLIC_API_URL=
 ARG NEXT_PUBLIC_MINIO_PUBLIC_ENDPOINT=http://localhost:9000
 ARG NEXT_PUBLIC_MINIO_BUCKET=art-assets
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_MINIO_PUBLIC_ENDPOINT=$NEXT_PUBLIC_MINIO_PUBLIC_ENDPOINT
 ENV NEXT_PUBLIC_MINIO_BUCKET=$NEXT_PUBLIC_MINIO_BUCKET
+ENV NEXT_OUTPUT_MODE=standalone
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build
+RUN corepack enable && \
+    if [ -f pnpm-lock.yaml ]; then pnpm run build; else npm run build; fi
 
 # ─── Runner ──────────────────────────────────────────────────
 FROM node:20-alpine AS runner

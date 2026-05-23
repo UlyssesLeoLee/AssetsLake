@@ -10,8 +10,17 @@ pub enum AppError {
     #[error("Validation error: {0}")]
     Validation(String),
 
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+
     #[error("Conflict: {0}")]
     Conflict(String),
+
+    #[error("Rate limited: {0}")]
+    RateLimited(String),
 
     #[error("Payload too large: {0}")]
     PayloadTooLarge(String),
@@ -38,6 +47,22 @@ impl AppError {
         Self::Validation(msg.into())
     }
 
+    pub fn unauthorized(msg: impl Into<String>) -> Self {
+        Self::Unauthorized(msg.into())
+    }
+
+    pub fn forbidden(msg: impl Into<String>) -> Self {
+        Self::Forbidden(msg.into())
+    }
+
+    pub fn conflict(msg: impl Into<String>) -> Self {
+        Self::Conflict(msg.into())
+    }
+
+    pub fn rate_limited(msg: impl Into<String>) -> Self {
+        Self::RateLimited(msg.into())
+    }
+
     pub fn internal(msg: impl Into<String>) -> Self {
         Self::Internal(msg.into())
     }
@@ -60,7 +85,10 @@ impl AppError {
         match self {
             AppError::NotFound(_) => "NOT_FOUND",
             AppError::Validation(_) => "VALIDATION_ERROR",
+            AppError::Unauthorized(_) => "UNAUTHORIZED",
+            AppError::Forbidden(_) => "FORBIDDEN",
             AppError::Conflict(_) => "CONFLICT",
+            AppError::RateLimited(_) => "RATE_LIMITED",
             AppError::PayloadTooLarge(_) => "PAYLOAD_TOO_LARGE",
             AppError::UnsupportedMediaType(_) => "UNSUPPORTED_MEDIA_TYPE",
             AppError::Storage(_) => "STORAGE_ERROR",
@@ -75,7 +103,10 @@ impl ResponseError for AppError {
         match self {
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
             AppError::Validation(_) => StatusCode::BAD_REQUEST,
+            AppError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            AppError::Forbidden(_) => StatusCode::FORBIDDEN,
             AppError::Conflict(_) => StatusCode::CONFLICT,
+            AppError::RateLimited(_) => StatusCode::TOO_MANY_REQUESTS,
             AppError::PayloadTooLarge(_) => StatusCode::PAYLOAD_TOO_LARGE,
             AppError::UnsupportedMediaType(_) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
             AppError::Storage(_) => StatusCode::BAD_GATEWAY,
@@ -137,7 +168,10 @@ pub struct PaginatedResponse<T: Serialize> {
 
 impl<T: Serialize> ApiResponse<T> {
     pub fn ok(data: T) -> Self {
-        Self { data, success: true }
+        Self {
+            data,
+            success: true,
+        }
     }
 }
 

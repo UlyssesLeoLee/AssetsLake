@@ -32,6 +32,8 @@ aws-credential-types = "1"
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls"] }
 
 # UUIDs and identifiers
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -63,6 +65,7 @@ validator = { version = "0.18", features = ["derive"] }
 
 # Byte utilities
 bytes = "1"
+base64 = "0.22"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

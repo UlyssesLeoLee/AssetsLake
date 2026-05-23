@@ -20,6 +20,7 @@ CREATE TYPE asset_type AS ENUM (
     'concept_art',
     'audio',
     'video',
+    'code',
     'document',
     'animation',
     'vfx',
