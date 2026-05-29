@@ -13,6 +13,7 @@ import type {
   UploadResult,
 } from '@/types/asset';
 import { getAiRequestHeaders } from '@/lib/aiSettings';
+import { clearStoredAuthSession, getStoredAuthToken } from '@/lib/authSession';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 const AI_HEADER_ENDPOINTS = [
@@ -34,21 +35,30 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const url = typeof config.url === 'string' ? config.url : '';
+  const headers = AxiosHeaders.from(config.headers);
+  const token = getStoredAuthToken();
+  const shouldAttachAuthHeader = token && !url.includes('/api/auth/login');
   const shouldAttachAiHeaders = AI_HEADER_ENDPOINTS.some((endpoint) => url.includes(endpoint));
 
+  if (shouldAttachAuthHeader && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   if (shouldAttachAiHeaders) {
-    const headers = AxiosHeaders.from(config.headers);
     Object.entries(getAiRequestHeaders()).forEach(([key, value]) => {
       headers.set(key, value);
     });
-    config.headers = headers;
   }
+  config.headers = headers;
   return config;
 });
 
 apiClient.interceptors.response.use(
   (res) => res,
   (error) => {
+    if (error.response?.status === 401) {
+      clearStoredAuthSession();
+    }
     const message =
       error.response?.data?.message ||
       error.response?.data?.error ||

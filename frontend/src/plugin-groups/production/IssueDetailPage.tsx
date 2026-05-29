@@ -211,6 +211,7 @@ export function IssueDetailPage() {
                     story_points: editStoryPoints ? Number(editStoryPoints) : undefined,
                     rank_key: editRankKey || undefined,
                     actor: 'producer',
+                    expected_version: issue.version,
                   },
                 })
               }

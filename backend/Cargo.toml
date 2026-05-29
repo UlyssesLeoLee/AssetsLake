@@ -48,13 +48,18 @@ anyhow = "1"
 # Logging / tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-actix-web = "0.7"
+tracing-actix-web = { version = "0.7", features = ["opentelemetry_0_31"] }
+tracing-opentelemetry = "0.32"
+opentelemetry = { version = "0.31", features = ["trace"] }
+opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.31", default-features = false, features = ["trace", "grpc-tonic"] }
 
 # Config
 dotenvy = "0.15"
 
 # Hashing
 sha2 = "0.10"
+hmac = "0.12"
 hex = "0.4"
 
 # MIME detection

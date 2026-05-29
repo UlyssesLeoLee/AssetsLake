@@ -55,7 +55,7 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   'http://127.0.0.1:18080';
 const TEST_PASSWORD = process.env.ASSETSLAKE_TEST_PASSWORD || 'AssetsLake#2026';
-const HEALTH_CONCURRENCY = Number.parseInt(process.env.HIGH_CONCURRENCY_HEALTH || '50', 10);
+const HEALTH_CONCURRENCY = Number.parseInt(process.env.HIGH_CONCURRENCY_HEALTH || '200', 10);
 const ACCOUNTS = ['alice.producer', 'bob.artist', 'chen.reviewer', 'dana.manager'];
 
 async function jsonRequest(path, options = {}) {

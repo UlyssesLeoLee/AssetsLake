@@ -162,7 +162,7 @@ services:
       /bin/sh -c "
         mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin_secret};
         mc mb --ignore-existing local/${MINIO_BUCKET:-art-assets};
-        mc anonymous set download local/${MINIO_BUCKET:-art-assets};
+        mc anonymous set none local/${MINIO_BUCKET:-art-assets};
         echo 'MinIO bucket initialized.';
       "
     networks:
@@ -220,7 +220,7 @@ services:
         mc admin policy create local-root ai-primary-read /tmp/ai-primary-read.json
         mc admin policy attach local-root ai-primary-read --user ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica}
         mc admin policy attach mirror-root readwrite --user ${MINIO_AI_REPLICA_USER:-assetslake_ai_replica}
-        mc anonymous set download mirror-root/${MINIO_BUCKET:-art-assets}
+        mc anonymous set none mirror-root/${MINIO_BUCKET:-art-assets}
     networks:
       - assetslake-net
 
@@ -274,6 +274,58 @@ services:
       - ./haproxy/qdrant.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
       - "${QDRANT_PORT:-6333}:6333"
+    networks:
+      - assetslake-net
+
+  skywalking-banyandb:
+    image: apache/skywalking-banyandb:0.10.0
+    container_name: assetslake-skywalking-banyandb
+    restart: unless-stopped
+    command: standalone
+    volumes:
+      - skywalking_banyandb_data:/tmp
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 17912"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - assetslake-net
+
+  skywalking-oap:
+    image: apache/skywalking-oap-server:10.4.0-java17
+    container_name: assetslake-skywalking-oap
+    restart: unless-stopped
+    depends_on:
+      skywalking-banyandb:
+        condition: service_healthy
+    environment:
+      SW_STORAGE: banyandb
+      SW_STORAGE_BANYANDB_TARGETS: skywalking-banyandb:17912
+      SW_STORAGE_BANYANDB_COMPATIBLE_SERVER_API_VERSIONS: "0.10"
+      SW_OTEL_RECEIVER: default
+      SW_OTEL_RECEIVER_ENABLED_HANDLERS: otlp-traces,otlp-metrics
+      SW_RECEIVER_ZIPKIN: default
+      SW_ZIPKIN_QUERY: default
+      JAVA_OPTS: ${SKYWALKING_OAP_JAVA_OPTS:--Xms512m -Xmx1024m}
+    ports:
+      - "${SKYWALKING_OAP_GRPC_PORT:-11800}:11800"
+      - "${SKYWALKING_OAP_REST_PORT:-12800}:12800"
+      - "${SKYWALKING_ZIPKIN_PORT:-9412}:9412"
+    networks:
+      - assetslake-net
+
+  skywalking-ui:
+    image: apache/skywalking-ui:10.4.0
+    container_name: assetslake-skywalking-ui
+    restart: unless-stopped
+    depends_on:
+      - skywalking-oap
+    environment:
+      SW_OAP_ADDRESS: http://skywalking-oap:12800
+      SW_ZIPKIN_ADDRESS: http://skywalking-oap:9412
+    ports:
+      - "${SKYWALKING_UI_PORT:-18088}:8080"
     networks:
       - assetslake-net
 
@@ -337,6 +389,8 @@ services:
         condition: service_started
       qdrant-lb:
         condition: service_started
+      skywalking-oap:
+        condition: service_started
       ha-maintenance:
         condition: service_started
     environment:
@@ -363,7 +417,21 @@ services:
       VERIFICATION_OUTBOX_RETENTION_HOURS: ${VERIFICATION_OUTBOX_RETENTION_HOURS:-72}
       ASSETSLAKE_SERVICE: gateway
       RUST_LOG: ${RUST_LOG:-info}
+      OTEL_TRACES_ENABLED: ${OTEL_TRACES_ENABLED:-true}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://skywalking-oap:11800}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
+      OTEL_EXPORTER_OTLP_TIMEOUT_SECONDS: ${OTEL_EXPORTER_OTLP_TIMEOUT_SECONDS:-3}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-assetslake-gateway-api}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-service.namespace=assetslake,deployment.environment.name=compose}
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-500}
+      ASSET_SIGNED_URLS_ENABLED: ${ASSET_SIGNED_URLS_ENABLED:-true}
+      ASSET_SIGNED_URL_TTL_SECONDS: ${ASSET_SIGNED_URL_TTL_SECONDS:-300}
+      ASSET_READ_AUTH_REQUIRED: ${ASSET_READ_AUTH_REQUIRED:-true}
+      ASSET_ACCESS_AUDIT_ENABLED: ${ASSET_ACCESS_AUDIT_ENABLED:-true}
+      ASSET_ACCESS_TOKEN_SECRET: ${ASSET_ACCESS_TOKEN_SECRET:-replace-with-at-least-32-random-bytes}
+      MAX_ASSET_FILENAME_BYTES: ${MAX_ASSET_FILENAME_BYTES:-180}
+      ASSET_BLOCKED_EXTENSIONS: ${ASSET_BLOCKED_EXTENSIONS:-exe,dll,com,scr,msi,dmg,app,deb,rpm,apk,ipa,jar,war,ear,svg}
+      ASSET_BLOCKED_MIME_TYPES: ${ASSET_BLOCKED_MIME_TYPES:-application/x-msdownload,application/x-dosexec,application/x-msi,image/svg+xml,text/html,application/xhtml+xml}
       RAG_MEMORY_ENABLED: ${RAG_MEMORY_ENABLED:-true}
       QDRANT_URL: ${QDRANT_URL:-http://qdrant-lb:6333}
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-assetslake_operation_memories}
@@ -423,6 +491,7 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
         NEXT_PUBLIC_MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
         NEXT_PUBLIC_MINIO_BUCKET: ${MINIO_BUCKET:-art-assets}
+        KIALI_PROXY_URL: ${KIALI_PROXY_URL:-http://host.docker.internal:20001}
     container_name: assetslake-frontend
     restart: unless-stopped
     depends_on:
@@ -431,6 +500,9 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
       NEXT_PUBLIC_MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
       NEXT_PUBLIC_MINIO_BUCKET: ${MINIO_BUCKET:-art-assets}
+      KIALI_CONSOLE_URL: ${KIALI_CONSOLE_URL:-/kiali/console/graph/namespaces?namespaces=assetslake&graphType=service&duration=300&refresh=15000}
+      KIALI_PROXY_URL: ${KIALI_PROXY_URL:-http://host.docker.internal:20001}
+      SKYWALKING_UI_URL: ${SKYWALKING_UI_URL:-http://localhost:18088/dashboard/GENERAL/All/General-Root}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     networks:
@@ -443,6 +515,7 @@ volumes:
   minio_mirror_data:
   qdrant_data:
   qdrant_replica_data:
+  skywalking_banyandb_data:
 
 networks:
   assetslake-net:

@@ -1,4 +1,5 @@
-use sqlx::PgPool;
+use serde_json::Value;
+use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
 use crate::{
@@ -39,7 +40,7 @@ impl AssetRepository {
             RETURNING *
             "#,
         )
-        .bind(Uuid::new_v4())
+        .bind(params.id)
         .bind(&params.name)
         .bind(&params.original_filename)
         .bind(&params.description)
@@ -67,6 +68,34 @@ impl AssetRepository {
             .fetch_optional(&self.pool)
             .await?
             .ok_or_else(|| AppError::not_found(format!("Asset {} not found", id)))
+    }
+
+    pub async fn find_version_content(
+        &self,
+        asset_id: Uuid,
+        version: i32,
+    ) -> Result<AssetVersionContent, AppError> {
+        sqlx::query_as::<_, AssetVersionContent>(
+            r#"
+            SELECT
+                av.object_key,
+                av.file_size,
+                a.original_filename,
+                a.mime_type
+            FROM asset_versions av
+            JOIN assets a ON a.id = av.asset_id
+            WHERE av.asset_id = $1
+              AND av.version = $2
+              AND a.deleted_at IS NULL
+            "#,
+        )
+        .bind(asset_id)
+        .bind(version)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| {
+            AppError::not_found(format!("Asset {} version {} not found", asset_id, version))
+        })
     }
 
     /// List assets with optional filters. Uses separate typed queries per filter combination
@@ -173,7 +202,7 @@ impl AssetRepository {
     pub async fn update(&self, id: Uuid, req: &UpdateAssetRequest) -> Result<Asset, AppError> {
         self.find_by_id(id).await?;
 
-        sqlx::query_as::<_, Asset>(
+        let asset = sqlx::query_as::<_, Asset>(
             r#"UPDATE assets SET
                 name = COALESCE($2, name),
                 description = COALESCE($3, description),
@@ -181,8 +210,11 @@ impl AssetRepository {
                 status = COALESCE($5, status),
                 project_id = COALESCE($6, project_id),
                 review_note = COALESCE($7, review_note),
+                version = version + 1,
                 updated_at = NOW()
-            WHERE id = $1 AND deleted_at IS NULL
+            WHERE id = $1
+              AND deleted_at IS NULL
+              AND ($8::INTEGER IS NULL OR version = $8)
             RETURNING *"#,
         )
         .bind(id)
@@ -192,16 +224,20 @@ impl AssetRepository {
         .bind(&req.status)
         .bind(req.project_id)
         .bind(&req.review_note)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(AppError::from)
+        .bind(req.expected_version)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        asset.ok_or_else(|| {
+            AppError::conflict("Asset version conflict; refresh the asset and retry the update")
+        })
     }
 
     pub async fn update_ai_tags(&self, id: Uuid, ai_tags: &[String]) -> Result<Asset, AppError> {
         sqlx::query_as::<_, Asset>(
             r#"
             UPDATE assets
-            SET ai_tags = $2, updated_at = NOW()
+            SET ai_tags = $2, version = version + 1, updated_at = NOW()
             WHERE id = $1 AND deleted_at IS NULL
             RETURNING *
             "#,
@@ -225,6 +261,28 @@ impl AssetRepository {
         if rows == 0 {
             return Err(AppError::not_found(format!("Asset {} not found", id)));
         }
+        Ok(())
+    }
+
+    pub async fn record_access(
+        &self,
+        asset_id: Uuid,
+        action: &str,
+        actor: Option<&str>,
+        metadata: Value,
+    ) -> Result<(), AppError> {
+        sqlx::query(
+            r#"
+            INSERT INTO audit_log (entity_type, entity_id, action, actor, diff)
+            VALUES ('asset', $1, $2, $3, $4)
+            "#,
+        )
+        .bind(asset_id)
+        .bind(action)
+        .bind(actor)
+        .bind(metadata)
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 
@@ -369,6 +427,7 @@ fn push_diff(changes: &mut Vec<AssetVersionDiffItem>, field: &str, before: Strin
 }
 
 pub struct CreateAssetParams {
+    pub id: Uuid,
     pub name: String,
     pub original_filename: String,
     pub description: Option<String>,
@@ -384,4 +443,12 @@ pub struct CreateAssetParams {
     pub project_id: Uuid,
     pub uploader_id: Option<Uuid>,
     pub uploader: String,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct AssetVersionContent {
+    pub object_key: String,
+    pub file_size: i64,
+    pub original_filename: String,
+    pub mime_type: String,
 }

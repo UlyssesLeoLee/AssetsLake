@@ -22,5 +22,6 @@ export { MilestoneTimelinePage } from '@/plugin-groups/production/MilestoneTimel
 export { PlanningPage } from '@/plugin-groups/production/PlanningPage';
 export { ReportsPage } from '@/plugin-groups/production/ReportsPage';
 export { ReviewBoardPage } from '@/plugin-groups/production/ReviewBoardPage';
+export { SecurityAuditPage } from '@/plugin-groups/production/SecurityAuditPage';
 export { VendorDashboardPage } from '@/plugin-groups/production/VendorDashboardPage';
 export { WorkflowPage } from '@/plugin-groups/production/WorkflowPage';

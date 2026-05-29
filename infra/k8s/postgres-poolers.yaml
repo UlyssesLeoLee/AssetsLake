@@ -1,0 +1,125 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: assetslake-identity-pgbouncer
+spec:
+  cluster:
+    name: assetslake-identity-postgres
+  instances: 3
+  type: rw
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "4000"
+      default_pool_size: "100"
+      reserve_pool_size: "25"
+      server_idle_timeout: "300"
+      query_wait_timeout: "10"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: assetslake-projects-pgbouncer
+spec:
+  cluster:
+    name: assetslake-projects-postgres
+  instances: 3
+  type: rw
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "4000"
+      default_pool_size: "100"
+      reserve_pool_size: "25"
+      server_idle_timeout: "300"
+      query_wait_timeout: "10"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: assetslake-assets-pgbouncer
+spec:
+  cluster:
+    name: assetslake-assets-postgres
+  instances: 3
+  type: rw
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "4000"
+      default_pool_size: "120"
+      reserve_pool_size: "30"
+      server_idle_timeout: "300"
+      query_wait_timeout: "10"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: assetslake-production-pgbouncer
+spec:
+  cluster:
+    name: assetslake-production-postgres
+  instances: 3
+  type: rw
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "4000"
+      default_pool_size: "120"
+      reserve_pool_size: "30"
+      server_idle_timeout: "300"
+      query_wait_timeout: "10"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: assetslake-planning-pgbouncer
+spec:
+  cluster:
+    name: assetslake-planning-postgres
+  instances: 3
+  type: rw
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "4000"
+      default_pool_size: "100"
+      reserve_pool_size: "25"
+      server_idle_timeout: "300"
+      query_wait_timeout: "10"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: assetslake-workflow-pgbouncer
+spec:
+  cluster:
+    name: assetslake-workflow-postgres
+  instances: 3
+  type: rw
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "4000"
+      default_pool_size: "100"
+      reserve_pool_size: "25"
+      server_idle_timeout: "300"
+      query_wait_timeout: "10"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: assetslake-reporting-pgbouncer
+spec:
+  cluster:
+    name: assetslake-reporting-postgres
+  instances: 3
+  type: rw
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "4000"
+      default_pool_size: "80"
+      reserve_pool_size: "20"
+      server_idle_timeout: "300"
+      query_wait_timeout: "10"

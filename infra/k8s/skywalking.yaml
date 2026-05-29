@@ -1,0 +1,266 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: assetslake-skywalking-banyandb
+  labels:
+    app: assetslake-skywalking-banyandb
+    app.kubernetes.io/component: observability-storage
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  serviceName: assetslake-skywalking-banyandb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: assetslake-skywalking-banyandb
+  template:
+    metadata:
+      labels:
+        app: assetslake-skywalking-banyandb
+        app.kubernetes.io/component: observability-storage
+        app.kubernetes.io/part-of: assetslake-observability
+    spec:
+      containers:
+        - name: banyandb
+          image: apache/skywalking-banyandb:0.10.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - standalone
+          ports:
+            - name: grpc
+              containerPort: 17912
+            - name: http
+              containerPort: 17913
+          volumeMounts:
+            - name: banyandb-data
+              mountPath: /tmp
+          readinessProbe:
+            tcpSocket:
+              port: 17912
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 17912
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: banyandb-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-skywalking-banyandb
+  labels:
+    app.kubernetes.io/component: observability-storage
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  selector:
+    app: assetslake-skywalking-banyandb
+  ports:
+    - name: grpc
+      port: 17912
+      targetPort: 17912
+    - name: http
+      port: 17913
+      targetPort: 17913
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-skywalking-oap
+  labels:
+    app: assetslake-skywalking-oap
+    app.kubernetes.io/component: observability-oap
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: assetslake-skywalking-oap
+  template:
+    metadata:
+      labels:
+        app: assetslake-skywalking-oap
+        app.kubernetes.io/component: observability-oap
+        app.kubernetes.io/part-of: assetslake-observability
+    spec:
+      initContainers:
+        - name: wait-for-banyandb
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - until nc -z assetslake-skywalking-banyandb 17912; do sleep 2; done
+      containers:
+        - name: oap
+          image: apache/skywalking-oap-server:10.4.0-java17
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SW_STORAGE
+              value: banyandb
+            - name: SW_STORAGE_BANYANDB_TARGETS
+              value: assetslake-skywalking-banyandb:17912
+            - name: SW_STORAGE_BANYANDB_COMPATIBLE_SERVER_API_VERSIONS
+              value: "0.10"
+            - name: SW_OTEL_RECEIVER
+              value: default
+            - name: SW_OTEL_RECEIVER_ENABLED_HANDLERS
+              value: otlp-traces,otlp-metrics
+            - name: SW_RECEIVER_ZIPKIN
+              value: default
+            - name: SW_ZIPKIN_QUERY
+              value: default
+            - name: JAVA_OPTS
+              value: -Xms512m -Xmx1024m
+          ports:
+            - name: grpc
+              containerPort: 11800
+            - name: rest
+              containerPort: 12800
+            - name: zipkin
+              containerPort: 9412
+          readinessProbe:
+            tcpSocket:
+              port: 12800
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 12800
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-skywalking-oap
+  labels:
+    app.kubernetes.io/component: observability-oap
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  selector:
+    app: assetslake-skywalking-oap
+  ports:
+    - name: grpc
+      port: 11800
+      targetPort: 11800
+    - name: rest
+      port: 12800
+      targetPort: 12800
+    - name: zipkin
+      port: 9412
+      targetPort: 9412
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-skywalking-ui
+  labels:
+    app: assetslake-skywalking-ui
+    app.kubernetes.io/component: observability-ui
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: assetslake-skywalking-ui
+  template:
+    metadata:
+      labels:
+        app: assetslake-skywalking-ui
+        app.kubernetes.io/component: observability-ui
+        app.kubernetes.io/part-of: assetslake-observability
+    spec:
+      initContainers:
+        - name: wait-for-oap
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - until nc -z assetslake-skywalking-oap 12800; do sleep 2; done
+      containers:
+        - name: ui
+          image: apache/skywalking-ui:10.4.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SW_OAP_ADDRESS
+              value: http://assetslake-skywalking-oap:12800
+            - name: SW_ZIPKIN_ADDRESS
+              value: http://assetslake-skywalking-oap:9412
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-skywalking-ui
+  labels:
+    app.kubernetes.io/component: observability-ui
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  selector:
+    app: assetslake-skywalking-ui
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: assetslake-skywalking-ui-host
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  rules:
+    - host: observability.assetslake.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-skywalking-ui
+                port:
+                  number: 8080

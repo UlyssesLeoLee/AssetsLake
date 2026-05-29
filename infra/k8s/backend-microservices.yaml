@@ -24,11 +24,23 @@ spec:
           env:
             - name: ASSETSLAKE_SERVICE
               value: assets
-            - name: DATABASE_URL
+            - name: OTEL_SERVICE_NAME
+              value: assetslake-assets-api
+            - name: ASSETS_DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: assetslake-secrets
-                  key: DATABASE_URL
+                  key: ASSETS_DATABASE_URL
+            - name: INTERNAL_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: INTERNAL_SERVICE_TOKEN
+            - name: ASSET_ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: ASSET_ACCESS_TOKEN_SECRET
             - name: MINIO_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
@@ -102,11 +114,23 @@ spec:
           env:
             - name: ASSETSLAKE_SERVICE
               value: production
-            - name: DATABASE_URL
+            - name: OTEL_SERVICE_NAME
+              value: assetslake-production-api
+            - name: PRODUCTION_DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: assetslake-secrets
-                  key: DATABASE_URL
+                  key: PRODUCTION_DATABASE_URL
+            - name: INTERNAL_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: INTERNAL_SERVICE_TOKEN
+            - name: ASSET_ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: ASSET_ACCESS_TOKEN_SECRET
             - name: MINIO_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
@@ -180,11 +204,23 @@ spec:
           env:
             - name: ASSETSLAKE_SERVICE
               value: projects
-            - name: DATABASE_URL
+            - name: OTEL_SERVICE_NAME
+              value: assetslake-projects-api
+            - name: PROJECTS_DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: assetslake-secrets
-                  key: DATABASE_URL
+                  key: PROJECTS_DATABASE_URL
+            - name: INTERNAL_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: INTERNAL_SERVICE_TOKEN
+            - name: ASSET_ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: ASSET_ACCESS_TOKEN_SECRET
             - name: MINIO_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
@@ -227,6 +263,276 @@ metadata:
 spec:
   selector:
     app: assetslake-projects-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-planning-api
+  labels:
+    app.kubernetes.io/component: planning-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-planning-api
+  template:
+    metadata:
+      labels:
+        app: assetslake-planning-api
+        app.kubernetes.io/component: planning-api
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: planning
+            - name: OTEL_SERVICE_NAME
+              value: assetslake-planning-api
+            - name: PLANNING_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: PLANNING_DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: INTERNAL_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: INTERNAL_SERVICE_TOKEN
+            - name: ASSET_ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: ASSET_ACCESS_TOKEN_SECRET
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-planning-api
+  labels:
+    app.kubernetes.io/component: planning-api
+spec:
+  selector:
+    app: assetslake-planning-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-workflow-api
+  labels:
+    app.kubernetes.io/component: workflow-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-workflow-api
+  template:
+    metadata:
+      labels:
+        app: assetslake-workflow-api
+        app.kubernetes.io/component: workflow-api
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: workflow
+            - name: OTEL_SERVICE_NAME
+              value: assetslake-workflow-api
+            - name: WORKFLOW_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: WORKFLOW_DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: INTERNAL_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: INTERNAL_SERVICE_TOKEN
+            - name: ASSET_ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: ASSET_ACCESS_TOKEN_SECRET
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-workflow-api
+  labels:
+    app.kubernetes.io/component: workflow-api
+spec:
+  selector:
+    app: assetslake-workflow-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-reporting-api
+  labels:
+    app.kubernetes.io/component: reporting-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-reporting-api
+  template:
+    metadata:
+      labels:
+        app: assetslake-reporting-api
+        app.kubernetes.io/component: reporting-api
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: reporting
+            - name: OTEL_SERVICE_NAME
+              value: assetslake-reporting-api
+            - name: REPORTING_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: REPORTING_DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: INTERNAL_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: INTERNAL_SERVICE_TOKEN
+            - name: ASSET_ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: ASSET_ACCESS_TOKEN_SECRET
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-reporting-api
+  labels:
+    app.kubernetes.io/component: reporting-api
+spec:
+  selector:
+    app: assetslake-reporting-api
   ports:
     - name: http
       port: 8080

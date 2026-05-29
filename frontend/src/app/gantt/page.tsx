@@ -1,1 +1,2 @@
-export { GanttPage as default } from '@/plugin-groups/production';
+import { PluginRouteHost } from '@/plugin-groups/route-host';
+export default function Page() { return <PluginRouteHost pathname="/gantt" expectedRouteId="production.gantt" />; }

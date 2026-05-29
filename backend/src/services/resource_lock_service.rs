@@ -124,7 +124,7 @@ impl ResourceLockService {
         let ttl_seconds = lock_ttl_seconds(body.ttl_seconds);
         let expires_at = Utc::now() + Duration::seconds(ttl_seconds);
 
-        cleanup_expired(&self.pool).await?;
+        cleanup_expired(&self.pool, &resource_type, body.resource_id).await?;
         if let Some(lock) = active_lock(&self.pool, &resource_type, body.resource_id).await? {
             if lock.session_id == context.session_id {
                 sqlx::query(
@@ -210,12 +210,14 @@ impl ResourceLockService {
         let expires_at = Utc::now() + Duration::seconds(ttl_seconds);
         let lock_token_hash = hash_secret(&body.lock_token);
 
-        cleanup_expired(&self.pool).await?;
         let result = sqlx::query(
             r#"
             UPDATE resource_locks
             SET expires_at = $1
-            WHERE lock_token_hash = $2 AND session_id = $3 AND released_at IS NULL
+            WHERE lock_token_hash = $2
+              AND session_id = $3
+              AND released_at IS NULL
+              AND expires_at > NOW()
             "#,
         )
         .bind(expires_at)
@@ -243,7 +245,6 @@ impl ResourceLockService {
         let context = authenticate_token_hash(&self.pool, &token_hash).await?;
         let lock_token_hash = hash_secret(&body.lock_token);
 
-        cleanup_expired(&self.pool).await?;
         let result = sqlx::query(
             r#"
             UPDATE resource_locks
@@ -270,8 +271,8 @@ impl ResourceLockService {
         resource_type: &str,
         resource_id: Uuid,
     ) -> Result<Option<ResourceLock>, AppError> {
-        cleanup_expired(&self.pool).await?;
         let resource_type = normalize_resource_type(resource_type)?;
+        cleanup_expired(&self.pool, &resource_type, resource_id).await?;
         active_lock(&self.pool, &resource_type, resource_id).await
     }
 
@@ -281,9 +282,14 @@ impl ResourceLockService {
         resource_type: &str,
         resource_id: Uuid,
     ) -> Result<(), AppError> {
-        cleanup_expired(&self.pool).await?;
         let resource_type = normalize_resource_type(resource_type)?;
+        cleanup_expired(&self.pool, &resource_type, resource_id).await?;
         let Some(lock) = active_lock(&self.pool, &resource_type, resource_id).await? else {
+            if strict_write_locks_enabled() {
+                return Err(AppError::conflict(
+                    "Resource must be locked before write in strict lock mode",
+                ));
+            }
             return Ok(());
         };
 
@@ -418,17 +424,32 @@ async fn active_lock_token_matches(
     Ok(matches)
 }
 
-async fn cleanup_expired(pool: &PgPool) -> Result<(), AppError> {
+async fn cleanup_expired(
+    pool: &PgPool,
+    resource_type: &str,
+    resource_id: Uuid,
+) -> Result<(), AppError> {
     sqlx::query(
         r#"
         UPDATE resource_locks
         SET released_at = NOW()
-        WHERE released_at IS NULL AND expires_at <= NOW()
+        WHERE resource_type = $1
+          AND resource_id = $2
+          AND released_at IS NULL
+          AND expires_at <= NOW()
         "#,
     )
+    .bind(resource_type)
+    .bind(resource_id)
     .execute(pool)
     .await?;
     Ok(())
+}
+
+fn strict_write_locks_enabled() -> bool {
+    std::env::var("RESOURCE_LOCK_STRICT_WRITES")
+        .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
+        .unwrap_or(false)
 }
 
 fn normalize_resource_type(value: &str) -> Result<String, AppError> {

@@ -149,6 +149,7 @@ export interface UpdateAssetRequest {
   status?: AssetStatus;
   project_id?: string;
   review_note?: string;
+  expected_version?: number;
 }
 
 export interface AssetFilters {

@@ -1,1 +1,2 @@
-export { IssueDetailPage as default } from '@/plugin-groups/production';
+import { PluginRouteHost } from '@/plugin-groups/route-host';
+export default function Page({ params }: { params: { id: string } }) { return <PluginRouteHost pathname={`/issues/${params.id}`} expectedRouteId="production.board.detail" />; }

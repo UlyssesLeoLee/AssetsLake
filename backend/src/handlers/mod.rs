@@ -9,4 +9,5 @@ pub mod management_handler;
 pub mod production_handler;
 pub mod project_handler;
 pub mod project_management_handler;
+pub mod security_audit_handler;
 pub mod verification_handler;

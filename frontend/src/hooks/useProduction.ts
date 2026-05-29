@@ -219,11 +219,20 @@ export function useAttachIssueAsset() {
 export function useTransitionIssue() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: IssueStatus }) =>
+    mutationFn: ({
+      id,
+      status,
+      expectedVersion,
+    }: {
+      id: string;
+      status: IssueStatus;
+      expectedVersion?: number;
+    }) =>
       productionApi.issues.transition(id, {
         status,
         actor: 'ui-kanban',
         reason: 'Kanban drag transition',
+        expected_version: expectedVersion,
       }),
     onSuccess: (issue) => {
       queryClient.setQueryData(['issue', issue.id], issue);

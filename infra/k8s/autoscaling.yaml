@@ -8,7 +8,7 @@ spec:
     kind: Deployment
     name: assetslake-api-gateway
   minReplicas: 2
-  maxReplicas: 6
+  maxReplicas: 30
   metrics:
     - type: Resource
       resource:
@@ -16,6 +16,12 @@ spec:
         target:
           type: Utilization
           averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -27,7 +33,7 @@ spec:
     kind: Deployment
     name: assetslake-assets-api
   minReplicas: 2
-  maxReplicas: 8
+  maxReplicas: 50
   metrics:
     - type: Resource
       resource:
@@ -35,6 +41,12 @@ spec:
         target:
           type: Utilization
           averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -46,7 +58,7 @@ spec:
     kind: Deployment
     name: assetslake-production-api
   minReplicas: 2
-  maxReplicas: 8
+  maxReplicas: 50
   metrics:
     - type: Resource
       resource:
@@ -54,6 +66,12 @@ spec:
         target:
           type: Utilization
           averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -65,7 +83,7 @@ spec:
     kind: Deployment
     name: assetslake-projects-api
   minReplicas: 2
-  maxReplicas: 6
+  maxReplicas: 30
   metrics:
     - type: Resource
       resource:
@@ -73,6 +91,87 @@ spec:
         target:
           type: Utilization
           averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: assetslake-planning-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: assetslake-planning-api
+  minReplicas: 2
+  maxReplicas: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: assetslake-workflow-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: assetslake-workflow-api
+  minReplicas: 2
+  maxReplicas: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: assetslake-reporting-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: assetslake-reporting-api
+  minReplicas: 2
+  maxReplicas: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -84,7 +183,7 @@ spec:
     kind: Deployment
     name: assetslake-verification-email
   minReplicas: 2
-  maxReplicas: 6
+  maxReplicas: 30
   metrics:
     - type: Resource
       resource:
@@ -92,6 +191,12 @@ spec:
         target:
           type: Utilization
           averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -103,7 +208,7 @@ spec:
     kind: Deployment
     name: assetslake-frontend
   minReplicas: 2
-  maxReplicas: 6
+  maxReplicas: 30
   metrics:
     - type: Resource
       resource:
@@ -111,3 +216,9 @@ spec:
         target:
           type: Utilization
           averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70

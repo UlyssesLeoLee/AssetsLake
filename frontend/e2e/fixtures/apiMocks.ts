@@ -17,6 +17,7 @@ CREATE
   (v7:Variable {name: "ENTERPRISE_CONTROLS", type: "variable"}),
   (v8:Variable {name: "route", type: "variable"}),
   (v9:Variable {name: "DELIVERY_PACKAGE", type: "variable"}),
+  (v10:Variable {name: "NOW", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(fn1),
   (m)-[:CONTAINS]->(fn2),
@@ -36,7 +37,8 @@ CREATE
   (fn5)-[:USES]->(v5),
   (fn5)-[:USES]->(v6),
   (fn5)-[:USES]->(v7),
-  (fn5)-[:USES]->(v9);
+  (fn5)-[:USES]->(v9),
+  (fn5)-[:USES]->(v10);
 ```
 */
 
@@ -97,6 +99,7 @@ const ISSUES: IssueSummary[] = [
     qa_status: 'passed',
     asset_count: 1,
     thumbnail_url: DATA_IMAGE,
+    version: 1,
     created_at: NOW,
     updated_at: NOW,
   },
@@ -123,6 +126,7 @@ const ISSUES: IssueSummary[] = [
     qa_status: 'warning',
     asset_count: 2,
     thumbnail_url: DATA_IMAGE,
+    version: 3,
     created_at: NOW,
     updated_at: NOW,
   },
@@ -149,6 +153,7 @@ const ISSUES: IssueSummary[] = [
     qa_status: 'pending',
     asset_count: 1,
     thumbnail_url: DATA_IMAGE,
+    version: 2,
     created_at: NOW,
     updated_at: NOW,
   },
@@ -507,6 +512,14 @@ async function json(route: Route, body: unknown, status = 200): Promise<void> {
 }
 
 export async function mockApi(page: Page): Promise<void> {
+  await page.route('**/kiali/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: '<!doctype html><html><body><main><h1>Kiali service mesh topology</h1><p>AssetsLake E2E mesh graph fixture</p></main></body></html>',
+    });
+  });
+
   await page.route('**/api/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -701,6 +714,20 @@ export async function mockApi(page: Page): Promise<void> {
       }));
     }
 
+    if (pathname === '/api/management/replica-actions' && method === 'POST') {
+      const body = JSON.parse(request.postData() || '{}') as { action_id?: string };
+      return json(route, ok({
+        record: {
+          vector_id: `replica-${body.action_id ?? 'action'}`,
+          collection: 'assetslake_ai_replica_actions',
+          write_scope: 'replica',
+          replica_url: 'http://qdrant-replica:6333',
+          status: 'recorded',
+          created_at: NOW,
+        },
+      }));
+    }
+
     if (pathname === '/api/management/rag/search' && method === 'POST') {
       return json(route, ok({
         qdrant_enabled: true,
@@ -721,6 +748,80 @@ export async function mockApi(page: Page): Promise<void> {
             created_at: NOW,
           },
         ],
+      }));
+    }
+
+    if (pathname === '/api/verification/app') {
+      return json(route, ok({
+        app_key: 'assetslake',
+        name: 'AssetsLake',
+        owner_email: 'owner@example.test',
+        sender_email: 'no-reply@example.test',
+        sms_sender_label: 'AssetsLake',
+        dev_code_visible: true,
+      }));
+    }
+
+    if (pathname === '/api/verification/outbox') {
+      return json(route, ok([
+        {
+          id: 'outbox-e2e',
+          challenge_id: 'challenge-e2e',
+          app_key: 'assetslake',
+          channel: 'email',
+          provider: 'local',
+          recipient_masked: 'p***@example.test',
+          subject: 'AssetsLake verification code',
+          body: 'Your code is 123456.',
+          status: 'queued',
+          created_at: NOW,
+          sent_at: null,
+        },
+      ]));
+    }
+
+    if (pathname === '/api/verification/challenges' && method === 'POST') {
+      return json(route, ok({
+        challenge_id: 'challenge-e2e',
+        app_key: 'assetslake',
+        purpose: 'registration',
+        channel: 'email',
+        masked_target: 'p***@example.test',
+        expires_at: NOW,
+        delivery_status: 'queued',
+        dev_code: '123456',
+      }));
+    }
+
+    if (pathname === '/api/verification/challenges/challenge-e2e/verify' && method === 'POST') {
+      return json(route, ok({
+        challenge_id: 'challenge-e2e',
+        purpose: 'registration',
+        verified: true,
+        masked_target: 'p***@example.test',
+        verification_token: 'verification-token-e2e',
+        expires_at: NOW,
+      }));
+    }
+
+    if (pathname === '/api/verification/register' && method === 'POST') {
+      return json(route, ok({
+        success: true,
+        user: {
+          id: 'user-e2e',
+          username: 'playwright',
+          display_name: 'Playwright',
+          email: 'playwright@example.test',
+          phone_number: null,
+          role: 'artist',
+        },
+      }));
+    }
+
+    if (pathname === '/api/verification/password' && method === 'POST') {
+      return json(route, ok({
+        success: true,
+        user: null,
       }));
     }
 

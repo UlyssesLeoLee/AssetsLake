@@ -274,6 +274,7 @@ impl ProductionRepository {
                 i.qa_status,
                 COALESCE(asset_counts.asset_count, 0)::BIGINT AS asset_count,
                 thumb.thumbnail_url,
+                i.version,
                 i.created_at,
                 i.updated_at
             FROM issues i
@@ -350,6 +351,16 @@ impl ProductionRepository {
         .await?
         .ok_or_else(|| AppError::not_found(format!("Issue {} not found", id)))?;
 
+        if req
+            .expected_version
+            .map(|expected_version| expected_version != old.version)
+            .unwrap_or(false)
+        {
+            return Err(AppError::conflict(
+                "Issue version conflict; refresh the issue and retry the update",
+            ));
+        }
+
         let actor = req.actor.clone().unwrap_or_else(|| "system".to_string());
         let issue = sqlx::query_as::<_, Issue>(
             r#"
@@ -372,7 +383,9 @@ impl ProductionRepository {
                 story_points = COALESCE($17::DOUBLE PRECISION::NUMERIC, story_points),
                 rank_key = COALESCE($18, rank_key),
                 qa_status = COALESCE($19::ai_qa_status, qa_status),
-                metadata = COALESCE($20::jsonb, metadata)
+                metadata = COALESCE($20::jsonb, metadata),
+                version = version + 1,
+                updated_at = NOW()
             WHERE id = $1 AND deleted_at IS NULL
             RETURNING *
             "#,
@@ -442,10 +455,20 @@ impl ProductionRepository {
         .await?
         .ok_or_else(|| AppError::not_found(format!("Issue {} not found", id)))?;
 
+        if req
+            .expected_version
+            .map(|expected_version| expected_version != old.version)
+            .unwrap_or(false)
+        {
+            return Err(AppError::conflict(
+                "Issue version conflict; refresh the issue and retry the transition",
+            ));
+        }
+
         let issue = sqlx::query_as::<_, Issue>(
             r#"
             UPDATE issues
-            SET status = $2, updated_at = NOW()
+            SET status = $2, version = version + 1, updated_at = NOW()
             WHERE id = $1 AND deleted_at IS NULL
             RETURNING *
             "#,
@@ -609,7 +632,7 @@ impl ProductionRepository {
         let affected = sqlx::query(
             r#"
             UPDATE issues
-            SET deleted_at = NOW(), updated_at = NOW()
+            SET deleted_at = NOW(), version = version + 1, updated_at = NOW()
             WHERE id = $1 AND deleted_at IS NULL
             "#,
         )
@@ -712,8 +735,8 @@ impl ProductionRepository {
                 a.asset_type,
                 a.mime_type,
                 a.tags,
-                a.file_url,
-                a.preview_url,
+                '/api/assets/' || a.id || '/content' AS file_url,
+                CASE WHEN a.preview_url IS NULL THEN NULL ELSE '/api/assets/' || a.id || '/content' END AS preview_url,
                 a.file_size,
                 a.version,
                 a.project_id,
@@ -831,7 +854,9 @@ impl ProductionRepository {
             ReviewScope::Client => IssueStatus::ClientReview,
         };
 
-        sqlx::query("UPDATE issues SET status = $2, updated_at = NOW() WHERE id = $1")
+        sqlx::query(
+            "UPDATE issues SET status = $2, version = version + 1, updated_at = NOW() WHERE id = $1",
+        )
             .bind(issue_id)
             .bind(target_status)
             .execute(&mut *tx)
@@ -877,7 +902,7 @@ impl ProductionRepository {
         .ok_or_else(|| AppError::not_found(format!("Issue {} not found", issue_id)))?;
 
         let issue = sqlx::query_as::<_, Issue>(
-            "UPDATE issues SET status = 'approved', updated_at = NOW() WHERE id = $1 RETURNING *",
+            "UPDATE issues SET status = 'approved', version = version + 1, updated_at = NOW() WHERE id = $1 RETURNING *",
         )
         .bind(issue_id)
         .fetch_one(&mut *tx)
@@ -1043,6 +1068,7 @@ impl ProductionRepository {
             UPDATE issues
             SET status = 'revision_required',
                 revision_count = revision_count + 1,
+                version = version + 1,
                 updated_at = NOW()
             WHERE id = $1
             RETURNING *
@@ -1268,7 +1294,9 @@ impl ProductionRepository {
         .await?;
 
         for (issue_id, old_status) in issue_rows {
-            sqlx::query("UPDATE issues SET status = 'delivered', updated_at = NOW() WHERE id = $1")
+            sqlx::query(
+                "UPDATE issues SET status = 'delivered', version = version + 1, updated_at = NOW() WHERE id = $1",
+            )
                 .bind(issue_id)
                 .execute(&mut *tx)
                 .await?;
@@ -1570,6 +1598,7 @@ async fn run_asset_qa(
                 ) THEN 'pending'
                 ELSE 'passed'
             END,
+            version = version + 1,
             updated_at = NOW()
         WHERE id = $1
         "#,

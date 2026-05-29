@@ -124,7 +124,9 @@ const ICON_NAMES = [
   'LayoutGrid',
   'ListChecks',
   'Milestone',
+  'Network',
   'PackageCheck',
+  'Settings',
   'ShieldCheck',
   'Truck',
   'Upload',
@@ -142,6 +144,7 @@ const REGISTRY_CONSTS = [
   'PRODUCTION_DELIVERY_PLUGIN_GROUP',
   'PRODUCTION_ENTERPRISE_PLUGIN_GROUP',
   'ASSET_LIBRARY_PLUGIN_GROUP',
+  'OBSERVABILITY_PLUGIN_GROUP',
   'ASSETSLAKE_PRODUCT',
 ];
 
@@ -162,6 +165,7 @@ const PRODUCTION_ROUTE_COMPONENTS = new Map([
   ['production.delivery', 'DeliveryPackagePage'],
   ['production.milestones', 'MilestoneTimelinePage'],
   ['production.enterprise', 'EnterpriseAdminPage'],
+  ['production.security-audit', 'SecurityAuditPage'],
   ['production.vendors', 'VendorDashboardPage'],
 ]);
 
@@ -183,6 +187,7 @@ const PROJECT_MANAGEMENT_ATOMIC_PAGE_COMPONENTS = new Set([
   'WorkflowPage',
   'AutomationPage',
   'EnterpriseAdminPage',
+  'SecurityAuditPage',
 ]);
 
 function readText(filePath) {
@@ -354,16 +359,27 @@ test('plugin product architecture regression test', () => {
   const defaultApp = apps.find((app) => app.id === 'studio-console');
   const productionApp = apps.find((app) => app.id === 'production-console');
   const assetApp = apps.find((app) => app.id === 'asset-console');
+  const observabilityApp = apps.find((app) => app.id === 'observability-console');
 
   assert.equal(product.id, 'assetslake-product');
   assert.equal(product.label, 'AssetsLake');
   assert.deepEqual(
     Array.from(apps, (app) => app.id),
-    ['studio-console', 'production-console', 'asset-console', 'verification-app']
+    [
+      'studio-console',
+      'production-console',
+      'planning-console',
+      'workflow-console',
+      'reporting-console',
+      'asset-console',
+      'observability-console',
+      'verification-app',
+    ]
   );
   assert.ok(defaultApp, 'default studio app exists');
   assert.ok(productionApp, 'production app exists');
   assert.ok(assetApp, 'asset app exists');
+  assert.ok(observabilityApp, 'observability app exists');
 
   for (const app of apps) {
     const groups = flattenAppPluginGroups(app);
@@ -407,10 +423,11 @@ test('plugin product architecture regression test', () => {
       'production-delivery',
       'production-enterprise',
       'asset-library',
+      'observability',
     ]
   );
   assert.equal(defaultApp.pluginGroups[0].pluginAppId, undefined, 'flattening does not mutate source groups');
-  assert.equal(routes.length, 22);
+  assert.equal(routes.length, 25);
 
   const routeOrders = Array.from(routes, (route) => route.order);
   assert.deepEqual(
@@ -436,10 +453,12 @@ test('plugin product architecture regression test', () => {
     'production.automation',
     'production.delivery',
     'production.enterprise',
+    'production.security-audit',
     'verification.sms',
     'assets.library',
     'assets.query',
     'assets.upload',
+    'observability.runtime',
   ]);
 
   assert.deepEqual(routeIds(flattenAppPluginRoutes(assetApp)), [
@@ -447,6 +466,12 @@ test('plugin product architecture regression test', () => {
     'assets.library',
     'assets.query',
     'assets.upload',
+    'workspace.settings',
+  ]);
+  assert.deepEqual(routeIds(flattenAppPluginRoutes(observabilityApp)), [
+    'workspace.home',
+    'observability.runtime',
+    'workspace.settings',
   ]);
   assert.deepEqual(routeIds(flattenAppPluginRoutes(productionApp)).includes('assets.upload'), false);
   assert.deepEqual(
@@ -464,9 +489,12 @@ test('plugin product architecture regression test', () => {
   assert.equal(resolvePluginRoute(routes, '/issues/example')?.id, 'production.board.detail');
   assert.equal(resolvePluginRoute(routes, '/reports')?.id, 'production.reports');
   assert.equal(resolvePluginRoute(routes, '/workflow')?.id, 'production.workflow');
+  assert.equal(resolvePluginRoute(routes, '/security-audit')?.id, 'production.security-audit');
   assert.equal(resolvePluginRoute(routes, '/assets')?.id, 'assets.library');
   assert.equal(resolvePluginRoute(routes, '/assets/asset-001')?.id, 'assets.library');
   assert.equal(resolvePluginRoute(routes, '/data-lake-query')?.id, 'assets.query');
+  assert.equal(resolvePluginRoute(routes, '/observability')?.id, 'observability.runtime');
+  assert.equal(resolvePluginRoute(routes, '/settings')?.id, 'workspace.settings');
   assert.equal(resolvePluginRoute(routes, '/board/example')?.id, 'production.board');
   assert.equal(resolvePluginRoute(routes, '/missing'), undefined);
 
@@ -710,7 +738,7 @@ test('plugin product architecture regression test', () => {
   );
   assert.match(
     readText(BACKEND_PROJECT_MANAGEMENT_FILES.routes),
-    /project_management_handler[\s\S]*planning_plan[\s\S]*list_epics[\s\S]*create_epic[\s\S]*list_sprints[\s\S]*create_sprint[\s\S]*list_dependencies[\s\S]*create_dependency[\s\S]*list_events[\s\S]*gantt_snapshot[\s\S]*calendar_snapshot[\s\S]*reports_snapshot[\s\S]*workflow_catalog[\s\S]*automation_catalog[\s\S]*enterprise_controls/,
+    /project_management_handler(?=[\s\S]*planning_plan)(?=[\s\S]*list_epics)(?=[\s\S]*create_epic)(?=[\s\S]*list_sprints)(?=[\s\S]*create_sprint)(?=[\s\S]*list_dependencies)(?=[\s\S]*create_dependency)(?=[\s\S]*list_events)(?=[\s\S]*gantt_snapshot)(?=[\s\S]*calendar_snapshot)(?=[\s\S]*reports_snapshot)(?=[\s\S]*workflow_catalog)(?=[\s\S]*automation_catalog)(?=[\s\S]*enterprise_controls)/,
     'backend routes register project management endpoints through Phase 5'
   );
   assert.match(

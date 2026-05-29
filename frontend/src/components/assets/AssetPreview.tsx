@@ -82,7 +82,7 @@ export function AssetPreview({ asset }: AssetPreviewProps) {
           className="btn-ghost text-xs"
         >
           <ExternalLink className="w-3.5 h-3.5" />
-          Open in MinIO
+          Open secure URL
         </a>
       </div>
     </div>

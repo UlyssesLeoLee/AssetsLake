@@ -1,0 +1,550 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: assetslake-prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: observability-metrics
+    app.kubernetes.io/part-of: assetslake-observability
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: assetslake-prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: observability-metrics
+    app.kubernetes.io/part-of: assetslake-observability
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+      - configmaps
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - ingresses/status
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources:
+      - endpointslices
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: assetslake-prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: observability-metrics
+    app.kubernetes.io/part-of: assetslake-observability
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: assetslake-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: assetslake-prometheus
+    namespace: assetslake
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: assetslake-prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: observability-metrics
+    app.kubernetes.io/part-of: assetslake-observability
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: kubernetes-pods
+        honor_labels: true
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - action: keep
+            regex: true
+            source_labels:
+              - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+          - action: replace
+            regex: (https?)
+            source_labels:
+              - __meta_kubernetes_pod_annotation_prometheus_io_scheme
+            target_label: __scheme__
+          - action: replace
+            regex: (.+)
+            source_labels:
+              - __meta_kubernetes_pod_annotation_prometheus_io_path
+            target_label: __metrics_path__
+          - action: replace
+            regex: (\\d+);(([A-Fa-f0-9]{1,4}::?){1,7}[A-Fa-f0-9]{1,4})
+            replacement: '[$2]:$1'
+            source_labels:
+              - __meta_kubernetes_pod_annotation_prometheus_io_port
+              - __meta_kubernetes_pod_ip
+            target_label: __address__
+          - action: replace
+            regex: (\\d+);((([0-9]+?)(\\.|$)){4})
+            replacement: $2:$1
+            source_labels:
+              - __meta_kubernetes_pod_annotation_prometheus_io_port
+              - __meta_kubernetes_pod_ip
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - action: replace
+            source_labels:
+              - __meta_kubernetes_namespace
+            target_label: namespace
+          - action: replace
+            source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: pod
+          - action: drop
+            regex: Pending|Succeeded|Failed|Completed
+            source_labels:
+              - __meta_kubernetes_pod_phase
+
+      - job_name: kubernetes-service-endpoints
+        honor_labels: true
+        kubernetes_sd_configs:
+          - role: endpoints
+        relabel_configs:
+          - action: keep
+            regex: true
+            source_labels:
+              - __meta_kubernetes_service_annotation_prometheus_io_scrape
+          - action: replace
+            regex: (https?)
+            source_labels:
+              - __meta_kubernetes_service_annotation_prometheus_io_scheme
+            target_label: __scheme__
+          - action: replace
+            regex: (.+)
+            source_labels:
+              - __meta_kubernetes_service_annotation_prometheus_io_path
+            target_label: __metrics_path__
+          - action: replace
+            regex: (.+?)(?::\\d+)?;(\\d+)
+            replacement: $1:$2
+            source_labels:
+              - __address__
+              - __meta_kubernetes_service_annotation_prometheus_io_port
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - action: replace
+            source_labels:
+              - __meta_kubernetes_namespace
+            target_label: namespace
+          - action: replace
+            source_labels:
+              - __meta_kubernetes_service_name
+            target_label: service
+
+      - job_name: prometheus
+        static_configs:
+          - targets:
+              - localhost:9090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-prometheus
+  labels:
+    app: assetslake-prometheus
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: observability-metrics
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: assetslake-prometheus
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: assetslake-prometheus
+        app.kubernetes.io/name: prometheus
+        app.kubernetes.io/component: observability-metrics
+        app.kubernetes.io/part-of: assetslake-observability
+        sidecar.istio.io/inject: "false"
+    spec:
+      serviceAccountName: assetslake-prometheus
+      containers:
+        - name: prometheus
+          image: docker.io/prom/prometheus:v3.10.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=3d
+            - --web.enable-lifecycle
+          ports:
+            - name: http
+              containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: data
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: assetslake-prometheus
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-prometheus
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: observability-metrics
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  selector:
+    app: assetslake-prometheus
+  ports:
+    - name: http
+      port: 9090
+      targetPort: http
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: assetslake-kiali
+  labels:
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/component: observability-topology
+    app.kubernetes.io/part-of: assetslake-observability
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: assetslake-kiali
+  labels:
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/component: observability-topology
+    app.kubernetes.io/part-of: assetslake-observability
+rules:
+  - apiGroups: [""]
+    resources:
+      - configmaps
+      - endpoints
+      - events
+      - namespaces
+      - pods
+      - pods/log
+      - replicationcontrollers
+      - services
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - daemonsets
+      - deployments
+      - replicasets
+      - statefulsets
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources:
+      - cronjobs
+      - jobs
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions", "networking.k8s.io"]
+    resources:
+      - ingresses
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources:
+      - poddisruptionbudgets
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources:
+      - customresourcedefinitions
+    verbs: ["get", "list", "watch"]
+  - apiGroups:
+      - networking.istio.io
+      - security.istio.io
+      - extensions.istio.io
+      - telemetry.istio.io
+      - gateway.networking.k8s.io
+      - inference.networking.k8s.io
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: assetslake-kiali
+  labels:
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/component: observability-topology
+    app.kubernetes.io/part-of: assetslake-observability
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: assetslake-kiali
+subjects:
+  - kind: ServiceAccount
+    name: assetslake-kiali
+    namespace: assetslake
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: assetslake-kiali
+  labels:
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/component: observability-topology
+    app.kubernetes.io/part-of: assetslake-observability
+data:
+  config.yaml: |
+    auth:
+      openid: {}
+      openshift:
+        client_id_prefix: kiali
+      strategy: anonymous
+    deployment:
+      cluster_wide_access: true
+      namespace: assetslake
+      view_only_mode: true
+    external_services:
+      istio:
+        root_namespace: istio-system
+      prometheus:
+        enabled: true
+        url: http://assetslake-prometheus:9090
+      tracing:
+        enabled: false
+    identity:
+      cert_file: ""
+      private_key_file: ""
+    kiali_feature_flags:
+      validations:
+        ignore:
+          - KIA1301
+    login_token:
+      signing_key: assetslake-kiali
+    server:
+      observability:
+        metrics:
+          enabled: true
+          health_status:
+            enabled: false
+          port: 9090
+      port: 20001
+      web_root: /kiali
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-kiali
+  labels:
+    app: assetslake-kiali
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/component: observability-topology
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: assetslake-kiali
+  template:
+    metadata:
+      labels:
+        app: assetslake-kiali
+        app.kubernetes.io/name: kiali
+        app.kubernetes.io/component: observability-topology
+        app.kubernetes.io/part-of: assetslake-observability
+        sidecar.istio.io/inject: "false"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/scheme: http
+        kiali.io/dashboards: go,kiali
+    spec:
+      serviceAccountName: assetslake-kiali
+      containers:
+        - name: kiali
+          image: quay.io/kiali/kiali:v2.26
+          imagePullPolicy: IfNotPresent
+          command:
+            - /opt/kiali/kiali
+            - -config
+            - /kiali-configuration/config.yaml
+          ports:
+            - name: http
+              containerPort: 20001
+            - name: http-metrics
+              containerPort: 9090
+          env:
+            - name: ACTIVE_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: LOG_LEVEL
+              value: info
+            - name: LOG_FORMAT
+              value: text
+          readinessProbe:
+            httpGet:
+              path: /kiali/healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          livenessProbe:
+            httpGet:
+              path: /kiali/healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          startupProbe:
+            httpGet:
+              path: /kiali/healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 96Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: config
+              mountPath: /kiali-configuration
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: assetslake-kiali
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-kiali
+  labels:
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/component: observability-topology
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  selector:
+    app: assetslake-kiali
+  ports:
+    - name: http
+      port: 20001
+      targetPort: http
+    - name: http-metrics
+      port: 9090
+      targetPort: http-metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-topology-traffic
+  labels:
+    app: assetslake-topology-traffic
+    app.kubernetes.io/name: topology-traffic
+    app.kubernetes.io/component: observability-traffic
+    app.kubernetes.io/part-of: assetslake-observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: assetslake-topology-traffic
+  template:
+    metadata:
+      labels:
+        app: assetslake-topology-traffic
+        app.kubernetes.io/name: topology-traffic
+        app.kubernetes.io/component: observability-traffic
+        app.kubernetes.io/part-of: assetslake-observability
+        version: v1
+      annotations:
+        sidecar.istio.io/inject: "true"
+        proxy.istio.io/config: '{ "holdApplicationUntilProxyStarts": true }'
+    spec:
+      containers:
+        - name: traffic
+          image: curlimages/curl:8.15.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              while true; do
+                for url in \
+                  http://assetslake-frontend:3000/ \
+                  http://assetslake-observability-frontend:3000/observability \
+                  http://assetslake-api-gateway:8080/api/health \
+                  http://assetslake-assets-api:8080/api/health \
+                  http://assetslake-production-api:8080/api/health \
+                  http://assetslake-projects-api:8080/api/health \
+                  http://assetslake-planning-api:8080/api/health \
+                  http://assetslake-workflow-api:8080/api/health \
+                  http://assetslake-reporting-api:8080/api/health \
+                  http://assetslake-verification-email:8080/api/health; do
+                  curl -fsS -m 3 "$url" >/dev/null || true
+                done
+                sleep 8
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi

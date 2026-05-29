@@ -9,13 +9,25 @@ data:
   MINIO_ENDPOINT: http://assetslake-minio:9000
   MINIO_PUBLIC_ENDPOINT: http://minio.assetslake.local
   MAX_UPLOAD_SIZE_MB: "500"
+  ASSET_SIGNED_URLS_ENABLED: "true"
+  ASSET_SIGNED_URL_TTL_SECONDS: "300"
+  ASSET_READ_AUTH_REQUIRED: "true"
+  ASSET_ACCESS_AUDIT_ENABLED: "true"
+  MAX_ASSET_FILENAME_BYTES: "180"
+  ASSET_BLOCKED_EXTENSIONS: exe,dll,com,scr,msi,dmg,app,deb,rpm,apk,ipa,jar,war,ear,svg
+  ASSET_BLOCKED_MIME_TYPES: application/x-msdownload,application/x-dosexec,application/x-msi,image/svg+xml,text/html,application/xhtml+xml
   RUST_LOG: info
   SERVER_HOST: 0.0.0.0
   SERVER_PORT: "8080"
   SERVER_WORKERS: "0"
-  DB_MAX_CONNECTIONS: "20"
-  DB_MIN_CONNECTIONS: "2"
-  DB_ACQUIRE_TIMEOUT_SECONDS: "3"
+  DB_MAX_CONNECTIONS: "8"
+  DB_MIN_CONNECTIONS: "1"
+  DB_ACQUIRE_TIMEOUT_SECONDS: "2"
+  DB_POOL_MODE: transaction
+  PGBOUNCER_DEFAULT_POOL_SIZE: "100"
+  PGBOUNCER_RESERVE_POOL_SIZE: "25"
+  PGBOUNCER_MAX_CLIENT_CONN: "4000"
+  RESOURCE_LOCK_STRICT_WRITES: "false"
   RATE_LIMIT_LOGIN_MAX: "30"
   RATE_LIMIT_LOGIN_WINDOW_SECONDS: "60"
   RATE_LIMIT_VERIFICATION_MAX: "10"
@@ -25,6 +37,19 @@ data:
   SESSION_RETENTION_HOURS: "168"
   RELEASED_LOCK_RETENTION_HOURS: "24"
   VERIFICATION_OUTBOX_RETENTION_HOURS: "72"
+  EVENT_PIPELINE_ENABLED: "true"
+  OUTBOX_RELAY_ENABLED: "true"
+  EVENT_RELAY_DRY_RUN: "false"
+  OUTBOX_RELAY_INTERVAL_SECONDS: "2"
+  OUTBOX_RELAY_BATCH_SIZE: "500"
+  KAFKA_BROKERS: assetslake-events-kafka-bootstrap:9092
+  CLICKHOUSE_URL: http://assetslake-clickhouse:8123
+  OTEL_TRACES_ENABLED: "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://assetslake-skywalking-oap:11800
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+  OTEL_EXPORTER_OTLP_TIMEOUT_SECONDS: "3"
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=assetslake,deployment.environment.name=kubernetes
+  ASSETS_INTERNAL_URL: http://assetslake-assets-api:8080
   VERIFICATION_APP_KEY: assetslake
   VERIFICATION_OWNER_EMAIL: hanakagumi@outlook.com
   VERIFICATION_EMAIL_FROM: hanakagumi@outlook.com
@@ -47,5 +72,9 @@ data:
   SMTP_FROM_EMAIL: hanakagumi@outlook.com
   SMTP_FROM_NAME: AssetsLake
   NEXT_PUBLIC_API_URL: /
+  NEXT_PUBLIC_APP_ID: studio-console
   NEXT_PUBLIC_MINIO_PUBLIC_ENDPOINT: http://minio.assetslake.local
   NEXT_PUBLIC_MINIO_BUCKET: art-assets
+  KIALI_CONSOLE_URL: /kiali/console/graph/namespaces?namespaces=assetslake&graphType=service&duration=300&refresh=15000
+  KIALI_PROXY_URL: http://assetslake-kiali:20001
+  SKYWALKING_UI_URL: http://observability.assetslake.local/dashboard/GENERAL/All/General-Root

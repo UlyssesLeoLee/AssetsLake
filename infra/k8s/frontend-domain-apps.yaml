@@ -1,0 +1,307 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-asset-frontend
+  labels:
+    app.kubernetes.io/component: asset-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-asset-frontend
+  template:
+    metadata:
+      labels:
+        app: assetslake-asset-frontend
+        app.kubernetes.io/component: asset-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: assetslake-frontend-asset:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: asset-console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-asset-frontend
+  labels:
+    app.kubernetes.io/component: asset-frontend
+spec:
+  selector:
+    app: assetslake-asset-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-production-frontend
+  labels:
+    app.kubernetes.io/component: production-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-production-frontend
+  template:
+    metadata:
+      labels:
+        app: assetslake-production-frontend
+        app.kubernetes.io/component: production-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: assetslake-frontend-production:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: production-console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-production-frontend
+  labels:
+    app.kubernetes.io/component: production-frontend
+spec:
+  selector:
+    app: assetslake-production-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-planning-frontend
+  labels:
+    app.kubernetes.io/component: planning-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-planning-frontend
+  template:
+    metadata:
+      labels:
+        app: assetslake-planning-frontend
+        app.kubernetes.io/component: planning-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: assetslake-frontend-planning:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: planning-console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-planning-frontend
+  labels:
+    app.kubernetes.io/component: planning-frontend
+spec:
+  selector:
+    app: assetslake-planning-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-workflow-frontend
+  labels:
+    app.kubernetes.io/component: workflow-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-workflow-frontend
+  template:
+    metadata:
+      labels:
+        app: assetslake-workflow-frontend
+        app.kubernetes.io/component: workflow-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: assetslake-frontend-workflow:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: workflow-console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-workflow-frontend
+  labels:
+    app.kubernetes.io/component: workflow-frontend
+spec:
+  selector:
+    app: assetslake-workflow-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-reporting-frontend
+  labels:
+    app.kubernetes.io/component: reporting-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-reporting-frontend
+  template:
+    metadata:
+      labels:
+        app: assetslake-reporting-frontend
+        app.kubernetes.io/component: reporting-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: assetslake-frontend-reporting:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: reporting-console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-reporting-frontend
+  labels:
+    app.kubernetes.io/component: reporting-frontend
+spec:
+  selector:
+    app: assetslake-reporting-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-observability-frontend
+  labels:
+    app.kubernetes.io/component: observability-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-observability-frontend
+  template:
+    metadata:
+      labels:
+        app: assetslake-observability-frontend
+        app.kubernetes.io/component: observability-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: assetslake-frontend-observability:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: observability-console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-observability-frontend
+  labels:
+    app.kubernetes.io/component: observability-frontend
+spec:
+  selector:
+    app: assetslake-observability-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-identity-frontend
+  labels:
+    app.kubernetes.io/component: identity-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-identity-frontend
+  template:
+    metadata:
+      labels:
+        app: assetslake-identity-frontend
+        app.kubernetes.io/component: identity-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: assetslake-frontend-identity:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: verification-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-identity-frontend
+  labels:
+    app.kubernetes.io/component: identity-frontend
+spec:
+  selector:
+    app: assetslake-identity-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

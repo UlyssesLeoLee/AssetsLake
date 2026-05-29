@@ -24,6 +24,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: studio-console
           readinessProbe:
             httpGet:
               path: /

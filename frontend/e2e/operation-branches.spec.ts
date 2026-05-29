@@ -280,17 +280,17 @@ test('operation branch: AI control cross-app execution', async ({ page }) => {
   await page.getByRole('button', { name: /Generate Plan/ }).click();
   await expect(page.getByText('Impact Preview').first()).toBeVisible();
   await page.getByRole('button', { name: /Run Approved/ }).click();
-  await expect(page.getByText(/Autopilot executed Lake Index/)).toBeVisible();
+  await expect(page.getByText(/Autopilot recorded Lake Index/)).toBeVisible();
   await expect(page.getByText(/RAG Memory/)).toBeVisible();
   await page.getByLabel('Message').fill('Summarize product risk and recommend a guarded control.');
   await page.getByRole('button', { name: /^Send$/ }).click();
   await expect(page.getByText(/AI Control ready/)).toBeVisible();
   await page.getByRole('button', { name: /Execute Risk Comment/ }).click();
-  await expect(page.getByText(/Executed Risk Comment/)).toBeVisible();
+  await expect(page.getByText(/Recorded Risk Comment/)).toBeVisible();
   await page.getByRole('button', { name: /Execute Asset Evidence Update/ }).click();
-  await expect(page.getByText(/Executed Asset Evidence Update/)).toBeVisible();
+  await expect(page.getByText(/Recorded Asset Evidence Update/)).toBeVisible();
   await page.getByRole('button', { name: /Execute Attach Evidence/ }).click();
-  await expect(page.getByText(/Executed Attach Evidence/)).toBeVisible();
+  await expect(page.getByText(/Recorded Attach Evidence/)).toBeVisible();
 });
 
 async function gotoApp(page: Page, path: string): Promise<void> {

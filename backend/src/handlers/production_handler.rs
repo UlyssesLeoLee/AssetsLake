@@ -61,8 +61,11 @@ CREATE
 ```
 */
 
+use std::env;
+
 use actix_web::{delete, get, patch, post, web, HttpRequest, HttpResponse};
 use serde_json::json;
+use tracing::Instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -74,7 +77,8 @@ use crate::{
         SubmitDeliveryPackageRequest, TransitionIssueRequest, UpdateIssueRequest,
     },
     services::{
-        ai_provider_service::AiProviderConfig, rag_memory_service::RagOperationMemoryInput,
+        ai_provider_service::AiProviderConfig, event_publisher_service::DomainEventInput,
+        rag_memory_service::RagOperationMemoryInput, telemetry_service,
     },
     AppState,
 };
@@ -127,6 +131,28 @@ pub async fn create_issue(
             })),
     )
     .await;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "IssueCreated",
+            "issue",
+            issue.id,
+            json!({
+                "issue_id": issue.id,
+                "issue_key": issue.issue_key,
+                "workspace_id": issue.workspace_id,
+                "project_id": issue.project_id,
+                "title": issue.title,
+                "status": issue.status,
+                "priority": issue.priority,
+                "issue_type": issue.issue_type
+            }),
+        )
+        .workspace_id(Some(issue.workspace_id))
+        .idempotency_key(format!("issue-created:{}", issue.id)),
+    )
+    .await;
     Ok(HttpResponse::Created().json(ApiResponse::ok(issue)))
 }
 
@@ -168,7 +194,7 @@ pub async fn update_issue(
         &req,
         RagOperationMemoryInput::new("issue.updated", "Jira Flow", "issue")
             .entity_id(Some(issue.id))
-            .actor(actor)
+            .actor(actor.clone())
             .summary(format!("Updated {} {}", issue.issue_key, issue.title))
             .content(format!(
                 "Issue metadata updated. Requested status: {:?}. Requested priority: {:?}. Current status: {:?}. Current priority: {:?}.",
@@ -179,6 +205,31 @@ pub async fn update_issue(
                 "status": issue.status,
                 "priority": issue.priority
             })),
+    )
+    .await;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "IssueUpdated",
+            "issue",
+            issue.id,
+            json!({
+                "issue_id": issue.id,
+                "issue_key": issue.issue_key,
+                "workspace_id": issue.workspace_id,
+                "project_id": issue.project_id,
+                "status": issue.status,
+                "priority": issue.priority,
+                "updated_at": issue.updated_at
+            }),
+        )
+        .workspace_id(Some(issue.workspace_id))
+        .idempotency_key(format!(
+            "issue-updated:{}:{}",
+            issue.id,
+            issue.updated_at.timestamp_micros()
+        )),
     )
     .await;
     Ok(HttpResponse::Ok().json(ApiResponse::ok(issue)))
@@ -212,7 +263,7 @@ pub async fn transition_issue(
         &req,
         RagOperationMemoryInput::new("issue.transitioned", "Jira Flow", "issue")
             .entity_id(Some(issue.id))
-            .actor(actor)
+            .actor(actor.clone())
             .summary(format!(
                 "Transitioned {} to {:?}",
                 issue.issue_key, issue.status
@@ -226,6 +277,30 @@ pub async fn transition_issue(
                 "issue_key": issue.issue_key.clone(),
                 "to_status": issue.status
             })),
+    )
+    .await;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "IssueTransitioned",
+            "issue",
+            issue.id,
+            json!({
+                "issue_id": issue.id,
+                "issue_key": issue.issue_key,
+                "workspace_id": issue.workspace_id,
+                "project_id": issue.project_id,
+                "to_status": issue.status,
+                "actor": actor
+            }),
+        )
+        .workspace_id(Some(issue.workspace_id))
+        .idempotency_key(format!(
+            "issue-transitioned:{}:{}",
+            issue.id,
+            issue.updated_at.timestamp_micros()
+        )),
     )
     .await;
     Ok(HttpResponse::Ok().json(ApiResponse::ok(issue)))
@@ -302,6 +377,7 @@ pub async fn attach_issue_asset(
         .resource_lock_service
         .ensure_write_allowed(&req, "issue", *path)
         .await?;
+    ensure_asset_exists_for_link(asset_id).await?;
     state
         .production_service
         .attach_asset(*path, request_body)
@@ -311,7 +387,7 @@ pub async fn attach_issue_asset(
         &req,
         RagOperationMemoryInput::new("issue.asset.attached", "Jira Flow", "issue")
             .entity_id(Some(*path))
-            .actor(actor)
+            .actor(actor.clone())
             .summary("Attached data lake evidence to issue")
             .content(format!(
                 "Attached asset {} to issue {} as {} evidence.",
@@ -321,6 +397,24 @@ pub async fn attach_issue_asset(
                 "asset_id": asset_id,
                 "link_type": link_type
             })),
+    )
+    .await;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "IssueAssetAttached",
+            "issue",
+            *path,
+            json!({
+                "issue_id": *path,
+                "asset_id": asset_id,
+                "link_type": link_type,
+                "actor": actor,
+                "link_status": "active"
+            }),
+        )
+        .idempotency_key(format!("issue-asset-attached:{}:{}", *path, asset_id)),
     )
     .await;
     Ok(HttpResponse::Ok().json(serde_json::json!({ "success": true })))
@@ -599,6 +693,26 @@ pub async fn create_delivery_package(
             })),
     )
     .await;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "DeliveryPackageCreated",
+            "delivery_package",
+            package.id,
+            json!({
+                "package_id": package.id,
+                "workspace_id": package.workspace_id,
+                "project_id": package.project_id,
+                "name": package.name,
+                "status": package.status,
+                "asset_count": asset_count
+            }),
+        )
+        .workspace_id(Some(package.workspace_id))
+        .idempotency_key(format!("delivery-package-created:{}", package.id)),
+    )
+    .await;
     Ok(HttpResponse::Created().json(ApiResponse::ok(package)))
 }
 
@@ -632,7 +746,7 @@ pub async fn submit_delivery_package(
             "delivery_package",
         )
         .entity_id(Some(package.id))
-        .actor(actor)
+        .actor(actor.clone())
         .summary(format!("Submitted delivery package {}", package.name))
         .content(format!(
             "Delivery package {} was submitted for delivery readiness.",
@@ -642,6 +756,29 @@ pub async fn submit_delivery_package(
             "status": package.status,
             "project_id": package.project_id
         })),
+    )
+    .await;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "DeliveryPackageSubmissionRequested",
+            "delivery_package",
+            package.id,
+            json!({
+                "package_id": package.id,
+                "workspace_id": package.workspace_id,
+                "project_id": package.project_id,
+                "status": package.status,
+                "actor": actor
+            }),
+        )
+        .workspace_id(Some(package.workspace_id))
+        .idempotency_key(format!(
+            "delivery-package-submission-requested:{}:{}",
+            package.id,
+            package.updated_at.timestamp_micros()
+        )),
     )
     .await;
     Ok(HttpResponse::Ok().json(ApiResponse::ok(package)))
@@ -660,5 +797,62 @@ async fn remember_product_operation(
 
     if let Some(error) = result.error {
         tracing::warn!(error = %error, "Product operation was not stored in RAG memory");
+    }
+}
+
+async fn stage_production_event(state: &web::Data<AppState>, input: DomainEventInput) {
+    if let Err(error) = state.event_publisher_service.stage(input).await {
+        tracing::warn!(error = %error, "Production domain event was not staged");
+    }
+}
+
+async fn ensure_asset_exists_for_link(asset_id: Uuid) -> Result<(), AppError> {
+    let Some(base_url) = env::var("ASSETS_INTERNAL_URL")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+    else {
+        return Ok(());
+    };
+    let token = env::var("INTERNAL_SERVICE_TOKEN")
+        .map_err(|_| AppError::forbidden("INTERNAL_SERVICE_TOKEN is not configured"))?;
+    let url = format!(
+        "{}/internal/assets/{}",
+        base_url.trim_end_matches('/'),
+        asset_id
+    );
+    let span = tracing::info_span!(
+        "assets.internal.validate",
+        otel.kind = "client",
+        http.method = "GET",
+        http.url = %url,
+        peer.service = "assetslake-assets-api",
+        asset_id = %asset_id,
+    );
+    let request = {
+        let _entered = span.enter();
+        telemetry_service::inject_trace_context(
+            reqwest::Client::new()
+                .get(url)
+                .header("x-assetslake-service-token", token),
+        )
+    };
+
+    let response = async move { request.send().await }
+        .instrument(span)
+        .await
+        .map_err(|error| AppError::internal(error.to_string()))?;
+
+    if response.status().is_success() {
+        Ok(())
+    } else if response.status().as_u16() == 404 {
+        Err(AppError::not_found(format!(
+            "Linked asset {} does not exist",
+            asset_id
+        )))
+    } else {
+        Err(AppError::validation(format!(
+            "Asset link validation failed with status {}",
+            response.status()
+        )))
     }
 }

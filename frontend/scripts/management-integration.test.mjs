@@ -307,7 +307,7 @@ test('management integration contract test', () => {
   );
   expectMatches(
     registry,
-    /policy:\s*\{[\s\S]*disabledPlugins:[\s\S]*allowedPermissions:[\s\S]*enabledPlugins:/,
+    /id: 'production-console'[\s\S]*policy:\s*\{[\s\S]*enabledPlugins:[\s\S]*allowedPermissions:[\s\S]*id: 'asset-console'[\s\S]*policy:\s*\{[\s\S]*enabledPlugins:[\s\S]*allowedPermissions:/,
     'registry apps declare isolation policies for production and asset consoles'
   );
   expectMatches(
@@ -384,22 +384,22 @@ test('management integration contract test', () => {
   expectIncludes(enterpriseGovernanceModelTest, 'buildEnterpriseGovernanceModel', 'enterprise governance model unit test asserts governance output');
   expectIncludes(issueAssetAttachContractTest, "test('issue asset attach contract keeps API, hook, page, and E2E aligned'", 'issue asset attach contract covers API, hook, page, and E2E wiring');
 
-  expectIncludes(
+  expectMatches(
     managementRoute,
-    "export { default } from '@/plugin-groups/production/ManagementConsolePage';",
-    'Next App Router /management adapter points to management console'
+    /PluginRouteHost[\s\S]*expectedRouteId="production\.management"/,
+    'Next App Router /management adapter is plugin-hosted'
   );
-  expectIncludes(
+  expectMatches(
     planningRoute,
-    "export { PlanningPage as default } from '@/plugin-groups/production';",
-    'Next App Router /planning adapter points to planning page'
+    /PluginRouteHost[\s\S]*expectedRouteId="production\.planning"/,
+    'Next App Router /planning adapter is plugin-hosted'
   );
-  expectIncludes(ganttRoute, "export { GanttPage as default } from '@/plugin-groups/production';", 'Next App Router /gantt adapter points to Gantt page');
-  expectIncludes(calendarRoute, "export { CalendarPage as default } from '@/plugin-groups/production';", 'Next App Router /calendar adapter points to Calendar page');
-  expectIncludes(reportsRoute, "export { ReportsPage as default } from '@/plugin-groups/production';", 'Next App Router /reports adapter points to Reports page');
-  expectIncludes(workflowRoute, "export { WorkflowPage as default } from '@/plugin-groups/production';", 'Next App Router /workflow adapter points to Workflow page');
-  expectIncludes(automationRoute, "export { AutomationPage as default } from '@/plugin-groups/production';", 'Next App Router /automation adapter points to Automation page');
-  expectIncludes(enterpriseRoute, "export { EnterpriseAdminPage as default } from '@/plugin-groups/production';", 'Next App Router /enterprise adapter points to Enterprise page');
+  expectMatches(ganttRoute, /PluginRouteHost[\s\S]*expectedRouteId="production\.gantt"/, 'Next App Router /gantt adapter is plugin-hosted');
+  expectMatches(calendarRoute, /PluginRouteHost[\s\S]*expectedRouteId="production\.calendar"/, 'Next App Router /calendar adapter is plugin-hosted');
+  expectMatches(reportsRoute, /PluginRouteHost[\s\S]*expectedRouteId="production\.reports"/, 'Next App Router /reports adapter is plugin-hosted');
+  expectMatches(workflowRoute, /PluginRouteHost[\s\S]*expectedRouteId="production\.workflow"/, 'Next App Router /workflow adapter is plugin-hosted');
+  expectMatches(automationRoute, /PluginRouteHost[\s\S]*expectedRouteId="production\.automation"/, 'Next App Router /automation adapter is plugin-hosted');
+  expectMatches(enterpriseRoute, /PluginRouteHost[\s\S]*expectedRouteId="production\.enterprise"/, 'Next App Router /enterprise adapter is plugin-hosted');
   expectIncludes(
     productionIndex,
     "export { ManagementConsolePage } from '@/plugin-groups/production/ManagementConsolePage';",
@@ -496,8 +496,18 @@ test('management integration contract test', () => {
   );
   expectMatches(
     backendRoutes,
-    /project_management_handler::gantt_snapshot[\s\S]*project_management_handler::calendar_snapshot[\s\S]*project_management_handler::reports_snapshot[\s\S]*project_management_handler::workflow_catalog[\s\S]*project_management_handler::automation_catalog[\s\S]*project_management_handler::enterprise_controls/,
-    'backend production routes register productization endpoints'
+    /fn configure_planning[\s\S]*project_management_handler::gantt_snapshot[\s\S]*project_management_handler::calendar_snapshot/,
+    'backend planning routes register timeline productization endpoints'
+  );
+  expectMatches(
+    backendRoutes,
+    /fn configure_workflow[\s\S]*project_management_handler::workflow_catalog[\s\S]*project_management_handler::automation_catalog[\s\S]*project_management_handler::enterprise_controls/,
+    'backend workflow routes register workflow productization endpoints'
+  );
+  expectMatches(
+    backendRoutes,
+    /fn configure_reporting[\s\S]*project_management_handler::reports_snapshot/,
+    'backend reporting routes register report productization endpoints'
   );
   expectIncludes(
     backendHandler,

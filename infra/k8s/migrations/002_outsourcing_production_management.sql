@@ -277,6 +277,7 @@ CREATE TABLE IF NOT EXISTS issues (
     revision_count INT NOT NULL DEFAULT 0 CHECK (revision_count >= 0),
     qa_status      ai_qa_status NOT NULL DEFAULT 'pending',
     metadata       JSONB NOT NULL DEFAULT '{}'::jsonb,
+    version        INT NOT NULL DEFAULT 1 CHECK (version >= 1),
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at     TIMESTAMPTZ

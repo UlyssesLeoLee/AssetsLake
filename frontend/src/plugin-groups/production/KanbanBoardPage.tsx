@@ -83,7 +83,7 @@ export function KanbanBoardPage() {
     const issueId = event.dataTransfer.getData('text/issue-id') || draggingId;
     const issue = data?.data.find((item) => item.id === issueId);
     if (issue && issue.status !== status && !transitionIssue.isPending) {
-      transitionIssue.mutate({ id: issue.id, status });
+      transitionIssue.mutate({ id: issue.id, status, expectedVersion: issue.version });
     }
     handleDragEnd();
   };

@@ -41,6 +41,36 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
+  name: assetslake-planning-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: assetslake-planning-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: assetslake-workflow-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: assetslake-workflow-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: assetslake-reporting-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: assetslake-reporting-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
   name: assetslake-verification-email
 spec:
   minAvailable: 1

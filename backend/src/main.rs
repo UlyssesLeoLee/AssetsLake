@@ -10,6 +10,9 @@ CREATE
   (v3:Variable {name: "app_state", type: "variable"}),
   (v4:Variable {name: "workers", type: "variable"}),
   (v5:Variable {name: "verification_service", type: "variable"}),
+  (v6:Variable {name: "_telemetry_guard", type: "variable"}),
+  (v7:Variable {name: "event_publisher_service", type: "variable"}),
+  (v8:Variable {name: "security_audit_service", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(c1),
   (m)-[:CONTAINS]->(fn1),
@@ -17,7 +20,10 @@ CREATE
   (fn1)-[:USES]->(v2),
   (fn1)-[:USES]->(v3),
   (fn1)-[:USES]->(v4),
-  (fn1)-[:USES]->(v5);
+  (fn1)-[:USES]->(v5),
+  (fn1)-[:USES]->(v6),
+  (fn1)-[:USES]->(v7),
+  (fn1)-[:USES]->(v8);
 ```
 */
 
@@ -43,7 +49,7 @@ use services::{
     asset_analysis_service::AssetAnalysisService,
     asset_service::AssetService,
     auth_service::AuthService,
-    authorization_service::enforce_write_authorization,
+    authorization_service::enforce_route_authorization,
     emergence_service::EmergenceService,
     event_publisher_service::EventPublisherService,
     graph_relation_service::GraphRelationService,
@@ -55,7 +61,9 @@ use services::{
     rate_limit_service::RateLimitService,
     resource_lock_service::ResourceLockService,
     search_index_service::SearchIndexService,
+    security_audit_service::SecurityAuditService,
     storage_service::StorageService,
+    telemetry_service,
     verification_service::VerificationService,
 };
 
@@ -77,26 +85,21 @@ pub struct AppState {
     pub verification_service: VerificationService,
     pub rate_limit_service: RateLimitService,
     pub emergence_service: EmergenceService,
+    pub security_audit_service: SecurityAuditService,
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("assetslake_backend=info".parse().unwrap()),
-        )
-        .json()
-        .init();
-
     let cfg = AppConfig::from_env().expect("Failed to load configuration");
+    let _telemetry_guard = telemetry_service::init(cfg.service);
     let bind_addr = format!("{}:{}", cfg.server.host, cfg.server.port);
 
     info!(
         host = %cfg.server.host,
         port = cfg.server.port,
+        service = cfg.service.as_str(),
         "AssetsLake backend starting"
     );
 
@@ -108,11 +111,16 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to initialize MinIO storage service");
 
-    let asset_service = AssetService::new(pool.clone(), storage_service.clone(), cfg.clone());
+    let asset_service = AssetService::new(pool.clone(), storage_service.clone(), cfg.clone())
+        .expect("Failed to initialize asset security service");
     let production_service = ProductionService::new(pool.clone());
     let project_management_service = ProjectManagementService::new(pool.clone());
     let asset_analysis_service = AssetAnalysisService::new(pool.clone(), storage_service.clone());
     MaintenanceService::spawn(pool.clone(), MaintenanceConfig::from_env());
+    EventPublisherService::spawn_outbox_relay(pool.clone(), cfg.events.clone());
+    let event_publisher_service = EventPublisherService::new(pool.clone(), cfg.events.clone());
+    let security_audit_service =
+        SecurityAuditService::new(pool.clone(), event_publisher_service.clone());
 
     let app_state = web::Data::new(AppState {
         asset_service,
@@ -120,7 +128,7 @@ async fn main() -> std::io::Result<()> {
         ai_index_service: AiIndexService::new_stub(),
         search_index_service: SearchIndexService::new_stub(),
         graph_relation_service: GraphRelationService::new_stub(),
-        event_publisher_service: EventPublisherService::new_stub(),
+        event_publisher_service,
         production_service,
         project_management_service,
         rag_memory_service: RagMemoryService::new(pool.clone(), cfg.rag.clone()),
@@ -132,6 +140,7 @@ async fn main() -> std::io::Result<()> {
         verification_service: VerificationService::new(pool.clone()),
         rate_limit_service: RateLimitService::from_env(),
         emergence_service: EmergenceService::new(pool.clone()),
+        security_audit_service,
     });
 
     let default_workers = std::thread::available_parallelism()
@@ -155,7 +164,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(TracingLogger::default())
             .wrap(middleware::Compress::default())
-            .wrap(middleware::from_fn(enforce_write_authorization))
+            .wrap(middleware::from_fn(enforce_route_authorization))
             .wrap(cors)
             .app_data(app_state.clone())
             .app_data(

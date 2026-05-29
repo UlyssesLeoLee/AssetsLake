@@ -30,6 +30,7 @@ CREATE
   (v14:Variable {name: "assertHealthyProductArchitecture", type: "variable"}),
   (v15:Variable {name: "validateProductArchitecture", type: "variable"}),
   (v16:Variable {name: "IDENTITY_VERIFICATION_PLUGIN_GROUP", type: "variable"}),
+  (v17:Variable {name: "OBSERVABILITY_PLUGIN_GROUP", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(fn1),
   (m)-[:CONTAINS]->(fn2),
@@ -62,7 +63,8 @@ CREATE
   (fn11)-[:USES]->(v11),
   (fn11)-[:USES]->(v15),
   (m)-[:USES]->(v14),
-  (m)-[:USES]->(v16);
+  (m)-[:USES]->(v16),
+  (m)-[:USES]->(v17);
 ```
 */
 
@@ -76,7 +78,9 @@ import {
   LayoutGrid,
   ListChecks,
   Milestone,
+  Network,
   PackageCheck,
+  Settings,
   ShieldCheck,
   Truck,
   Upload,
@@ -133,6 +137,30 @@ const WORKSPACE_PLUGIN_GROUP = {
           exact: true,
           nav: true,
           order: 0,
+        },
+      ],
+    },
+    {
+      id: 'workspace.settings',
+      label: 'Settings',
+      description: 'App-level AI provider and runtime connection settings.',
+      icon: Settings,
+      order: 1,
+      apiScopes: ['settings', 'ai'],
+      manifest: {
+        permissions: ['settings:read', 'settings:write'],
+        lifecycle: 'ready',
+        backendScopes: ['settings', 'ai'],
+      },
+      routes: [
+        {
+          id: 'workspace.settings',
+          href: '/settings',
+          label: 'Settings',
+          description: 'AI provider and runtime connection settings.',
+          icon: Settings,
+          nav: false,
+          order: 99,
         },
       ],
     },
@@ -714,6 +742,32 @@ const PRODUCTION_ENTERPRISE_PLUGIN_GROUP = {
         },
       ],
     },
+    {
+      id: 'production.security-audit',
+      label: 'Security Audit',
+      description: 'Runtime audit trail for RBAC denials, asset access, signed URLs, and storage security.',
+      icon: ShieldCheck,
+      nav: true,
+      order: 23.5,
+      apiScopes: ['audit-log', 'security', 'assets'],
+      manifest: {
+        permissions: ['enterprise:admin'],
+        dependencies: ['production.enterprise'],
+        lifecycle: 'ready',
+        backendScopes: ['audit-log', 'security', 'assets'],
+      },
+      routes: [
+        {
+          id: 'production.security-audit',
+          href: '/security-audit',
+          label: 'Security Audit',
+          description: 'Audit RBAC denials, asset access, signed URLs, and storage security events.',
+          icon: ShieldCheck,
+          nav: true,
+          order: 23.5,
+        },
+      ],
+    },
   ],
 } as const satisfies PluginGroup;
 
@@ -804,6 +858,41 @@ const ASSET_LIBRARY_PLUGIN_GROUP = {
   ],
 } as const satisfies PluginGroup;
 
+const OBSERVABILITY_PLUGIN_GROUP = {
+  id: 'observability',
+  label: 'Observability',
+  description: 'Kiali service mesh topology with SkyWalking trace drilldown.',
+  order: 95,
+  apiScopes: ['observability', 'skywalking', 'traces'],
+  plugins: [
+    {
+      id: 'observability.runtime',
+      label: 'Topology',
+      description: 'In-cluster Kiali topology and trace inspection.',
+      icon: Network,
+      nav: true,
+      order: 95,
+      apiScopes: ['observability', 'skywalking', 'traces'],
+      manifest: {
+        permissions: ['observability:read'],
+        lifecycle: 'ready',
+        backendScopes: ['observability', 'skywalking', 'traces'],
+      },
+      routes: [
+        {
+          id: 'observability.runtime',
+          href: '/observability',
+          label: 'Topology',
+          description: 'Runtime Kiali topology and trace inspection.',
+          icon: Network,
+          nav: true,
+          order: 95,
+        },
+      ],
+    },
+  ],
+} as const satisfies PluginGroup;
+
 const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
   id: 'assetslake-product',
   label: 'AssetsLake',
@@ -826,18 +915,96 @@ const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
         PRODUCTION_DELIVERY_PLUGIN_GROUP,
         PRODUCTION_ENTERPRISE_PLUGIN_GROUP,
         ASSET_LIBRARY_PLUGIN_GROUP,
+        OBSERVABILITY_PLUGIN_GROUP,
       ],
     },
     {
       id: 'production-console',
       label: 'Production Console',
-      description: 'Focused app for outsourcing briefs, reviews, approvals, vendors, milestones, and delivery.',
+      description: 'Focused app for issue execution, reviews, approvals, vendors, and delivery.',
       order: 10,
       policy: {
-        disabledPlugins: ['assets.upload'],
+        enabledPlugins: [
+          'workspace.home',
+          'workspace.settings',
+          'production.data-lake',
+          'production.board',
+          'production.reviews',
+          'production.approvals',
+          'production.vendors',
+          'production.reports',
+          'production.workflow',
+          'production.delivery',
+          'assets.library',
+        ],
         allowedPermissions: [
           'project:read',
-          'project:write',
+          'issue:read',
+          'issue:write',
+          'asset:read',
+          'workflow:read',
+          'workflow:write',
+          'automation:read',
+          'automation:approve',
+          'report:read',
+          'delivery:write',
+          'settings:read',
+          'settings:write',
+        ],
+      },
+      pluginGroups: [
+        WORKSPACE_PLUGIN_GROUP,
+        PRODUCTION_MANAGEMENT_PLUGIN_GROUP,
+        PRODUCTION_EXECUTION_PLUGIN_GROUP,
+        PRODUCTION_REPORTING_PLUGIN_GROUP,
+        PRODUCTION_WORKFLOW_PLUGIN_GROUP,
+        PRODUCTION_DELIVERY_PLUGIN_GROUP,
+        ASSET_LIBRARY_PLUGIN_GROUP,
+      ],
+    },
+    {
+      id: 'planning-console',
+      label: 'Planning Console',
+      description: 'Focused app for planning, briefs, Gantt, calendar, and milestones.',
+      order: 15,
+      policy: {
+        enabledPlugins: [
+          'workspace.home',
+          'workspace.settings',
+          'production.planning',
+          'production.briefs',
+          'production.gantt',
+          'production.calendar',
+          'production.milestones',
+        ],
+        allowedPermissions: ['project:read', 'project:write', 'issue:read', 'issue:write', 'settings:read', 'settings:write'],
+      },
+      pluginGroups: [
+        WORKSPACE_PLUGIN_GROUP,
+        PRODUCTION_PLANNING_PLUGIN_GROUP,
+        PRODUCTION_TIMELINE_PLUGIN_GROUP,
+      ],
+    },
+    {
+      id: 'workflow-console',
+      label: 'Workflow Console',
+      description: 'Focused app for workflow, automation, enterprise controls, and data lake triggers.',
+      order: 18,
+      policy: {
+        enabledPlugins: [
+          'workspace.home',
+          'workspace.settings',
+          'production.data-lake',
+          'production.board',
+          'production.reports',
+          'production.workflow',
+          'production.automation',
+          'production.enterprise',
+          'production.security-audit',
+          'assets.library',
+        ],
+        allowedPermissions: [
+          'project:read',
           'issue:read',
           'issue:write',
           'asset:read',
@@ -847,20 +1014,64 @@ const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
           'automation:approve',
           'enterprise:admin',
           'report:read',
-          'delivery:write',
+          'settings:read',
+          'settings:write',
         ],
       },
       pluginGroups: [
         WORKSPACE_PLUGIN_GROUP,
         PRODUCTION_MANAGEMENT_PLUGIN_GROUP,
-        PRODUCTION_PLANNING_PLUGIN_GROUP,
         PRODUCTION_EXECUTION_PLUGIN_GROUP,
-        PRODUCTION_TIMELINE_PLUGIN_GROUP,
         PRODUCTION_REPORTING_PLUGIN_GROUP,
         PRODUCTION_WORKFLOW_PLUGIN_GROUP,
-        PRODUCTION_DELIVERY_PLUGIN_GROUP,
         PRODUCTION_ENTERPRISE_PLUGIN_GROUP,
         ASSET_LIBRARY_PLUGIN_GROUP,
+      ],
+    },
+    {
+      id: 'reporting-console',
+      label: 'Reporting Console',
+      description: 'Focused app for management views, reports, AI control, and data lake query.',
+      order: 19,
+      policy: {
+        enabledPlugins: [
+          'workspace.home',
+          'workspace.settings',
+          'production.ai-control',
+          'production.management',
+          'production.board',
+          'production.reports',
+          'production.workflow',
+          'production.automation',
+          'production.data-lake',
+          'assets.library',
+          'assets.query',
+          'observability.runtime',
+        ],
+        allowedPermissions: [
+          'project:read',
+          'issue:read',
+          'issue:write',
+          'asset:read',
+          'asset:write',
+          'workflow:read',
+          'workflow:write',
+          'automation:read',
+          'automation:approve',
+          'report:read',
+          'observability:read',
+          'settings:read',
+          'settings:write',
+        ],
+      },
+      pluginGroups: [
+        WORKSPACE_PLUGIN_GROUP,
+        PRODUCTION_MANAGEMENT_PLUGIN_GROUP,
+        PRODUCTION_EXECUTION_PLUGIN_GROUP,
+        PRODUCTION_REPORTING_PLUGIN_GROUP,
+        PRODUCTION_WORKFLOW_PLUGIN_GROUP,
+        ASSET_LIBRARY_PLUGIN_GROUP,
+        OBSERVABILITY_PLUGIN_GROUP,
       ],
     },
     {
@@ -869,10 +1080,21 @@ const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
       description: 'Focused app for asset library operations, upload, search, metadata, and storage references.',
       order: 20,
       policy: {
-        enabledPlugins: ['workspace.home', 'assets.library', 'assets.query', 'assets.upload'],
-        allowedPermissions: ['project:read', 'asset:read', 'asset:write'],
+        enabledPlugins: ['workspace.home', 'workspace.settings', 'assets.library', 'assets.query', 'assets.upload'],
+        allowedPermissions: ['project:read', 'asset:read', 'asset:write', 'settings:read', 'settings:write'],
       },
       pluginGroups: [WORKSPACE_PLUGIN_GROUP, ASSET_LIBRARY_PLUGIN_GROUP],
+    },
+    {
+      id: 'observability-console',
+      label: 'Observability App',
+      description: 'Focused app for Kiali runtime topology and SkyWalking trace operations.',
+      order: 25,
+      policy: {
+        enabledPlugins: ['workspace.home', 'workspace.settings', 'observability.runtime'],
+        allowedPermissions: ['project:read', 'observability:read', 'settings:read', 'settings:write'],
+      },
+      pluginGroups: [WORKSPACE_PLUGIN_GROUP, OBSERVABILITY_PLUGIN_GROUP],
     },
     {
       id: 'verification-app',
@@ -880,8 +1102,15 @@ const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
       description: 'Standalone identity verification service for reusable registration and password recovery flows.',
       order: 30,
       policy: {
-        enabledPlugins: ['workspace.home', 'verification.sms'],
-        allowedPermissions: ['project:read', 'verification:read', 'verification:write', 'verification:admin'],
+        enabledPlugins: ['workspace.home', 'workspace.settings', 'verification.sms'],
+        allowedPermissions: [
+          'project:read',
+          'settings:read',
+          'settings:write',
+          'verification:read',
+          'verification:write',
+          'verification:admin',
+        ],
       },
       pluginGroups: [WORKSPACE_PLUGIN_GROUP, IDENTITY_VERIFICATION_PLUGIN_GROUP],
     },
@@ -889,6 +1118,25 @@ const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
 } as const satisfies ProductArchitecture);
 
 const DEFAULT_PLUGIN_APP_ID: PluginAppId = 'studio-console';
+const PLUGIN_APP_IDS: readonly PluginAppId[] = [
+  'studio-console',
+  'production-console',
+  'planning-console',
+  'workflow-console',
+  'reporting-console',
+  'asset-console',
+  'observability-console',
+  'verification-app',
+];
+
+function configuredPluginAppId(): PluginAppId {
+  const configured = process.env.NEXT_PUBLIC_APP_ID;
+  return isPluginAppId(configured) ? configured : DEFAULT_PLUGIN_APP_ID;
+}
+
+function isPluginAppId(value: string | undefined): value is PluginAppId {
+  return PLUGIN_APP_IDS.includes(value as PluginAppId);
+}
 
 export function getProductArchitecture(): ProductArchitecture {
   return ASSETSLAKE_PRODUCT;
@@ -903,7 +1151,7 @@ export function getPluginApps(): readonly PluginApp[] {
 }
 
 export function getDefaultPluginApp(): PluginApp {
-  return getPluginApp(DEFAULT_PLUGIN_APP_ID) ?? getPluginApps()[0];
+  return getPluginApp(configuredPluginAppId()) ?? getPluginApps()[0];
 }
 
 export function getPluginApp(id: PluginAppId): PluginApp | undefined {

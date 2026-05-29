@@ -30,6 +30,55 @@ spec:
                 name: assetslake-production-api
                 port:
                   number: 8080
+          - path: /api/project-management/reports
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-reporting-api
+                port:
+                  number: 8080
+          - path: /api/project-management/workflow
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-workflow-api
+                port:
+                  number: 8080
+          - path: /api/project-management/automation
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-workflow-api
+                port:
+                  number: 8080
+          - path: /api/project-management/enterprise
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-workflow-api
+                port:
+                  number: 8080
+          - path: /api/project-management
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-planning-api
+                port:
+                  number: 8080
+          - path: /api/management
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-reporting-api
+                port:
+                  number: 8080
+          - path: /api/data-lake
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-reporting-api
+                port:
+                  number: 8080
           - path: /api/milestones
             pathType: Prefix
             backend:
@@ -58,6 +107,62 @@ spec:
                 name: assetslake-assets-api
                 port:
                   number: 8080
+          - path: /kiali
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-kiali
+                port:
+                  number: 20001
+          - path: /app/assets
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-asset-frontend
+                port:
+                  number: 3000
+          - path: /app/production
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-production-frontend
+                port:
+                  number: 3000
+          - path: /app/planning
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-planning-frontend
+                port:
+                  number: 3000
+          - path: /app/workflow
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-workflow-frontend
+                port:
+                  number: 3000
+          - path: /app/identity
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-identity-frontend
+                port:
+                  number: 3000
+          - path: /app/reports
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-reporting-frontend
+                port:
+                  number: 3000
+          - path: /app/observability
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-observability-frontend
+                port:
+                  number: 3000
           - path: /
             pathType: Prefix
             backend:

@@ -1,0 +1,260 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: assetslake-events
+  labels:
+    app.kubernetes.io/component: event-bus
+spec:
+  kafka:
+    version: 3.7.0
+    replicas: 3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    config:
+      auto.create.topics.enable: "false"
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+    storage:
+      type: persistent-claim
+      size: 20Gi
+      deleteClaim: false
+  zookeeper:
+    replicas: 3
+    storage:
+      type: persistent-claim
+      size: 10Gi
+      deleteClaim: false
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: identity.user.v1
+  labels:
+    strimzi.io/cluster: assetslake-events
+spec:
+  partitions: 6
+  replicas: 3
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: projects.project.v1
+  labels:
+    strimzi.io/cluster: assetslake-events
+spec:
+  partitions: 6
+  replicas: 3
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: assets.asset.v1
+  labels:
+    strimzi.io/cluster: assetslake-events
+spec:
+  partitions: 12
+  replicas: 3
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: production.issue.v1
+  labels:
+    strimzi.io/cluster: assetslake-events
+spec:
+  partitions: 12
+  replicas: 3
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: planning.schedule.v1
+  labels:
+    strimzi.io/cluster: assetslake-events
+spec:
+  partitions: 6
+  replicas: 3
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: workflow.automation.v1
+  labels:
+    strimzi.io/cluster: assetslake-events
+spec:
+  partitions: 6
+  replicas: 3
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: audit.domain-event.v1
+  labels:
+    strimzi.io/cluster: assetslake-events
+spec:
+  partitions: 12
+  replicas: 3
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: assetslake-clickhouse-init
+data:
+  001_domain_events.sql: |
+    CREATE DATABASE IF NOT EXISTS assetslake_events;
+
+    CREATE TABLE IF NOT EXISTS assetslake_events.raw_domain_events (
+      event_id UUID,
+      topic LowCardinality(String),
+      event_type LowCardinality(String),
+      schema_version UInt16,
+      producer LowCardinality(String),
+      aggregate_type LowCardinality(String),
+      aggregate_id UUID,
+      workspace_id Nullable(UUID),
+      occurred_at DateTime64(3, 'UTC'),
+      trace_id UUID,
+      causation_id Nullable(UUID),
+      payload String,
+      ingested_at DateTime DEFAULT now()
+    )
+    ENGINE = MergeTree
+    PARTITION BY toYYYYMM(occurred_at)
+    ORDER BY (topic, event_type, aggregate_id, occurred_at, event_id);
+
+    CREATE TABLE IF NOT EXISTS assetslake_events.asset_fact (
+      asset_id UUID,
+      project_id Nullable(UUID),
+      name String,
+      status LowCardinality(String),
+      version UInt32,
+      event_type LowCardinality(String),
+      occurred_at DateTime64(3, 'UTC'),
+      projection_updated_at DateTime DEFAULT now()
+    )
+    ENGINE = ReplacingMergeTree(projection_updated_at)
+    ORDER BY asset_id;
+
+    CREATE MATERIALIZED VIEW IF NOT EXISTS assetslake_events.mv_asset_fact
+    TO assetslake_events.asset_fact
+    AS
+    SELECT
+      toUUIDOrZero(JSONExtractString(payload, 'asset_id')) AS asset_id,
+      nullIf(toUUIDOrZero(JSONExtractString(payload, 'project_id')), toUUID('00000000-0000-0000-0000-000000000000')) AS project_id,
+      JSONExtractString(payload, 'name') AS name,
+      JSONExtractString(payload, 'status') AS status,
+      toUInt32OrZero(JSONExtractRaw(payload, 'version')) AS version,
+      event_type,
+      occurred_at,
+      now() AS projection_updated_at
+    FROM assetslake_events.raw_domain_events
+    WHERE topic = 'assets.asset.v1';
+
+    CREATE TABLE IF NOT EXISTS assetslake_events.issue_flow_fact (
+      issue_id UUID,
+      project_id Nullable(UUID),
+      issue_key String,
+      title String,
+      status LowCardinality(String),
+      event_type LowCardinality(String),
+      occurred_at DateTime64(3, 'UTC'),
+      projection_updated_at DateTime DEFAULT now()
+    )
+    ENGINE = ReplacingMergeTree(projection_updated_at)
+    ORDER BY issue_id;
+
+    CREATE MATERIALIZED VIEW IF NOT EXISTS assetslake_events.mv_issue_flow_fact
+    TO assetslake_events.issue_flow_fact
+    AS
+    SELECT
+      toUUIDOrZero(JSONExtractString(payload, 'issue_id')) AS issue_id,
+      nullIf(toUUIDOrZero(JSONExtractString(payload, 'project_id')), toUUID('00000000-0000-0000-0000-000000000000')) AS project_id,
+      JSONExtractString(payload, 'issue_key') AS issue_key,
+      JSONExtractString(payload, 'title') AS title,
+      coalesce(JSONExtractString(payload, 'status'), JSONExtractString(payload, 'to_status')) AS status,
+      event_type,
+      occurred_at,
+      now() AS projection_updated_at
+    FROM assetslake_events.raw_domain_events
+    WHERE topic = 'production.issue.v1';
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: assetslake-clickhouse-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-clickhouse
+  labels:
+    app.kubernetes.io/component: clickhouse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: assetslake-clickhouse
+  template:
+    metadata:
+      labels:
+        app: assetslake-clickhouse
+        app.kubernetes.io/component: clickhouse
+    spec:
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:24.8
+          ports:
+            - containerPort: 8123
+            - containerPort: 9000
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: assetslake-clickhouse-data
+        - name: init
+          configMap:
+            name: assetslake-clickhouse-init
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-clickhouse
+  labels:
+    app.kubernetes.io/component: clickhouse
+spec:
+  selector:
+    app: assetslake-clickhouse
+  ports:
+    - name: http
+      port: 8123
+      targetPort: 8123
+    - name: native
+      port: 9000
+      targetPort: 9000

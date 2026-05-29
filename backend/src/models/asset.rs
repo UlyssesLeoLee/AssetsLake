@@ -314,6 +314,7 @@ pub struct UpdateAssetRequest {
     pub status: Option<AssetStatus>,
     pub project_id: Option<Uuid>,
     pub review_note: Option<String>,
+    pub expected_version: Option<i32>,
 }
 
 /// Query params for listing assets

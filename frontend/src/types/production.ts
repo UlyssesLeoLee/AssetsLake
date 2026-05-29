@@ -168,6 +168,7 @@ export interface Issue {
   revision_count: number;
   qa_status: AiQaStatus;
   metadata: Record<string, unknown>;
+  version: number;
   created_at: string;
   updated_at: string;
 }
@@ -195,6 +196,7 @@ export interface IssueSummary {
   qa_status: AiQaStatus;
   asset_count: number;
   thumbnail_url?: string;
+  version: number;
   created_at: string;
   updated_at: string;
 }
@@ -351,6 +353,7 @@ export interface UpdateIssueRequest {
   qa_status?: AiQaStatus;
   metadata?: Record<string, unknown>;
   actor?: string;
+  expected_version?: number;
 }
 
 export interface TransitionIssueRequest {
@@ -358,6 +361,7 @@ export interface TransitionIssueRequest {
   actor_id?: string;
   actor?: string;
   reason?: string;
+  expected_version?: number;
 }
 
 export interface CreateIssueCommentRequest {

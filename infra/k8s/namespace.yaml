@@ -4,3 +4,5 @@ metadata:
   name: assetslake
   labels:
     app.kubernetes.io/name: assetslake
+    istio-injection: enabled
+    topology.istio.io/network: assetslake

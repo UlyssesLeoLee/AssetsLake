@@ -66,7 +66,15 @@ import type { LucideIcon } from 'lucide-react';
 
 export type ProductArchitectureId = 'assetslake-product';
 
-export type PluginAppId = 'studio-console' | 'production-console' | 'asset-console' | 'verification-app';
+export type PluginAppId =
+  | 'studio-console'
+  | 'production-console'
+  | 'planning-console'
+  | 'workflow-console'
+  | 'reporting-console'
+  | 'asset-console'
+  | 'observability-console'
+  | 'verification-app';
 
 export type PluginGroupId =
   | 'workspace'
@@ -79,10 +87,12 @@ export type PluginGroupId =
   | 'production-workflow'
   | 'production-delivery'
   | 'production-enterprise'
+  | 'observability'
   | 'identity-verification';
 
 export type PluginId =
   | 'workspace.home'
+  | 'workspace.settings'
   | 'production.ai-control'
   | 'production.management'
   | 'production.planning'
@@ -98,9 +108,11 @@ export type PluginId =
   | 'production.workflow'
   | 'production.automation'
   | 'production.enterprise'
+  | 'production.security-audit'
   | 'production.vendors'
   | 'production.ai-orchestration'
   | 'production.data-lake'
+  | 'observability.runtime'
   | 'verification.sms'
   | 'assets.library'
   | 'assets.query'
@@ -120,6 +132,9 @@ export type PluginPermission =
   | 'enterprise:admin'
   | 'report:read'
   | 'delivery:write'
+  | 'observability:read'
+  | 'settings:read'
+  | 'settings:write'
   | 'verification:read'
   | 'verification:write'
   | 'verification:admin';

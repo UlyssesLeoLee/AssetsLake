@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: assetslake-identity-db-owner
+type: Opaque
+stringData:
+  username: identity
+  password: identity_secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: assetslake-projects-db-owner
+type: Opaque
+stringData:
+  username: projects
+  password: projects_secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: assetslake-assets-db-owner
+type: Opaque
+stringData:
+  username: assets
+  password: assets_secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: assetslake-production-db-owner
+type: Opaque
+stringData:
+  username: production
+  password: production_secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: assetslake-planning-db-owner
+type: Opaque
+stringData:
+  username: planning
+  password: planning_secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: assetslake-workflow-db-owner
+type: Opaque
+stringData:
+  username: workflow
+  password: workflow_secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: assetslake-reporting-db-owner
+type: Opaque
+stringData:
+  username: reporting
+  password: reporting_secret
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: assetslake-identity-postgres
+  labels:
+    app.kubernetes.io/component: identity-db
+spec:
+  instances: 2
+  storage:
+    size: 10Gi
+  bootstrap:
+    initdb:
+      database: identity
+      owner: identity
+      secret:
+        name: assetslake-identity-db-owner
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: assetslake-projects-postgres
+  labels:
+    app.kubernetes.io/component: projects-db
+spec:
+  instances: 2
+  storage:
+    size: 10Gi
+  bootstrap:
+    initdb:
+      database: projects
+      owner: projects
+      secret:
+        name: assetslake-projects-db-owner
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: assetslake-assets-postgres
+  labels:
+    app.kubernetes.io/component: assets-db
+spec:
+  instances: 2
+  storage:
+    size: 20Gi
+  bootstrap:
+    initdb:
+      database: assets
+      owner: assets
+      secret:
+        name: assetslake-assets-db-owner
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: assetslake-production-postgres
+  labels:
+    app.kubernetes.io/component: production-db
+spec:
+  instances: 2
+  storage:
+    size: 20Gi
+  bootstrap:
+    initdb:
+      database: production
+      owner: production
+      secret:
+        name: assetslake-production-db-owner
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: assetslake-planning-postgres
+  labels:
+    app.kubernetes.io/component: planning-db
+spec:
+  instances: 2
+  storage:
+    size: 10Gi
+  bootstrap:
+    initdb:
+      database: planning
+      owner: planning
+      secret:
+        name: assetslake-planning-db-owner
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: assetslake-workflow-postgres
+  labels:
+    app.kubernetes.io/component: workflow-db
+spec:
+  instances: 2
+  storage:
+    size: 10Gi
+  bootstrap:
+    initdb:
+      database: workflow
+      owner: workflow
+      secret:
+        name: assetslake-workflow-db-owner
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: assetslake-reporting-postgres
+  labels:
+    app.kubernetes.io/component: reporting-db
+spec:
+  instances: 2
+  storage:
+    size: 10Gi
+  bootstrap:
+    initdb:
+      database: reporting
+      owner: reporting
+      secret:
+        name: assetslake-reporting-db-owner

@@ -23,12 +23,24 @@ spec:
             - containerPort: 8080
           env:
             - name: ASSETSLAKE_SERVICE
-              value: verification
-            - name: DATABASE_URL
+              value: identity
+            - name: OTEL_SERVICE_NAME
+              value: assetslake-identity-api
+            - name: IDENTITY_DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: assetslake-secrets
-                  key: DATABASE_URL
+                  key: IDENTITY_DATABASE_URL
+            - name: INTERNAL_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: INTERNAL_SERVICE_TOKEN
+            - name: ASSET_ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: ASSET_ACCESS_TOKEN_SECRET
             - name: MINIO_ACCESS_KEY
               valueFrom:
                 secretKeyRef:

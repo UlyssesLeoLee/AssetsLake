@@ -230,6 +230,7 @@ pub struct Issue {
     pub revision_count: i32,
     pub qa_status: AiQaStatus,
     pub metadata: Value,
+    pub version: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
@@ -259,6 +260,7 @@ pub struct IssueSummary {
     pub qa_status: AiQaStatus,
     pub asset_count: i64,
     pub thumbnail_url: Option<String>,
+    pub version: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -438,6 +440,7 @@ pub struct UpdateIssueRequest {
     pub qa_status: Option<AiQaStatus>,
     pub metadata: Option<Value>,
     pub actor: Option<String>,
+    pub expected_version: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -476,6 +479,7 @@ pub struct TransitionIssueRequest {
     pub actor_id: Option<Uuid>,
     pub actor: Option<String>,
     pub reason: Option<String>,
+    pub expected_version: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]

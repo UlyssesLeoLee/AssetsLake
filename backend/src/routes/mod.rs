@@ -12,6 +12,7 @@ CREATE
   (fn8:Function {name: "configure_auth", type: "function", language: "rust", signature: "fn configure_auth(cfg: &mut web::ServiceConfig)"}),
   (fn9:Function {name: "configure_locks", type: "function", language: "rust", signature: "fn configure_locks(cfg: &mut web::ServiceConfig)"}),
   (fn10:Function {name: "configure_verification", type: "function", language: "rust", signature: "fn configure_verification(cfg: &mut web::ServiceConfig)"}),
+  (fn11:Function {name: "configure_security", type: "function", language: "rust", signature: "fn configure_security(cfg: &mut web::ServiceConfig)"}),
   (fn6:Function {name: "ServiceRouteSet::from_env", type: "function", language: "rust", signature: "fn from_env() -> Self"}),
   (fn7:Function {name: "ServiceRouteSet::from_value", type: "function", language: "rust", signature: "fn from_value(value: &str) -> Self"}),
   (v1:Variable {name: "cfg", type: "variable"}),
@@ -21,6 +22,7 @@ CREATE
   (v5:Variable {name: "auth_handler", type: "variable"}),
   (v6:Variable {name: "lock_handler", type: "variable"}),
   (v7:Variable {name: "verification_handler", type: "variable"}),
+  (v8:Variable {name: "security_audit_handler", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(c1),
   (m)-[:CONTAINS]->(fn1),
@@ -31,6 +33,7 @@ CREATE
   (m)-[:CONTAINS]->(fn8),
   (m)-[:CONTAINS]->(fn9),
   (m)-[:CONTAINS]->(fn10),
+  (m)-[:CONTAINS]->(fn11),
   (c1)-[:HAS_METHOD]->(fn6),
   (c1)-[:HAS_METHOD]->(fn7),
   (fn1)-[:CALLS]->(fn2),
@@ -41,6 +44,7 @@ CREATE
   (fn1)-[:CALLS]->(fn8),
   (fn1)-[:CALLS]->(fn9),
   (fn1)-[:CALLS]->(fn10),
+  (fn1)-[:CALLS]->(fn11),
   (fn1)-[:USES]->(v1),
   (fn1)-[:USES]->(v2),
   (fn2)-[:USES]->(v1),
@@ -50,6 +54,7 @@ CREATE
   (fn8)-[:USES]->(v5),
   (fn9)-[:USES]->(v6),
   (fn10)-[:USES]->(v7),
+  (fn11)-[:USES]->(v8),
   (fn5)-[:USES]->(v1),
   (fn6)-[:CALLS]->(fn7),
   (fn6)-[:USES]->(v3);
@@ -63,7 +68,7 @@ use actix_web::web;
 use crate::handlers::{
     asset_analysis_handler, asset_handler, auth_handler, data_lake_query_handler,
     emergence_handler, health_handler, lock_handler, management_handler, production_handler,
-    project_handler, project_management_handler, verification_handler,
+    project_handler, project_management_handler, security_audit_handler, verification_handler,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -72,7 +77,10 @@ enum ServiceRouteSet {
     Assets,
     Production,
     Projects,
-    Verification,
+    Identity,
+    Planning,
+    Workflow,
+    Reporting,
 }
 
 impl ServiceRouteSet {
@@ -90,7 +98,10 @@ impl ServiceRouteSet {
             "assets" | "asset" | "asset-api" | "assets-api" => Self::Assets,
             "production" | "production-flow" | "production-api" => Self::Production,
             "projects" | "project" | "projects-api" => Self::Projects,
-            "verification" | "identity" | "verification-api" => Self::Verification,
+            "verification" | "identity" | "verification-api" | "identity-api" => Self::Identity,
+            "planning" | "planning-api" | "schedule" => Self::Planning,
+            "workflow" | "workflow-api" | "automation" => Self::Workflow,
+            "reporting" | "reports" | "reporting-api" | "data-lake" => Self::Reporting,
             other => {
                 tracing::warn!(
                     service = other,
@@ -105,27 +116,28 @@ impl ServiceRouteSet {
 pub fn configure(cfg: &mut web::ServiceConfig) {
     let route_set = ServiceRouteSet::from_env();
     configure_health(cfg);
-    configure_auth(cfg);
-    configure_locks(cfg);
-    configure_verification(cfg);
 
     match route_set {
         ServiceRouteSet::Gateway => {
+            configure_identity(cfg);
             configure_assets(cfg);
             configure_production(cfg);
-            configure_data_lake_query(cfg);
+            configure_planning(cfg);
+            configure_workflow(cfg);
+            configure_reporting(cfg);
             configure_projects(cfg);
         }
         ServiceRouteSet::Assets => {
             configure_assets(cfg);
-            configure_data_lake_query(cfg);
         }
         ServiceRouteSet::Production => {
             configure_production(cfg);
-            configure_data_lake_query(cfg);
         }
         ServiceRouteSet::Projects => configure_projects(cfg),
-        ServiceRouteSet::Verification => {}
+        ServiceRouteSet::Identity => configure_identity(cfg),
+        ServiceRouteSet::Planning => configure_planning(cfg),
+        ServiceRouteSet::Workflow => configure_workflow(cfg),
+        ServiceRouteSet::Reporting => configure_reporting(cfg),
     }
 }
 
@@ -156,14 +168,23 @@ fn configure_verification(cfg: &mut web::ServiceConfig) {
         .service(verification_handler::outbox);
 }
 
+fn configure_identity(cfg: &mut web::ServiceConfig) {
+    configure_auth(cfg);
+    configure_locks(cfg);
+    configure_verification(cfg);
+}
+
 fn configure_assets(cfg: &mut web::ServiceConfig) {
     cfg.service(asset_handler::upload_asset)
         .service(asset_handler::list_assets)
         .service(asset_handler::search_assets)
+        .service(asset_handler::get_asset_content)
         .service(asset_handler::list_asset_versions)
+        .service(asset_handler::get_asset_version_content)
         .service(asset_handler::compare_asset_versions)
         .service(asset_analysis_handler::analyze_asset)
         .service(asset_analysis_handler::list_asset_insights)
+        .service(asset_handler::internal_get_asset)
         .service(asset_handler::get_asset)
         .service(asset_handler::update_asset)
         .service(asset_handler::delete_asset);
@@ -188,8 +209,11 @@ fn configure_production(cfg: &mut web::ServiceConfig) {
         .service(production_handler::request_issue_revision)
         .service(production_handler::list_milestones)
         .service(production_handler::create_delivery_package)
-        .service(production_handler::submit_delivery_package)
-        .service(project_management_handler::planning_plan)
+        .service(production_handler::submit_delivery_package);
+}
+
+fn configure_planning(cfg: &mut web::ServiceConfig) {
+    cfg.service(project_management_handler::planning_plan)
         .service(project_management_handler::list_epics)
         .service(project_management_handler::create_epic)
         .service(project_management_handler::list_sprints)
@@ -198,22 +222,34 @@ fn configure_production(cfg: &mut web::ServiceConfig) {
         .service(project_management_handler::create_dependency)
         .service(project_management_handler::list_events)
         .service(project_management_handler::gantt_snapshot)
-        .service(project_management_handler::calendar_snapshot)
-        .service(project_management_handler::reports_snapshot)
-        .service(project_management_handler::workflow_catalog)
+        .service(project_management_handler::calendar_snapshot);
+}
+
+fn configure_workflow(cfg: &mut web::ServiceConfig) {
+    cfg.service(project_management_handler::workflow_catalog)
         .service(project_management_handler::automation_catalog)
-        .service(project_management_handler::enterprise_controls)
+        .service(project_management_handler::enterprise_controls);
+}
+
+fn configure_reporting(cfg: &mut web::ServiceConfig) {
+    cfg.service(project_management_handler::reports_snapshot)
         .service(management_handler::management_intelligence)
         .service(management_handler::management_chat)
         .service(management_handler::management_rag_search)
         .service(management_handler::management_replica_action)
         .service(emergence_handler::emergence_snapshot)
         .service(emergence_handler::remember_emergence_snapshot);
+    configure_security(cfg);
+    configure_data_lake_query(cfg);
 }
 
 fn configure_data_lake_query(cfg: &mut web::ServiceConfig) {
     cfg.service(data_lake_query_handler::execute_sql_query)
         .service(data_lake_query_handler::execute_cypher_query);
+}
+
+fn configure_security(cfg: &mut web::ServiceConfig) {
+    cfg.service(security_audit_handler::list_security_audit_events);
 }
 
 fn configure_projects(cfg: &mut web::ServiceConfig) {

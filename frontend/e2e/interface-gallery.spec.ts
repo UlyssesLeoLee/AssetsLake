@@ -80,7 +80,10 @@ const INTERFACE_ROUTES: InterfaceRoute[] = [
   { id: 'enterprise', label: 'Enterprise', path: '/enterprise' },
   { id: 'assets', label: 'Asset Library', path: '/assets' },
   { id: 'asset-detail', label: 'Asset Detail', path: '/assets/asset-a' },
+  { id: 'data-lake-query', label: 'Data Lake Query', path: '/data-lake-query' },
   { id: 'upload', label: 'Upload', path: '/upload' },
+  { id: 'verification', label: 'Verification', path: '/verification' },
+  { id: 'observability', label: 'Observability', path: '/observability' },
   { id: 'settings', label: 'Settings', path: '/settings' },
 ];
 

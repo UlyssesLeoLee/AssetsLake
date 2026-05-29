@@ -7,11 +7,18 @@ resources:
   - configmap.yaml
   - secret.yaml
   - postgres.yaml
+  - postgres-domain-clusters.yaml
+  - postgres-poolers.yaml
+  - postgres-domain-migrations.yaml
   - minio.yaml
+  - event-analytics.yaml
+  - observability-mesh.yaml
+  - skywalking.yaml
   - backend-gateway.yaml
   - backend-microservices.yaml
   - verification-email-service.yaml
   - frontend.yaml
+  - frontend-domain-apps.yaml
   - autoscaling.yaml
   - pod-disruption-budgets.yaml
   - ingress.yaml
@@ -32,3 +39,6 @@ configMapGenerator:
       - migrations/008_asset_ai_insights.sql
       - migrations/009_auth_sessions_resource_locks.sql
       - migrations/010_verification_app.sql
+      - migrations/011_resource_lock_token_hash.sql
+      - migrations/012_cross_database_collaboration.sql
+      - migrations/013_issue_optimistic_version.sql
