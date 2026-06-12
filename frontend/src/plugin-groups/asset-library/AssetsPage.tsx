@@ -117,10 +117,18 @@ export default function AssetsPage() {
 
             {!isLoading && !isError && data && data.data.length > 0 && (
               <>
-                {view === 'grid' ? <AssetGrid assets={data.data} /> : <AssetTable assets={data.data} />}
+                {view === 'grid' ? (
+                  <AssetGrid assets={data.data} />
+                ) : (
+                  <AssetTable assets={data.data} />
+                )}
 
                 <div className="mt-6">
-                  <Pagination page={data.page} totalPages={data.total_pages} onChange={handlePageChange} />
+                  <Pagination
+                    page={data.page}
+                    totalPages={data.total_pages}
+                    onChange={handlePageChange}
+                  />
                 </div>
               </>
             )}

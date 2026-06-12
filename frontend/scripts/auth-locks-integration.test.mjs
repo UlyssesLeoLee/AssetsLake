@@ -63,10 +63,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const API_BASE =
-  process.env.ASSETSLAKE_API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  'http://127.0.0.1:18080';
-const TEST_PASSWORD = process.env.ASSETSLAKE_TEST_PASSWORD || 'AssetsLake#2026';
+  process.env.ASSETSLAKE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18080';
+const TEST_PASSWORD = process.env.ASSETSLAKE_TEST_PASSWORD || 'test';
+const ADMIN_PASSWORD = process.env.ASSETSLAKE_ADMIN_PASSWORD || TEST_PASSWORD;
 
 async function jsonRequest(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -85,7 +84,7 @@ function expectStatus(result, status, label) {
   assert.equal(
     result.response.status,
     status,
-    `${label} expected HTTP ${status}, got HTTP ${result.response.status}: ${JSON.stringify(result.body)}`
+    `${label} expected HTTP ${status}, got HTTP ${result.response.status}: ${JSON.stringify(result.body)}`,
   );
 }
 
@@ -94,7 +93,7 @@ async function login(username) {
     method: 'POST',
     body: JSON.stringify({
       username,
-      password: TEST_PASSWORD,
+      password: username === 'dana.manager' ? ADMIN_PASSWORD : TEST_PASSWORD,
       device_label: `integration-${username}`,
     }),
   });
@@ -235,9 +234,7 @@ test('parallel lock acquisition grants one winner', async () => {
   ]);
   const issue = await createIssue(sessions[0]);
 
-  const attempts = await Promise.all(
-    sessions.map((session) => acquireLock(session, issue.id))
-  );
+  const attempts = await Promise.all(sessions.map((session) => acquireLock(session, issue.id)));
   const winners = attempts.filter((result) => result.response.status === 201);
   const conflicts = attempts.filter((result) => result.response.status === 409);
 

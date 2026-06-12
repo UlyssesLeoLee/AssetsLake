@@ -45,7 +45,13 @@ const ts = require('typescript');
 
 const FRONTEND_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = {
-  workflowAutomationModel: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'workflowAutomationModel.ts'),
+  workflowAutomationModel: join(
+    FRONTEND_ROOT,
+    'src',
+    'plugin-groups',
+    'production',
+    'workflowAutomationModel.ts',
+  ),
 };
 
 function readText(filePath) {
@@ -70,7 +76,10 @@ function loadWorkflowAutomationModel() {
     },
   };
 
-  vm.runInNewContext(compiled.outputText, sandbox, { filename: FILES.workflowAutomationModel, timeout: 1000 });
+  vm.runInNewContext(compiled.outputText, sandbox, {
+    filename: FILES.workflowAutomationModel,
+    timeout: 1000,
+  });
   return module.exports;
 }
 
@@ -118,8 +127,14 @@ test('workflow automation model builds guarded workflow and LangGraph execution 
   assert.equal(designer.coveragePercent, 50);
   assert.equal(designer.evidenceGateCount, 1);
   assert.equal(designer.approvalGateCount, 1);
-  assert.deepEqual(designer.missingTransitionPairs, ['assigned->in_progress', 'in_progress->submitted']);
-  assert.equal(designer.transitions[1].gateSummary, 'assignment_required / data_lake_evidence_present / data_lake_evidence / human_approval');
+  assert.deepEqual(designer.missingTransitionPairs, [
+    'assigned->in_progress',
+    'in_progress->submitted',
+  ]);
+  assert.equal(
+    designer.transitions[1].gateSummary,
+    'assignment_required / data_lake_evidence_present / data_lake_evidence / human_approval',
+  );
 
   const fallbackDesigner = model.buildWorkflowDesignerModel(undefined, statuses);
   assert.equal(fallbackDesigner.transitions.length, 4);

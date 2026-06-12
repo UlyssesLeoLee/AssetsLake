@@ -27,7 +27,8 @@ CREATE
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const API_URL = process.env.ASSETSLAKE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18080';
+const API_URL =
+  process.env.ASSETSLAKE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18080';
 const REAL_SMS_TO = process.env.REAL_SMS_TO;
 
 async function apiRequest(method, path, body, expectedStatuses = [200]) {
@@ -39,7 +40,7 @@ async function apiRequest(method, path, body, expectedStatuses = [200]) {
   const data = await response.json().catch(() => null);
   assert.ok(
     expectedStatuses.includes(response.status),
-    `${method} ${path} expected ${expectedStatuses.join('/')} got ${response.status}: ${JSON.stringify(data)}`
+    `${method} ${path} expected ${expectedStatuses.join('/')} got ${response.status}: ${JSON.stringify(data)}`,
   );
   return { status: response.status, data };
 }
@@ -62,15 +63,17 @@ test(
         phone_number: REAL_SMS_TO,
         client_ref: `real-sms-${Date.now()}`,
       },
-      [201]
+      [201],
     );
 
     const outbox = await apiRequest('GET', '/api/verification/outbox?limit=20');
-    const message = outbox.data.data.find((item) => item.challenge_id === challenge.data.data.challenge_id);
+    const message = outbox.data.data.find(
+      (item) => item.challenge_id === challenge.data.data.challenge_id,
+    );
 
     assert.ok(message, 'outbox message exists for real SMS challenge');
     assert.equal(message.provider, 'twilio');
     assert.ok(message.provider_message_id, 'provider message id is recorded');
     assert.equal(message.recipient_masked, maskPhone(REAL_SMS_TO));
-  }
+  },
 );

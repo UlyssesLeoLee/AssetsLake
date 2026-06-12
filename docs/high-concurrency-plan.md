@@ -7,12 +7,24 @@
 - Added backend maintenance cleanup for expired locks, old released locks, old sessions, and old verification outbox rows.
 - Added Kubernetes resource requests, limits, liveness probes, HPAs, and PDBs for app services.
 - Added a high-concurrency smoke test for health, auth, and lock race behavior.
+- Added 3-second latency guardrails for non-upload API paths through DB acquire,
+  statement, lock, and PgBouncer wait timeouts.
+- Raised domain PgBouncer client fan-in to `150000` each, giving the seven
+  domain poolers a combined `1050000` client-connection envelope while keeping
+  backend DB pools small.
+- Throttled session `last_seen_at` writes with `SESSION_TOUCH_INTERVAL_SECONDS`
+  so shared session validation remains DB-backed across replicas without writing
+  on every authenticated request.
 
 ## Operating defaults
 
 - `DB_MAX_CONNECTIONS=20`
 - `DB_MIN_CONNECTIONS=2`
 - `DB_ACQUIRE_TIMEOUT_SECONDS=3`
+- `DB_STATEMENT_TIMEOUT_MS=2500`
+- `DB_LOCK_TIMEOUT_MS=2000`
+- `SESSION_TOUCH_INTERVAL_SECONDS=60`
+- `API_LATENCY_SLO_MS=3000`
 - `RATE_LIMIT_LOGIN_MAX=30`
 - `RATE_LIMIT_LOGIN_WINDOW_SECONDS=60`
 - `RATE_LIMIT_VERIFICATION_MAX=10`
@@ -48,7 +60,10 @@ kubectl kustomize infra\k8s
 
 ## Remaining Production Work
 
-- Add PgBouncer or a managed pooler in front of PostgreSQL.
+- Validate the million-client envelope with a production-like k6 or Locust run;
+  the repo now carries the required pooler and timeout contracts, but this still
+  needs environment-specific capacity proof before claiming sustained million
+  RPS.
 - Split read-heavy routes onto a read replica with explicit stale-read tolerance.
 - Add distributed rate limiting backed by Redis or Postgres advisory counters.
 - Add queue-based isolation for AI analysis, email delivery, and heavy indexing.

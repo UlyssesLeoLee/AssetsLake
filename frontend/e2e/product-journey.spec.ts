@@ -32,13 +32,20 @@ CREATE
 */
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { installAuthenticatedSession } from './fixtures/authSession';
 import { mockApi } from './fixtures/apiMocks';
 
 test.beforeEach(async ({ page }) => {
+  await installAuthenticatedSession(page);
   await mockApi(page);
 });
 
-async function clickLinkOrGoto(page: Page, link: Locator, expectedUrl: RegExp, fallbackPath: string) {
+async function clickLinkOrGoto(
+  page: Page,
+  link: Locator,
+  expectedUrl: RegExp,
+  fallbackPath: string,
+) {
   await link.click();
   try {
     await expect(page).toHaveURL(expectedUrl, { timeout: 5_000 });
@@ -50,11 +57,18 @@ async function clickLinkOrGoto(page: Page, link: Locator, expectedUrl: RegExp, f
 
 test('clicks project management plugin journeys', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /AssetsLake Product Architecture/ })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: /AssetsLake Product Architecture/ }),
+  ).toBeVisible();
 
   const nav = page.getByRole('navigation');
 
-  await clickLinkOrGoto(page, page.getByRole('link', { name: /^Planning Backlog, sprint/ }).first(), /\/planning$/, '/planning');
+  await clickLinkOrGoto(
+    page,
+    page.getByRole('link', { name: /^Planning Backlog, sprint/ }).first(),
+    /\/planning$/,
+    '/planning',
+  );
   await expect(page.getByRole('heading', { name: 'Planning' })).toBeVisible();
   await expect(page.getByText('Backlog Grooming')).toBeVisible();
 
@@ -82,7 +96,9 @@ test('clicks project management plugin journeys', async ({ page }) => {
   await page.getByRole('button', { name: /Save/ }).click();
 });
 
-test('clicks Gantt, calendar, workflow, automation, reports, enterprise, and asset library journeys', async ({ page }) => {
+test('clicks Gantt, calendar, workflow, automation, reports, enterprise, and asset library journeys', async ({
+  page,
+}) => {
   await page.goto('/gantt');
   await expect(page.getByRole('heading', { name: 'Gantt' })).toBeVisible();
   await expect(page.getByText('Schedule Timeline')).toBeVisible();

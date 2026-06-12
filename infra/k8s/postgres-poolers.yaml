@@ -10,11 +10,11 @@ spec:
   pgbouncer:
     poolMode: transaction
     parameters:
-      max_client_conn: "4000"
+      max_client_conn: "150000"
       default_pool_size: "100"
       reserve_pool_size: "25"
       server_idle_timeout: "300"
-      query_wait_timeout: "10"
+      query_wait_timeout: "2"
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Pooler
@@ -28,11 +28,11 @@ spec:
   pgbouncer:
     poolMode: transaction
     parameters:
-      max_client_conn: "4000"
+      max_client_conn: "150000"
       default_pool_size: "100"
       reserve_pool_size: "25"
       server_idle_timeout: "300"
-      query_wait_timeout: "10"
+      query_wait_timeout: "2"
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Pooler
@@ -46,11 +46,11 @@ spec:
   pgbouncer:
     poolMode: transaction
     parameters:
-      max_client_conn: "4000"
+      max_client_conn: "150000"
       default_pool_size: "120"
       reserve_pool_size: "30"
       server_idle_timeout: "300"
-      query_wait_timeout: "10"
+      query_wait_timeout: "2"
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Pooler
@@ -64,11 +64,11 @@ spec:
   pgbouncer:
     poolMode: transaction
     parameters:
-      max_client_conn: "4000"
+      max_client_conn: "150000"
       default_pool_size: "120"
       reserve_pool_size: "30"
       server_idle_timeout: "300"
-      query_wait_timeout: "10"
+      query_wait_timeout: "2"
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Pooler
@@ -82,11 +82,11 @@ spec:
   pgbouncer:
     poolMode: transaction
     parameters:
-      max_client_conn: "4000"
+      max_client_conn: "150000"
       default_pool_size: "100"
       reserve_pool_size: "25"
       server_idle_timeout: "300"
-      query_wait_timeout: "10"
+      query_wait_timeout: "2"
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Pooler
@@ -100,11 +100,11 @@ spec:
   pgbouncer:
     poolMode: transaction
     parameters:
-      max_client_conn: "4000"
+      max_client_conn: "150000"
       default_pool_size: "100"
       reserve_pool_size: "25"
       server_idle_timeout: "300"
-      query_wait_timeout: "10"
+      query_wait_timeout: "2"
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Pooler
@@ -118,8 +118,8 @@ spec:
   pgbouncer:
     poolMode: transaction
     parameters:
-      max_client_conn: "4000"
+      max_client_conn: "150000"
       default_pool_size: "80"
       reserve_pool_size: "20"
       server_idle_timeout: "300"
-      query_wait_timeout: "10"
+      query_wait_timeout: "2"

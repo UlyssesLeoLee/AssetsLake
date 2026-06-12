@@ -34,13 +34,18 @@ export function CalendarLanePanel({ model }: { model: CalendarWorkloadModel }) {
     <Panel title="Calendar Lanes" icon={<CalendarDays className="h-4 w-4" />}>
       <div className="grid gap-3 md:grid-cols-2">
         {model.laneSummaries.map((lane) => (
-          <div key={lane.id} className="rounded-md border border-surface-border bg-slate-900/40 p-3">
+          <div
+            key={lane.id}
+            className="rounded-md border border-surface-border bg-slate-900/40 p-3"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-slate-100">{lane.label}</div>
                 <div className="mt-1 text-xs text-slate-500">{lane.calendar_type}</div>
               </div>
-              <span className="badge border-brand-500/30 bg-brand-500/10 text-brand-300">{lane.status}</span>
+              <span className="badge border-brand-500/30 bg-brand-500/10 text-brand-300">
+                {lane.status}
+              </span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
               <div className="rounded-md bg-slate-950/40 p-2">
@@ -69,10 +74,16 @@ export function CalendarWorkloadPanel({ model }: { model: CalendarWorkloadModel 
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
           {model.workload.map((day) => (
-            <div key={day.date} className="rounded-md border border-surface-border bg-slate-900/40 p-2">
+            <div
+              key={day.date}
+              className="rounded-md border border-surface-border bg-slate-900/40 p-2"
+            >
               <div className="truncate text-xs text-slate-500">{day.date.slice(5)}</div>
               <div className="mt-2 flex h-16 items-end rounded bg-slate-800">
-                <div className="w-full rounded bg-cyan-400/80" style={{ height: `${Math.max(12, (day.total / maxTotal) * 100)}%` }} />
+                <div
+                  className="w-full rounded bg-cyan-400/80"
+                  style={{ height: `${Math.max(12, (day.total / maxTotal) * 100)}%` }}
+                />
               </div>
               <div className="mt-2 text-xs text-slate-400">{day.total} items</div>
               {day.risk > 0 && <div className="mt-1 text-xs text-amber-300">{day.risk} risk</div>}
@@ -89,17 +100,25 @@ export function CalendarRiskPanel({ model }: { model: CalendarWorkloadModel }) {
     <Panel title="Calendar Risk Queue" icon={<ShieldAlert className="h-4 w-4" />}>
       <div className="divide-y divide-surface-border">
         {model.riskEvents.slice(0, 8).map((event) => (
-          <Link key={event.id} href={`/issues/${event.id}`} className="block py-3 transition hover:bg-slate-800/40">
+          <Link
+            key={event.id}
+            href={`/issues/${event.id}`}
+            className="block py-3 transition hover:bg-slate-800/40"
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-xs font-medium text-amber-300">{event.risk}</div>
-                <div className="mt-1 truncate text-sm font-medium text-slate-100">{event.title}</div>
+                <div className="mt-1 truncate text-sm font-medium text-slate-100">
+                  {event.title}
+                </div>
               </div>
               <div className="shrink-0 text-xs text-slate-500">{formatDate(event.date)}</div>
             </div>
           </Link>
         ))}
-        {model.riskEvents.length === 0 && <div className="p-4 text-sm text-slate-500">No calendar risk</div>}
+        {model.riskEvents.length === 0 && (
+          <div className="p-4 text-sm text-slate-500">No calendar risk</div>
+        )}
       </div>
     </Panel>
   );

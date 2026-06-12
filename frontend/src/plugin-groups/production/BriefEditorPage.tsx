@@ -48,7 +48,9 @@ export function BriefEditorPage() {
   const [dueDate, setDueDate] = useState('');
   const [storyPoints, setStoryPoints] = useState('3');
   const [description, setDescription] = useState('');
-  const [criteria, setCriteria] = useState('style match\nsource files included\nnaming convention passed');
+  const [criteria, setCriteria] = useState(
+    'style match\nsource files included\nnaming convention passed',
+  );
 
   const submitBrief = () => {
     createIssue.mutate({
@@ -58,7 +60,8 @@ export function BriefEditorPage() {
       title: title || 'Untitled art brief',
       description,
       issue_type: issueType,
-      asset_type: issueType === 'ui_art' ? 'ui' : issueType === 'concept_art' ? 'concept_art' : 'other',
+      asset_type:
+        issueType === 'ui_art' ? 'ui' : issueType === 'concept_art' ? 'concept_art' : 'other',
       priority,
       due_date: dueDate || undefined,
       story_points: storyPoints ? Number(storyPoints) : undefined,
@@ -84,7 +87,9 @@ export function BriefEditorPage() {
 
       <div className="grid flex-1 gap-4 overflow-y-auto p-5 lg:grid-cols-[1fr_340px]">
         <section className="rounded-lg border border-surface-border bg-surface-secondary p-4">
-          <label className="label" htmlFor="brief-title">Title</label>
+          <label className="label" htmlFor="brief-title">
+            Title
+          </label>
           <input
             id="brief-title"
             className="input"

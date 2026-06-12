@@ -51,7 +51,7 @@ export const verificationApi = {
   startChallenge: async (req: StartVerificationRequest): Promise<StartVerificationResponse> => {
     const { data } = await apiClient.post<ApiResponse<StartVerificationResponse>>(
       '/api/verification/challenges',
-      req
+      req,
     );
     return data.data;
   },
@@ -59,34 +59,32 @@ export const verificationApi = {
   verifyCode: async (challengeId: string, req: VerifyCodeRequest): Promise<VerifyCodeResponse> => {
     const { data } = await apiClient.post<ApiResponse<VerifyCodeResponse>>(
       `/api/verification/challenges/${challengeId}/verify`,
-      req
+      req,
     );
     return data.data;
   },
 
-  register: async (
-    req: RegisterWithVerificationRequest
-  ): Promise<VerificationMutationResponse> => {
+  register: async (req: RegisterWithVerificationRequest): Promise<VerificationMutationResponse> => {
     const { data } = await apiClient.post<ApiResponse<VerificationMutationResponse>>(
       '/api/verification/register',
-      req
+      req,
     );
     return data.data;
   },
 
   changePassword: async (
-    req: ChangePasswordWithVerificationRequest
+    req: ChangePasswordWithVerificationRequest,
   ): Promise<VerificationMutationResponse> => {
     const { data } = await apiClient.post<ApiResponse<VerificationMutationResponse>>(
       '/api/verification/password',
-      req
+      req,
     );
     return data.data;
   },
 
   outbox: async (limit = 20): Promise<VerificationOutboxItem[]> => {
     const { data } = await apiClient.get<ApiResponse<VerificationOutboxItem[]>>(
-      `/api/verification/outbox?limit=${limit}`
+      `/api/verification/outbox?limit=${limit}`,
     );
     return data.data;
   },

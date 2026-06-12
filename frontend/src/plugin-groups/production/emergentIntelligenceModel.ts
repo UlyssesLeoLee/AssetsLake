@@ -97,7 +97,12 @@ const OPEN_STATUSES: IssueStatus[] = [
   'client_review',
   'revision_required',
 ];
-const REVIEW_STATUSES: IssueStatus[] = ['submitted', 'internal_review', 'client_review', 'revision_required'];
+const REVIEW_STATUSES: IssueStatus[] = [
+  'submitted',
+  'internal_review',
+  'client_review',
+  'revision_required',
+];
 const DELIVERY_STATUSES: IssueStatus[] = ['approved', 'delivered'];
 const MAX_RECOMMENDATIONS = 4;
 
@@ -175,29 +180,43 @@ type EmergentMetrics = {
   aiProvider: string;
 };
 
-export function buildEmergentOperatingModel(input: BuildEmergentOperatingModelInput): EmergentOperatingModel {
+export function buildEmergentOperatingModel(
+  input: BuildEmergentOperatingModelInput,
+): EmergentOperatingModel {
   const todayKey = toDateKey(input.today ?? new Date()) ?? 0;
   const totalIssues = input.issues.length;
   const openIssues = input.issues.filter(isOpenIssue).length;
   const reviewIssues = input.issues.filter(isReviewIssue).length;
   const deliveryIssues = input.issues.filter(isDeliveryIssue).length;
   const evidenceLinkedIssues = input.issues.filter((issue) => issue.asset_count > 0).length;
-  const missingEvidenceIssues = input.issues.filter((issue) => isReviewIssue(issue) && issue.asset_count === 0).length;
+  const missingEvidenceIssues = input.issues.filter(
+    (issue) => isReviewIssue(issue) && issue.asset_count === 0,
+  ).length;
   const overdueIssues = input.issues.filter((issue) => isOverdueIssue(issue, todayKey)).length;
   const qaRiskIssues = input.issues.filter(isQaRiskIssue).length;
   const riskCount = missingEvidenceIssues + overdueIssues + qaRiskIssues;
-  const evidenceCoveragePercent = totalIssues > 0 ? calculatePercent(evidenceLinkedIssues, totalIssues) : 100;
-  const flowHealthPercent = clampPercent(100 - calculatePercent(riskCount, Math.max(openIssues, 1)));
+  const evidenceCoveragePercent =
+    totalIssues > 0 ? calculatePercent(evidenceLinkedIssues, totalIssues) : 100;
+  const flowHealthPercent = clampPercent(
+    100 - calculatePercent(riskCount, Math.max(openIssues, 1)),
+  );
   const langGraphNodeCount = input.intelligence?.langgraph_nodes.length ?? 0;
   const dataLakeFeedCount = input.intelligence?.data_lake_feeds.length ?? 0;
   const automationRuleCount = input.intelligence?.automation_rules.length ?? 0;
   const aiConfigured = Boolean(input.intelligence?.ai_status?.configured);
   const aiUsed = Boolean(input.intelligence?.ai_status?.used);
   const aiSurfacePercent = calculatePercent(langGraphNodeCount + automationRuleCount, 9);
-  const aiReadinessPercent = clampPercent((aiConfigured ? 45 : 15) + (aiUsed ? 30 : 0) + Math.round(aiSurfacePercent * 0.25));
+  const aiReadinessPercent = clampPercent(
+    (aiConfigured ? 45 : 15) + (aiUsed ? 30 : 0) + Math.round(aiSurfacePercent * 0.25),
+  );
   const milestonePercent = input.milestoneTotal > 0 ? 100 : 45;
   const readinessPercent = clampPercent(
-    Math.round(evidenceCoveragePercent * 0.34 + flowHealthPercent * 0.28 + aiReadinessPercent * 0.28 + milestonePercent * 0.1)
+    Math.round(
+      evidenceCoveragePercent * 0.34 +
+        flowHealthPercent * 0.28 +
+        aiReadinessPercent * 0.28 +
+        milestonePercent * 0.1,
+    ),
   );
   const metrics: EmergentMetrics = {
     totalIssues,
@@ -258,8 +277,13 @@ function isOverdueIssue(issue: IssueSummary, todayKey: number): boolean {
 }
 
 function deriveOperatingMode(metrics: EmergentMetrics): EmergentOperatingMode {
-  if (metrics.totalIssues > 0 && (metrics.missingEvidenceIssues > 0 || metrics.evidenceCoveragePercent < 50)) return 'sense';
-  if (metrics.overdueIssues > 0 || metrics.qaRiskIssues > 0 || metrics.aiReadinessPercent < 55) return 'decide';
+  if (
+    metrics.totalIssues > 0 &&
+    (metrics.missingEvidenceIssues > 0 || metrics.evidenceCoveragePercent < 50)
+  )
+    return 'sense';
+  if (metrics.overdueIssues > 0 || metrics.qaRiskIssues > 0 || metrics.aiReadinessPercent < 55)
+    return 'decide';
   return metrics.deliveryIssues > 0 || metrics.readinessPercent >= 75 ? 'act' : 'decide';
 }
 
@@ -334,7 +358,10 @@ function buildSignals(metrics: EmergentMetrics): EmergentSignal[] {
 function buildRecommendations(metrics: EmergentMetrics): EmergentRecommendation[] {
   const recommendations: EmergentRecommendation[] = [];
 
-  if (metrics.totalIssues > 0 && (metrics.missingEvidenceIssues > 0 || metrics.evidenceCoveragePercent < 60)) {
+  if (
+    metrics.totalIssues > 0 &&
+    (metrics.missingEvidenceIssues > 0 || metrics.evidenceCoveragePercent < 60)
+  ) {
     recommendations.push({
       id: 'evidence_gate',
       title: 'Evidence-first review gate',

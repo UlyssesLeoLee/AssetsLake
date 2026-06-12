@@ -74,7 +74,11 @@ export type PluginAppId =
   | 'reporting-console'
   | 'asset-console'
   | 'observability-console'
-  | 'verification-app';
+  | 'admin-console'
+  | 'verification-app'
+  | 'wiki-app'
+  | 'design-requirements-app'
+  | 'people-intelligence-app';
 
 export type PluginGroupId =
   | 'workspace'
@@ -88,7 +92,10 @@ export type PluginGroupId =
   | 'production-delivery'
   | 'production-enterprise'
   | 'observability'
-  | 'identity-verification';
+  | 'identity-verification'
+  | 'collaboration-wiki'
+  | 'design-requirements'
+  | 'people-intelligence';
 
 export type PluginId =
   | 'workspace.home'
@@ -109,6 +116,7 @@ export type PluginId =
   | 'production.automation'
   | 'production.enterprise'
   | 'production.security-audit'
+  | 'admin.control'
   | 'production.vendors'
   | 'production.ai-orchestration'
   | 'production.data-lake'
@@ -116,7 +124,10 @@ export type PluginId =
   | 'verification.sms'
   | 'assets.library'
   | 'assets.query'
-  | 'assets.upload';
+  | 'assets.upload'
+  | 'wiki.editor'
+  | 'design.requirements'
+  | 'people.intelligence';
 
 export type PluginPermission =
   | 'project:read'
@@ -137,7 +148,16 @@ export type PluginPermission =
   | 'settings:write'
   | 'verification:read'
   | 'verification:write'
-  | 'verification:admin';
+  | 'verification:admin'
+  | 'wiki:read'
+  | 'wiki:write'
+  | 'design-requirement:read'
+  | 'design-requirement:write'
+  | 'design-requirement:ai'
+  | 'people:read'
+  | 'people:write'
+  | 'people:evaluate'
+  | 'people:admin';
 
 export type PluginLifecycle = 'ready' | 'guarded' | 'planned';
 
@@ -259,7 +279,10 @@ export function flattenGroupPlugins(group: PluginGroup, app?: PluginApp): Plugin
     .sort((a, b) => a.order - b.order);
 }
 
-export function flattenPluginRoutes(groups: readonly PluginGroup[], app?: PluginApp): PluginRoute[] {
+export function flattenPluginRoutes(
+  groups: readonly PluginGroup[],
+  app?: PluginApp,
+): PluginRoute[] {
   return groups
     .flatMap((group) =>
       flattenGroupPlugins(group, app).flatMap((plugin) =>
@@ -272,13 +295,16 @@ export function flattenPluginRoutes(groups: readonly PluginGroup[], app?: Plugin
           pluginAppLabel: plugin.pluginAppLabel,
           pluginGroupId: plugin.pluginGroupId,
           pluginGroupLabel: plugin.pluginGroupLabel,
-        }))
-      )
+        })),
+      ),
     )
     .sort((a, b) => a.order - b.order);
 }
 
-export function filterEnabledPluginsForApp(app: PluginApp | undefined, plugins: readonly Plugin[]): Plugin[] {
+export function filterEnabledPluginsForApp(
+  app: PluginApp | undefined,
+  plugins: readonly Plugin[],
+): Plugin[] {
   return plugins.filter((plugin) => isPluginEnabledForApp(plugin, app));
 }
 
@@ -298,7 +324,9 @@ export function isPluginEnabledForApp(plugin: Plugin, app?: PluginApp): boolean 
 
   const allowedPermissions = policy.allowedPermissions;
   if (allowedPermissions) {
-    return plugin.manifest.permissions.every((permission) => allowedPermissions.includes(permission));
+    return plugin.manifest.permissions.every((permission) =>
+      allowedPermissions.includes(permission),
+    );
   }
 
   return true;

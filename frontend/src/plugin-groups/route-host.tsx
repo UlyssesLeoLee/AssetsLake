@@ -51,6 +51,7 @@ import { getDefaultPluginApp, getPluginRoutes, resolvePluginRoute } from '@/plug
 import type { PluginRoute } from '@/plugin-groups/types';
 
 export type PluginPageKey =
+  | 'AdminControlPage'
   | 'AiControlPage'
   | 'ApprovalQueuePage'
   | 'AssetDetailPage'
@@ -60,6 +61,7 @@ export type PluginPageKey =
   | 'CalendarPage'
   | 'DataLakeQueryPage'
   | 'DeliveryPackagePage'
+  | 'DesignRequirementsPage'
   | 'EnterpriseAdminPage'
   | 'GanttPage'
   | 'HomePage'
@@ -68,6 +70,7 @@ export type PluginPageKey =
   | 'ManagementConsolePage'
   | 'MilestoneTimelinePage'
   | 'ObservabilityPage'
+  | 'PeopleIntelligencePage'
   | 'PlanningPage'
   | 'ReportsPage'
   | 'ReviewBoardPage'
@@ -76,6 +79,7 @@ export type PluginPageKey =
   | 'UploadPage'
   | 'VendorDashboardPage'
   | 'VerificationAppPage'
+  | 'WikiAppPage'
   | 'WorkflowPage';
 
 type PluginPageComponent = ElementType;
@@ -87,53 +91,104 @@ type PluginRouteHostProps = {
 };
 
 const PLUGIN_PAGE_COMPONENTS = {
-  AiControlPage: dynamic(() => import('@/plugin-groups/production/AiControlPage').then((module) => module.AiControlPage)),
+  AdminControlPage: dynamic(() =>
+    import('@/plugin-groups/production/AdminControlPage').then((module) => module.AdminControlPage),
+  ),
+  AiControlPage: dynamic(() =>
+    import('@/plugin-groups/production/AiControlPage').then((module) => module.AiControlPage),
+  ),
   ApprovalQueuePage: dynamic(() =>
-    import('@/plugin-groups/production/ApprovalQueuePage').then((module) => module.ApprovalQueuePage)
+    import('@/plugin-groups/production/ApprovalQueuePage').then(
+      (module) => module.ApprovalQueuePage,
+    ),
   ),
   AssetDetailPage: dynamic(() => import('@/plugin-groups/asset-library/AssetDetailPage')),
   AssetsPage: dynamic(() => import('@/plugin-groups/asset-library/AssetsPage')),
-  AutomationPage: dynamic(() => import('@/plugin-groups/production/AutomationPage').then((module) => module.AutomationPage)),
-  BriefEditorPage: dynamic(() => import('@/plugin-groups/production/BriefEditorPage').then((module) => module.BriefEditorPage)),
-  CalendarPage: dynamic(() => import('@/plugin-groups/production/CalendarPage').then((module) => module.CalendarPage)),
+  AutomationPage: dynamic(() =>
+    import('@/plugin-groups/production/AutomationPage').then((module) => module.AutomationPage),
+  ),
+  BriefEditorPage: dynamic(() =>
+    import('@/plugin-groups/production/BriefEditorPage').then((module) => module.BriefEditorPage),
+  ),
+  CalendarPage: dynamic(() =>
+    import('@/plugin-groups/production/CalendarPage').then((module) => module.CalendarPage),
+  ),
   DataLakeQueryPage: dynamic(() => import('@/plugin-groups/asset-library/DataLakeQueryPage')),
   DeliveryPackagePage: dynamic(() =>
-    import('@/plugin-groups/production/DeliveryPackagePage').then((module) => module.DeliveryPackagePage)
+    import('@/plugin-groups/production/DeliveryPackagePage').then(
+      (module) => module.DeliveryPackagePage,
+    ),
+  ),
+  DesignRequirementsPage: dynamic(
+    () => import('@/plugin-groups/design-requirements/DesignRequirementsPage'),
   ),
   EnterpriseAdminPage: dynamic(() =>
-    import('@/plugin-groups/production/EnterpriseAdminPage').then((module) => module.EnterpriseAdminPage)
+    import('@/plugin-groups/production/EnterpriseAdminPage').then(
+      (module) => module.EnterpriseAdminPage,
+    ),
   ),
-  GanttPage: dynamic(() => import('@/plugin-groups/production/GanttPage').then((module) => module.GanttPage)),
+  GanttPage: dynamic(() =>
+    import('@/plugin-groups/production/GanttPage').then((module) => module.GanttPage),
+  ),
   HomePage: dynamic(() => import('@/plugin-groups/workspace/HomePage')),
-  IssueDetailPage: dynamic(() => import('@/plugin-groups/production/IssueDetailPage').then((module) => module.IssueDetailPage)),
-  KanbanBoardPage: dynamic(() => import('@/plugin-groups/production/KanbanBoardPage').then((module) => module.KanbanBoardPage)),
+  IssueDetailPage: dynamic(() =>
+    import('@/plugin-groups/production/IssueDetailPage').then((module) => module.IssueDetailPage),
+  ),
+  KanbanBoardPage: dynamic(() =>
+    import('@/plugin-groups/production/KanbanBoardPage').then((module) => module.KanbanBoardPage),
+  ),
   ManagementConsolePage: dynamic(() =>
-    import('@/plugin-groups/production/ManagementConsolePage').then((module) => module.ManagementConsolePage)
+    import('@/plugin-groups/production/ManagementConsolePage').then(
+      (module) => module.ManagementConsolePage,
+    ),
   ),
   MilestoneTimelinePage: dynamic(() =>
-    import('@/plugin-groups/production/MilestoneTimelinePage').then((module) => module.MilestoneTimelinePage)
+    import('@/plugin-groups/production/MilestoneTimelinePage').then(
+      (module) => module.MilestoneTimelinePage,
+    ),
   ),
   ObservabilityPage: ObservabilityPage as unknown as PluginPageComponent,
-  PlanningPage: dynamic(() => import('@/plugin-groups/production/PlanningPage').then((module) => module.PlanningPage)),
-  ReportsPage: dynamic(() => import('@/plugin-groups/production/ReportsPage').then((module) => module.ReportsPage)),
-  ReviewBoardPage: dynamic(() => import('@/plugin-groups/production/ReviewBoardPage').then((module) => module.ReviewBoardPage)),
+  PeopleIntelligencePage: dynamic(
+    () => import('@/plugin-groups/people-intelligence/PeopleIntelligencePage'),
+  ),
+  PlanningPage: dynamic(() =>
+    import('@/plugin-groups/production/PlanningPage').then((module) => module.PlanningPage),
+  ),
+  ReportsPage: dynamic(() =>
+    import('@/plugin-groups/production/ReportsPage').then((module) => module.ReportsPage),
+  ),
+  ReviewBoardPage: dynamic(() =>
+    import('@/plugin-groups/production/ReviewBoardPage').then((module) => module.ReviewBoardPage),
+  ),
   SecurityAuditPage: dynamic(() =>
-    import('@/plugin-groups/production/SecurityAuditPage').then((module) => module.SecurityAuditPage)
+    import('@/plugin-groups/production/SecurityAuditPage').then(
+      (module) => module.SecurityAuditPage,
+    ),
   ),
   SettingsPage: dynamic(() => import('@/plugin-groups/settings/SettingsPage')),
   UploadPage: dynamic(() => import('@/plugin-groups/asset-library/UploadPage')),
   VendorDashboardPage: dynamic(() =>
-    import('@/plugin-groups/production/VendorDashboardPage').then((module) => module.VendorDashboardPage)
+    import('@/plugin-groups/production/VendorDashboardPage').then(
+      (module) => module.VendorDashboardPage,
+    ),
   ),
-  VerificationAppPage: dynamic(() => import('@/plugin-groups/identity-verification/VerificationAppPage')),
-  WorkflowPage: dynamic(() => import('@/plugin-groups/production/WorkflowPage').then((module) => module.WorkflowPage)),
+  VerificationAppPage: dynamic(
+    () => import('@/plugin-groups/identity-verification/VerificationAppPage'),
+  ),
+  WikiAppPage: dynamic(() => import('@/plugin-groups/wiki/WikiAppPage')),
+  WorkflowPage: dynamic(() =>
+    import('@/plugin-groups/production/WorkflowPage').then((module) => module.WorkflowPage),
+  ),
 } satisfies Record<PluginPageKey, PluginPageComponent>;
 
 const PLUGIN_ROUTE_PAGE_KEYS: Record<string, PluginPageKey> = {
+  'admin.control': 'AdminControlPage',
   'assets.library': 'AssetsPage',
   'assets.query': 'DataLakeQueryPage',
   'assets.upload': 'UploadPage',
+  'design.requirements': 'DesignRequirementsPage',
   'observability.runtime': 'ObservabilityPage',
+  'people.intelligence': 'PeopleIntelligencePage',
   'production.ai-control': 'AiControlPage',
   'production.approvals': 'ApprovalQueuePage',
   'production.automation': 'AutomationPage',
@@ -153,19 +208,23 @@ const PLUGIN_ROUTE_PAGE_KEYS: Record<string, PluginPageKey> = {
   'production.vendors': 'VendorDashboardPage',
   'production.workflow': 'WorkflowPage',
   'verification.sms': 'VerificationAppPage',
+  'wiki.editor': 'WikiAppPage',
   'workspace.home': 'HomePage',
   'workspace.settings': 'SettingsPage',
 };
 
 function routeMatchesPathname(route: PluginRoute, pathname: string): boolean {
-  return route.exact ? pathname === route.href : pathname === route.href || pathname.startsWith(`${route.href}/`);
+  return route.exact
+    ? pathname === route.href
+    : pathname === route.href || pathname.startsWith(`${route.href}/`);
 }
 
 export function PluginRouteHost({ pathname, expectedRouteId, pageKey }: PluginRouteHostProps) {
   const pluginApp = getDefaultPluginApp();
   const fallbackRoute = expectedRouteId
     ? getPluginRoutes('studio-console').find(
-        (candidate) => candidate.id === expectedRouteId && routeMatchesPathname(candidate, pathname)
+        (candidate) =>
+          candidate.id === expectedRouteId && routeMatchesPathname(candidate, pathname),
       )
     : undefined;
   const route = resolvePluginRoute(pathname, pluginApp.id) ?? fallbackRoute;

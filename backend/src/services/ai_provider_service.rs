@@ -20,14 +20,17 @@ CREATE
   (fn1:Function {name: "AiProviderConfig::from_headers", type: "function", language: "rust", signature: "fn from_headers(headers: &HeaderMap) -> Option<Self>"}),
   (fn2:Function {name: "AiProviderService::new", type: "function", language: "rust", signature: "fn new() -> Self"}),
   (fn3:Function {name: "AiProviderService::chat_json", type: "function", language: "rust", signature: "async fn chat_json<T>(&self, config: &AiProviderConfig, system_prompt: &str, user_prompt: &str) -> Result<T, AppError>"}),
+  (fn15:Function {name: "AiProviderService::chat_json_with_max_tokens", type: "function", language: "rust", signature: "async fn chat_json_with_max_tokens<T>(&self, config: &AiProviderConfig, system_prompt: &str, user_prompt: &str, max_tokens: u16) -> Result<T, AppError>"}),
   (fn11:Function {name: "AiProviderService::chat_multimodal_json", type: "function", language: "rust", signature: "async fn chat_multimodal_json<T>(&self, config: &AiProviderConfig, system_prompt: &str, user_prompt: &str, images: &[AiImageInput]) -> Result<T, AppError>"}),
   (fn7:Function {name: "AiProviderService::chat_text", type: "function", language: "rust", signature: "async fn chat_text(&self, config: &AiProviderConfig, system_prompt: &str, user_prompt: &str) -> Result<String, AppError>"}),
-  (fn8:Function {name: "AiProviderService::chat_completion_content", type: "function", language: "rust", signature: "async fn chat_completion_content(&self, config: &AiProviderConfig, system_prompt: &str, user_prompt: &str, max_tokens: u16) -> Result<String, AppError>"}),
+  (fn8:Function {name: "AiProviderService::chat_completion_content", type: "function", language: "rust", signature: "async fn chat_completion_content(&self, config: &AiProviderConfig, system_prompt: ChatMessageContent<'_>, user_prompt: ChatMessageContent<'_>, max_tokens: u16) -> Result<String, AppError>"}),
+  (fn14:Function {name: "AiProviderService::chat_text_with_max_tokens", type: "function", language: "rust", signature: "async fn chat_text_with_max_tokens(&self, config: &AiProviderConfig, system_prompt: &str, user_prompt: &str, max_tokens: u16) -> Result<String, AppError>"}),
   (fn9:Function {name: "AiProviderService::embed_text", type: "function", language: "rust", signature: "async fn embed_text(&self, config: &AiProviderConfig, input: &str) -> Result<Vec<f32>, AppError>"}),
   (fn12:Function {name: "AiProviderService::embed_text_with_input_type", type: "function", language: "rust", signature: "async fn embed_text_with_input_type(&self, config: &AiProviderConfig, input: &str, input_type: &str) -> Result<Vec<f32>, AppError>"}),
   (fn4:Function {name: "header_value", type: "function", language: "rust", signature: "fn header_value(headers: &HeaderMap, name: &str) -> Option<String>"}),
   (fn5:Function {name: "chat_completions_url", type: "function", language: "rust", signature: "fn chat_completions_url(base_url: &str) -> Result<String, AppError>"}),
   (fn6:Function {name: "extract_json_object", type: "function", language: "rust", signature: "fn extract_json_object(content: &str) -> Option<&str>"}),
+  (fn16:Function {name: "deserialize_json_contract", type: "function", language: "rust", signature: "fn deserialize_json_contract<T>(content: &str) -> Result<T, AppError>"}),
   (fn10:Function {name: "embeddings_url", type: "function", language: "rust", signature: "fn embeddings_url(base_url: &str) -> Result<String, AppError>"}),
   (fn13:Function {name: "should_send_embedding_input_type", type: "function", language: "rust", signature: "fn should_send_embedding_input_type(config: &AiProviderConfig) -> bool"}),
   (v1:Variable {name: "DEFAULT_AI_BASE_URL", type: "variable"}),
@@ -53,14 +56,17 @@ CREATE
   (c1)-[:HAS_METHOD]->(fn1),
   (c2)-[:HAS_METHOD]->(fn2),
   (c2)-[:HAS_METHOD]->(fn3),
+  (c2)-[:HAS_METHOD]->(fn15),
   (c2)-[:HAS_METHOD]->(fn11),
   (c2)-[:HAS_METHOD]->(fn7),
   (c2)-[:HAS_METHOD]->(fn8),
   (c2)-[:HAS_METHOD]->(fn9),
   (c2)-[:HAS_METHOD]->(fn12),
+  (c2)-[:HAS_METHOD]->(fn14),
   (m)-[:CONTAINS]->(fn4),
   (m)-[:CONTAINS]->(fn5),
   (m)-[:CONTAINS]->(fn6),
+  (m)-[:CONTAINS]->(fn16),
   (m)-[:CONTAINS]->(fn10),
   (m)-[:USES]->(v1),
   (m)-[:USES]->(v2),
@@ -72,12 +78,16 @@ CREATE
   (fn1)-[:USES]->(v5),
   (fn2)-[:USES]->(v3),
   (fn3)-[:CALLS]->(fn8),
-  (fn3)-[:CALLS]->(fn6),
+  (fn3)-[:CALLS]->(fn15),
+  (fn15)-[:CALLS]->(fn8),
+  (fn15)-[:CALLS]->(fn16),
   (fn11)-[:CALLS]->(fn8),
-  (fn11)-[:CALLS]->(fn6),
+  (fn11)-[:CALLS]->(fn16),
   (fn7)-[:CALLS]->(fn8),
   (fn8)-[:CALLS]->(fn5),
   (fn8)-[:USES]->(v3),
+  (fn7)-[:CALLS]->(fn14),
+  (fn14)-[:CALLS]->(fn8),
   (fn9)-[:CALLS]->(fn10),
   (fn9)-[:CALLS]->(fn12),
   (fn9)-[:USES]->(v3),
@@ -87,9 +97,15 @@ CREATE
 ```
 */
 
-use std::time::Duration;
+use std::{
+    collections::HashMap,
+    env,
+    sync::{Mutex, OnceLock},
+    time::{Duration, Instant},
+};
 
 use actix_web::http::header::HeaderMap;
+use reqwest::header::{ACCEPT, USER_AGENT};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::errors::AppError;
@@ -97,7 +113,11 @@ use crate::errors::AppError;
 const DEFAULT_AI_BASE_URL: &str = "https://integrate.api.nvidia.com/v1";
 const DEFAULT_AI_MODEL: &str = "meta/llama-3.2-1b-instruct";
 const DEFAULT_AI_EMBEDDING_MODEL: &str = "nvidia/nv-embedqa-e5-v5";
-const AI_PROVIDER_TIMEOUT_SECONDS: u64 = 45;
+const DEFAULT_AI_PROVIDER_TIMEOUT_SECONDS: u64 = 18;
+const DEFAULT_AI_PROVIDER_CHAT_COOLDOWN_SECONDS: u64 = 120;
+const DEFAULT_AI_JSON_MAX_TOKENS: u16 = 700;
+
+static CHAT_CIRCUIT: OnceLock<Mutex<HashMap<String, Instant>>> = OnceLock::new();
 
 #[derive(Clone)]
 pub struct AiProviderConfig {
@@ -116,6 +136,7 @@ pub struct AiImageInput {
 
 pub struct AiProviderService {
     client: reqwest::Client,
+    timeout_seconds: u64,
 }
 
 #[derive(Serialize)]
@@ -213,12 +234,15 @@ impl AiProviderConfig {
 
 impl AiProviderService {
     pub fn new() -> Self {
+        let timeout_seconds = ai_provider_timeout_seconds();
         Self {
             client: reqwest::Client::builder()
+                .http1_only()
                 .connect_timeout(Duration::from_secs(10))
-                .timeout(Duration::from_secs(AI_PROVIDER_TIMEOUT_SECONDS))
+                .timeout(Duration::from_secs(timeout_seconds))
                 .build()
                 .expect("AI provider HTTP client should build"),
+            timeout_seconds,
         }
     }
 
@@ -231,24 +255,34 @@ impl AiProviderService {
     where
         T: DeserializeOwned,
     {
+        self.chat_json_with_max_tokens(
+            config,
+            system_prompt,
+            user_prompt,
+            DEFAULT_AI_JSON_MAX_TOKENS,
+        )
+        .await
+    }
+
+    pub async fn chat_json_with_max_tokens<T>(
+        &self,
+        config: &AiProviderConfig,
+        system_prompt: &str,
+        user_prompt: &str,
+        max_tokens: u16,
+    ) -> Result<T, AppError>
+    where
+        T: DeserializeOwned,
+    {
         let content = self
             .chat_completion_content(
                 config,
                 ChatMessageContent::Text(system_prompt),
                 ChatMessageContent::Text(user_prompt),
-                700,
+                max_tokens.clamp(64, 4096),
             )
             .await?;
-        let json_text = extract_json_object(&content).ok_or_else(|| {
-            AppError::internal("AI provider response did not include a JSON object")
-        })?;
-
-        serde_json::from_str(json_text).map_err(|e| {
-            AppError::internal(format!(
-                "AI provider JSON payload did not match contract: {}",
-                e
-            ))
-        })
+        deserialize_json_contract(&content)
     }
 
     pub async fn chat_multimodal_json<T>(
@@ -286,16 +320,7 @@ impl AiProviderService {
                 900,
             )
             .await?;
-        let json_text = extract_json_object(&content).ok_or_else(|| {
-            AppError::internal("AI provider response did not include a JSON object")
-        })?;
-
-        serde_json::from_str(json_text).map_err(|e| {
-            AppError::internal(format!(
-                "AI provider JSON payload did not match contract: {}",
-                e
-            ))
-        })
+        deserialize_json_contract(&content)
     }
 
     pub async fn chat_text(
@@ -304,15 +329,30 @@ impl AiProviderService {
         system_prompt: &str,
         user_prompt: &str,
     ) -> Result<String, AppError> {
+        self.chat_text_with_max_tokens(config, system_prompt, user_prompt, 420)
+            .await
+    }
+
+    pub async fn chat_text_with_max_tokens(
+        &self,
+        config: &AiProviderConfig,
+        system_prompt: &str,
+        user_prompt: &str,
+        max_tokens: u16,
+    ) -> Result<String, AppError> {
         let content = self
             .chat_completion_content(
                 config,
                 ChatMessageContent::Text(system_prompt),
                 ChatMessageContent::Text(user_prompt),
-                420,
+                max_tokens.clamp(8, 900),
             )
             .await?;
         Ok(content.trim().to_string())
+    }
+
+    pub fn mark_chat_timeout(&self, config: &AiProviderConfig) {
+        open_chat_circuit(config);
     }
 
     async fn chat_completion_content(
@@ -322,6 +362,13 @@ impl AiProviderService {
         user_prompt: ChatMessageContent<'_>,
         max_tokens: u16,
     ) -> Result<String, AppError> {
+        if let Some(retry_after_seconds) = chat_circuit_retry_after_seconds(config) {
+            return Err(AppError::internal(format!(
+                "AI provider chat is temporarily disabled for {} more seconds after a recent timeout",
+                retry_after_seconds
+            )));
+        }
+
         let url = chat_completions_url(&config.base_url)?;
         let request = ChatCompletionRequest {
             model: &config.model,
@@ -343,10 +390,22 @@ impl AiProviderService {
             .client
             .post(url)
             .bearer_auth(&config.api_key)
+            .header(ACCEPT, "application/json")
+            .header(USER_AGENT, "AssetsLake/0.1")
             .json(&request)
             .send()
             .await
-            .map_err(|e| AppError::internal(format!("AI provider request failed: {}", e)))?;
+            .map_err(|e| {
+                if e.is_timeout() {
+                    open_chat_circuit(config);
+                    AppError::internal(format!(
+                        "AI provider request timed out after {} seconds",
+                        self.timeout_seconds
+                    ))
+                } else {
+                    AppError::internal(format!("AI provider request failed: {}", e))
+                }
+            })?;
 
         let status = response.status();
         let body = response
@@ -364,6 +423,7 @@ impl AiProviderService {
         let completion: ChatCompletionResponse = serde_json::from_str(&body).map_err(|e| {
             AppError::internal(format!("AI provider response was not valid JSON: {}", e))
         })?;
+        close_chat_circuit(config);
         completion
             .choices
             .first()
@@ -399,10 +459,21 @@ impl AiProviderService {
             .client
             .post(url)
             .bearer_auth(&config.api_key)
+            .header(ACCEPT, "application/json")
+            .header(USER_AGENT, "AssetsLake/0.1")
             .json(&request)
             .send()
             .await
-            .map_err(|e| AppError::internal(format!("AI embedding request failed: {}", e)))?;
+            .map_err(|e| {
+                if e.is_timeout() {
+                    AppError::internal(format!(
+                        "AI embedding request timed out after {} seconds",
+                        self.timeout_seconds
+                    ))
+                } else {
+                    AppError::internal(format!("AI embedding request failed: {}", e))
+                }
+            })?;
 
         let status = response.status();
         let body = response
@@ -445,6 +516,68 @@ fn header_value(headers: &HeaderMap, name: &str) -> Option<String> {
         .map(ToOwned::to_owned)
 }
 
+fn ai_provider_timeout_seconds() -> u64 {
+    env::var("AI_PROVIDER_TIMEOUT_SECONDS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| (5..=120).contains(value))
+        .unwrap_or(DEFAULT_AI_PROVIDER_TIMEOUT_SECONDS)
+}
+
+fn ai_provider_chat_cooldown_seconds() -> u64 {
+    env::var("AI_PROVIDER_CHAT_COOLDOWN_SECONDS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| (10..=900).contains(value))
+        .unwrap_or(DEFAULT_AI_PROVIDER_CHAT_COOLDOWN_SECONDS)
+}
+
+fn chat_circuit() -> &'static Mutex<HashMap<String, Instant>> {
+    CHAT_CIRCUIT.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn chat_circuit_key(config: &AiProviderConfig) -> String {
+    format!(
+        "{}|{}|{}",
+        config.provider.trim().to_ascii_lowercase(),
+        config
+            .base_url
+            .trim()
+            .trim_end_matches('/')
+            .to_ascii_lowercase(),
+        config.model.trim().to_ascii_lowercase()
+    )
+}
+
+fn chat_circuit_retry_after_seconds(config: &AiProviderConfig) -> Option<u64> {
+    let key = chat_circuit_key(config);
+    let now = Instant::now();
+    let mut circuit = chat_circuit().lock().ok()?;
+    let retry_at = circuit.get(&key).copied()?;
+
+    if retry_at <= now {
+        circuit.remove(&key);
+        return None;
+    }
+
+    Some(retry_at.duration_since(now).as_secs().max(1))
+}
+
+fn open_chat_circuit(config: &AiProviderConfig) {
+    if let Ok(mut circuit) = chat_circuit().lock() {
+        circuit.insert(
+            chat_circuit_key(config),
+            Instant::now() + Duration::from_secs(ai_provider_chat_cooldown_seconds()),
+        );
+    }
+}
+
+fn close_chat_circuit(config: &AiProviderConfig) {
+    if let Ok(mut circuit) = chat_circuit().lock() {
+        circuit.remove(&chat_circuit_key(config));
+    }
+}
+
 fn chat_completions_url(base_url: &str) -> Result<String, AppError> {
     let trimmed = base_url.trim().trim_end_matches('/');
     if !(trimmed.starts_with("https://") || trimmed.starts_with("http://")) {
@@ -484,4 +617,19 @@ fn extract_json_object(content: &str) -> Option<&str> {
     let start = trimmed.find('{')?;
     let end = trimmed.rfind('}')?;
     (end > start).then_some(&trimmed[start..=end])
+}
+
+fn deserialize_json_contract<T>(content: &str) -> Result<T, AppError>
+where
+    T: DeserializeOwned,
+{
+    let json_text = extract_json_object(content)
+        .ok_or_else(|| AppError::internal("AI provider response did not include a JSON object"))?;
+
+    serde_json::from_str(json_text).map_err(|e| {
+        AppError::internal(format!(
+            "AI provider JSON payload did not match contract: {}",
+            e
+        ))
+    })
 }

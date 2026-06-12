@@ -51,7 +51,13 @@ const FILES = {
   authorizationService: join(REPO_ROOT, 'backend', 'src', 'services', 'authorization_service.rs'),
   assetHandler: join(REPO_ROOT, 'backend', 'src', 'handlers', 'asset_handler.rs'),
   securityAuditApi: join(FRONTEND_ROOT, 'src', 'lib', 'securityAuditApi.ts'),
-  securityAuditPage: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'SecurityAuditPage.tsx'),
+  securityAuditPage: join(
+    FRONTEND_ROOT,
+    'src',
+    'plugin-groups',
+    'production',
+    'SecurityAuditPage.tsx',
+  ),
   securityAuditRoute: join(FRONTEND_ROOT, 'src', 'app', 'security-audit', 'page.tsx'),
   pluginTypes: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'types.ts'),
   pluginRegistry: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'registry.ts'),
@@ -72,9 +78,15 @@ test('security audit service writes local audit log and outbox event', () => {
 
   assert.match(servicesMod, /pub mod security_audit_service/);
   assert.match(main, /pub security_audit_service: SecurityAuditService/);
-  assert.match(main, /SecurityAuditService::new\(pool\.clone\(\), event_publisher_service\.clone\(\)\)/);
+  assert.match(
+    main,
+    /SecurityAuditService::new\(pool\.clone\(\), event_publisher_service\.clone\(\)\)/,
+  );
   assert.match(service, /INSERT INTO audit_log/);
-  assert.match(service, /DomainEventInput::new\([\s\S]*"audit\.domain-event\.v1"[\s\S]*"SecurityAuditRecorded"/);
+  assert.match(
+    service,
+    /DomainEventInput::new\([\s\S]*"audit\.domain-event\.v1"[\s\S]*"SecurityAuditRecorded"/,
+  );
   assert.match(service, /SecurityAuditInput::new/);
   assert.match(service, /record_http_request/);
   assert.match(service, /record_service_request/);
@@ -109,7 +121,10 @@ test('asset security actions are audited through the shared service', () => {
 
   assert.match(assetHandler, /record_asset_security_audit/);
   assert.match(assetHandler, /security_audit_service[\s\S]*record_http_request/);
-  assert.match(assetHandler, /SecurityAuditInput::new\(action, "success", "asset", Some\(asset_id\)\)/);
+  assert.match(
+    assetHandler,
+    /SecurityAuditInput::new\(action, "success", "asset", Some\(asset_id\)\)/,
+  );
   assert.match(assetHandler, /audit = audit\.session\(session\)/);
   assert.doesNotMatch(assetHandler, /record_asset_access\(asset_id/);
 });
@@ -130,8 +145,14 @@ test('security audit query API is routed and protected', () => {
   assert.match(routes, /security_audit_handler/);
   assert.match(routes, /configure_security\(cfg\)/);
   assert.match(routes, /security_audit_handler::list_security_audit_events/);
-  assert.match(authorization, /path\.starts_with\("\/api\/security\/audit-events"\)[\s\S]*RoutePermission::EnterpriseAdmin/);
-  assert.match(authorization, /permission_for_route\(&Method::GET, "\/api\/security\/audit-events"\)/);
+  assert.match(
+    authorization,
+    /path\.starts_with\("\/api\/security\/audit-events"\)[\s\S]*RoutePermission::EnterpriseAdmin/,
+  );
+  assert.match(
+    authorization,
+    /permission_for_route\(&Method::GET, "\/api\/security\/audit-events"\)/,
+  );
 });
 
 test('security audit plugin page is registered for enterprise admins', () => {

@@ -31,6 +31,9 @@ CREATE
   (v15:Variable {name: "validateProductArchitecture", type: "variable"}),
   (v16:Variable {name: "IDENTITY_VERIFICATION_PLUGIN_GROUP", type: "variable"}),
   (v17:Variable {name: "OBSERVABILITY_PLUGIN_GROUP", type: "variable"}),
+  (v18:Variable {name: "WIKI_PLUGIN_GROUP", type: "variable"}),
+  (v19:Variable {name: "DESIGN_REQUIREMENTS_PLUGIN_GROUP", type: "variable"}),
+  (v20:Variable {name: "PEOPLE_INTELLIGENCE_PLUGIN_GROUP", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(fn1),
   (m)-[:CONTAINS]->(fn2),
@@ -64,13 +67,18 @@ CREATE
   (fn11)-[:USES]->(v15),
   (m)-[:USES]->(v14),
   (m)-[:USES]->(v16),
-  (m)-[:USES]->(v17);
+  (m)-[:USES]->(v17),
+  (m)-[:USES]->(v18),
+  (m)-[:USES]->(v19),
+  (m)-[:USES]->(v20);
 ```
 */
 
 import {
   Boxes,
+  BookOpen,
   ClipboardCheck,
+  ClipboardList,
   Database,
   FileText,
   KanbanSquare,
@@ -84,6 +92,7 @@ import {
   ShieldCheck,
   Truck,
   Upload,
+  UserRoundSearch,
 } from 'lucide-react';
 
 import {
@@ -177,7 +186,8 @@ const IDENTITY_VERIFICATION_PLUGIN_GROUP = {
     {
       id: 'verification.sms',
       label: 'Verification',
-      description: 'Self-hosted SMS challenge, local outbox, registration, and password reset surface.',
+      description:
+        'Self-hosted SMS challenge, local outbox, registration, and password reset surface.',
       icon: KeyRound,
       nav: true,
       order: 5,
@@ -202,6 +212,116 @@ const IDENTITY_VERIFICATION_PLUGIN_GROUP = {
   ],
 } as const satisfies PluginGroup;
 
+const WIKI_PLUGIN_GROUP = {
+  id: 'collaboration-wiki',
+  label: 'Collaboration Wiki',
+  description: 'Versioned team knowledge with concurrent editing and active presence.',
+  order: 6,
+  apiScopes: ['wiki'],
+  plugins: [
+    {
+      id: 'wiki.editor',
+      label: 'Wiki',
+      description: 'Collaborative Markdown knowledge spaces and pages.',
+      icon: BookOpen,
+      nav: true,
+      order: 6,
+      apiScopes: ['wiki'],
+      manifest: {
+        permissions: ['wiki:read', 'wiki:write'],
+        lifecycle: 'ready',
+        backendScopes: ['wiki'],
+      },
+      routes: [
+        {
+          id: 'wiki.editor',
+          href: '/wiki',
+          label: 'Wiki',
+          description: 'Collaborative team knowledge base.',
+          icon: BookOpen,
+          nav: true,
+          order: 26,
+        },
+      ],
+    },
+  ],
+} as const satisfies PluginGroup;
+
+const DESIGN_REQUIREMENTS_PLUGIN_GROUP = {
+  id: 'design-requirements',
+  label: 'Design Requirements',
+  description: 'Asset-bound design intent, review state, evidence, and AI drafting.',
+  order: 7,
+  apiScopes: ['design-requirements', 'assets', 'ai'],
+  plugins: [
+    {
+      id: 'design.requirements',
+      label: 'Design Requirements',
+      description: 'Create and review requirements linked to governed assets.',
+      icon: ClipboardList,
+      nav: true,
+      order: 7,
+      apiScopes: ['design-requirements', 'assets', 'ai'],
+      manifest: {
+        permissions: [
+          'design-requirement:read',
+          'design-requirement:write',
+          'design-requirement:ai',
+          'asset:read',
+        ],
+        lifecycle: 'ready',
+        backendScopes: ['design-requirements', 'assets', 'ai'],
+      },
+      routes: [
+        {
+          id: 'design.requirements',
+          href: '/design-requirements',
+          label: 'Design Requirements',
+          description: 'Asset-bound design requirements and review.',
+          icon: ClipboardList,
+          nav: true,
+          order: 27,
+        },
+      ],
+    },
+  ],
+} as const satisfies PluginGroup;
+
+const PEOPLE_INTELLIGENCE_PLUGIN_GROUP = {
+  id: 'people-intelligence',
+  label: 'People Intelligence',
+  description: 'Explainable employee profiles, semantic talent search, and evidence-based evaluation.',
+  order: 8,
+  apiScopes: ['people', 'issues', 'assets', 'reviews', 'qdrant', 'ai'],
+  plugins: [
+    {
+      id: 'people.intelligence',
+      label: 'People Intelligence',
+      description: 'Search internal talent and manage explainable professional profiles.',
+      icon: UserRoundSearch,
+      nav: true,
+      order: 8,
+      apiScopes: ['people', 'qdrant', 'ai'],
+      manifest: {
+        permissions: ['people:read', 'people:write', 'people:evaluate', 'people:admin'],
+        lifecycle: 'ready',
+        backendScopes: ['people-intelligence', 'qdrant', 'ai'],
+      },
+      routes: [
+        {
+          id: 'people.intelligence',
+          href: '/people-intelligence',
+          label: 'People',
+          description: 'Employee intelligence and semantic talent search.',
+          icon: UserRoundSearch,
+          nav: true,
+          order: 28,
+        },
+      ],
+    },
+  ],
+} as const satisfies PluginGroup;
+
 const PRODUCTION_MANAGEMENT_PLUGIN_GROUP = {
   id: 'production-management',
   label: 'Production Management',
@@ -216,7 +336,16 @@ const PRODUCTION_MANAGEMENT_PLUGIN_GROUP = {
       icon: ShieldCheck,
       nav: true,
       order: 8,
-      apiScopes: ['issues', 'assets', 'project-management', 'workflow', 'automation', 'enterprise', 'ai', 'data-lake'],
+      apiScopes: [
+        'issues',
+        'assets',
+        'project-management',
+        'workflow',
+        'automation',
+        'enterprise',
+        'ai',
+        'data-lake',
+      ],
       manifest: {
         permissions: [
           'project:read',
@@ -233,10 +362,26 @@ const PRODUCTION_MANAGEMENT_PLUGIN_GROUP = {
           'report:read',
           'delivery:write',
         ],
-        dependencies: ['production.management', 'production.board', 'production.workflow', 'production.automation', 'production.data-lake', 'assets.library'],
+        dependencies: [
+          'production.management',
+          'production.board',
+          'production.workflow',
+          'production.automation',
+          'production.data-lake',
+          'assets.library',
+        ],
         featureFlag: 'ai.control',
         lifecycle: 'guarded',
-        backendScopes: ['issues', 'assets', 'project-management', 'workflow', 'automation', 'enterprise', 'ai', 'data-lake'],
+        backendScopes: [
+          'issues',
+          'assets',
+          'project-management',
+          'workflow',
+          'automation',
+          'enterprise',
+          'ai',
+          'data-lake',
+        ],
       },
       routes: [
         {
@@ -295,7 +440,8 @@ const PRODUCTION_MANAGEMENT_PLUGIN_GROUP = {
     {
       id: 'production.data-lake',
       label: 'Data Lake Sync',
-      description: 'Evidence, assets, issue events, review notes, embeddings, and lakehouse lineage.',
+      description:
+        'Evidence, assets, issue events, review notes, embeddings, and lakehouse lineage.',
       icon: LayoutGrid,
       order: 18,
       apiScopes: ['assets', 'events', 'data-lake', 'vector-index', 'search-index'],
@@ -652,7 +798,13 @@ const PRODUCTION_WORKFLOW_PLUGIN_GROUP = {
       order: 21,
       apiScopes: ['automation', 'langgraph', 'ai', 'audit-log'],
       manifest: {
-        permissions: ['project:read', 'issue:read', 'workflow:read', 'automation:read', 'automation:approve'],
+        permissions: [
+          'project:read',
+          'issue:read',
+          'workflow:read',
+          'automation:read',
+          'automation:approve',
+        ],
         dependencies: ['production.workflow', 'production.data-lake'],
         featureFlag: 'automation.langgraph',
         lifecycle: 'guarded',
@@ -745,7 +897,8 @@ const PRODUCTION_ENTERPRISE_PLUGIN_GROUP = {
     {
       id: 'production.security-audit',
       label: 'Security Audit',
-      description: 'Runtime audit trail for RBAC denials, asset access, signed URLs, and storage security.',
+      description:
+        'Runtime audit trail for RBAC denials, asset access, signed URLs, and storage security.',
       icon: ShieldCheck,
       nav: true,
       order: 23.5,
@@ -761,10 +914,37 @@ const PRODUCTION_ENTERPRISE_PLUGIN_GROUP = {
           id: 'production.security-audit',
           href: '/security-audit',
           label: 'Security Audit',
-          description: 'Audit RBAC denials, asset access, signed URLs, and storage security events.',
+          description:
+            'Audit RBAC denials, asset access, signed URLs, and storage security events.',
           icon: ShieldCheck,
           nav: true,
           order: 23.5,
+        },
+      ],
+    },
+    {
+      id: 'admin.control',
+      label: 'Admin Control',
+      description: 'Backend administration for session policy, users, usage, and security alerts.',
+      icon: Settings,
+      nav: true,
+      order: 23.6,
+      apiScopes: ['admin-control', 'sessions', 'users', 'security'],
+      manifest: {
+        permissions: ['enterprise:admin'],
+        dependencies: ['production.security-audit'],
+        lifecycle: 'ready',
+        backendScopes: ['admin-control', 'sessions', 'users', 'security'],
+      },
+      routes: [
+        {
+          id: 'admin.control',
+          href: '/admin-control',
+          label: 'Admin',
+          description: 'Backend administration control plane.',
+          icon: Settings,
+          nav: true,
+          order: 23.6,
         },
       ],
     },
@@ -822,7 +1002,8 @@ const ASSET_LIBRARY_PLUGIN_GROUP = {
           id: 'assets.query',
           href: '/data-lake-query',
           label: 'Lake Query',
-          description: 'Read-only SQL and Cypher console for data lake records and graph projections.',
+          description:
+            'Read-only SQL and Cypher console for data lake records and graph projections.',
           icon: Database,
           nav: true,
           order: 91,
@@ -896,7 +1077,8 @@ const OBSERVABILITY_PLUGIN_GROUP = {
 const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
   id: 'assetslake-product',
   label: 'AssetsLake',
-  description: 'Composable art asset lake product assembled from plugin apps, plugin groups, and plugins.',
+  description:
+    'Composable art asset lake product assembled from plugin apps, plugin groups, and plugins.',
   apps: [
     {
       id: 'studio-console',
@@ -906,6 +1088,9 @@ const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
       pluginGroups: [
         WORKSPACE_PLUGIN_GROUP,
         IDENTITY_VERIFICATION_PLUGIN_GROUP,
+        WIKI_PLUGIN_GROUP,
+        DESIGN_REQUIREMENTS_PLUGIN_GROUP,
+        PEOPLE_INTELLIGENCE_PLUGIN_GROUP,
         PRODUCTION_MANAGEMENT_PLUGIN_GROUP,
         PRODUCTION_PLANNING_PLUGIN_GROUP,
         PRODUCTION_EXECUTION_PLUGIN_GROUP,
@@ -977,7 +1162,14 @@ const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
           'production.calendar',
           'production.milestones',
         ],
-        allowedPermissions: ['project:read', 'project:write', 'issue:read', 'issue:write', 'settings:read', 'settings:write'],
+        allowedPermissions: [
+          'project:read',
+          'project:write',
+          'issue:read',
+          'issue:write',
+          'settings:read',
+          'settings:write',
+        ],
       },
       pluginGroups: [
         WORKSPACE_PLUGIN_GROUP,
@@ -988,7 +1180,8 @@ const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
     {
       id: 'workflow-console',
       label: 'Workflow Console',
-      description: 'Focused app for workflow, automation, enterprise controls, and data lake triggers.',
+      description:
+        'Focused app for workflow, automation, enterprise controls, and data lake triggers.',
       order: 18,
       policy: {
         enabledPlugins: [
@@ -1077,11 +1270,24 @@ const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
     {
       id: 'asset-console',
       label: 'Asset Console',
-      description: 'Focused app for asset library operations, upload, search, metadata, and storage references.',
+      description:
+        'Focused app for asset library operations, upload, search, metadata, and storage references.',
       order: 20,
       policy: {
-        enabledPlugins: ['workspace.home', 'workspace.settings', 'assets.library', 'assets.query', 'assets.upload'],
-        allowedPermissions: ['project:read', 'asset:read', 'asset:write', 'settings:read', 'settings:write'],
+        enabledPlugins: [
+          'workspace.home',
+          'workspace.settings',
+          'assets.library',
+          'assets.query',
+          'assets.upload',
+        ],
+        allowedPermissions: [
+          'project:read',
+          'asset:read',
+          'asset:write',
+          'settings:read',
+          'settings:write',
+        ],
       },
       pluginGroups: [WORKSPACE_PLUGIN_GROUP, ASSET_LIBRARY_PLUGIN_GROUP],
     },
@@ -1092,14 +1298,124 @@ const ASSETSLAKE_PRODUCT = assertHealthyProductArchitecture({
       order: 25,
       policy: {
         enabledPlugins: ['workspace.home', 'workspace.settings', 'observability.runtime'],
-        allowedPermissions: ['project:read', 'observability:read', 'settings:read', 'settings:write'],
+        allowedPermissions: [
+          'project:read',
+          'observability:read',
+          'settings:read',
+          'settings:write',
+        ],
       },
       pluginGroups: [WORKSPACE_PLUGIN_GROUP, OBSERVABILITY_PLUGIN_GROUP],
     },
     {
+      id: 'admin-console',
+      label: 'Admin Console',
+      description:
+        'Dedicated backend administration app for sessions, users, alerts, audit, and enterprise controls.',
+      order: 27,
+      policy: {
+        enabledPlugins: [
+          'workspace.home',
+          'workspace.settings',
+          'production.data-lake',
+          'production.board',
+          'production.reports',
+          'production.workflow',
+          'production.automation',
+          'production.enterprise',
+          'production.security-audit',
+          'admin.control',
+          'assets.library',
+        ],
+        allowedPermissions: [
+          'project:read',
+          'issue:read',
+          'issue:write',
+          'asset:read',
+          'workflow:read',
+          'workflow:write',
+          'automation:read',
+          'automation:approve',
+          'enterprise:admin',
+          'report:read',
+          'settings:read',
+          'settings:write',
+        ],
+      },
+      pluginGroups: [
+        WORKSPACE_PLUGIN_GROUP,
+        PRODUCTION_MANAGEMENT_PLUGIN_GROUP,
+        PRODUCTION_EXECUTION_PLUGIN_GROUP,
+        PRODUCTION_REPORTING_PLUGIN_GROUP,
+        PRODUCTION_WORKFLOW_PLUGIN_GROUP,
+        PRODUCTION_ENTERPRISE_PLUGIN_GROUP,
+        ASSET_LIBRARY_PLUGIN_GROUP,
+      ],
+    },
+    {
+      id: 'people-intelligence-app',
+      label: 'People Intelligence App',
+      description: 'Standalone internal talent intelligence workspace.',
+      order: 27,
+      policy: {
+        enabledPlugins: ['workspace.home', 'workspace.settings', 'people.intelligence'],
+        allowedPermissions: [
+          'project:read',
+          'settings:read',
+          'settings:write',
+          'people:read',
+          'people:write',
+          'people:evaluate',
+          'people:admin',
+        ],
+      },
+      pluginGroups: [WORKSPACE_PLUGIN_GROUP, PEOPLE_INTELLIGENCE_PLUGIN_GROUP],
+    },
+    {
+      id: 'wiki-app',
+      label: 'Wiki App',
+      description: 'Standalone collaborative knowledge workspace.',
+      order: 28,
+      policy: {
+        enabledPlugins: ['workspace.home', 'workspace.settings', 'wiki.editor'],
+        allowedPermissions: [
+          'project:read',
+          'settings:read',
+          'settings:write',
+          'wiki:read',
+          'wiki:write',
+        ],
+      },
+      pluginGroups: [WORKSPACE_PLUGIN_GROUP, WIKI_PLUGIN_GROUP],
+    },
+    {
+      id: 'design-requirements-app',
+      label: 'Design Requirements App',
+      description: 'Standalone asset-bound design requirement workspace.',
+      order: 29,
+      policy: {
+        enabledPlugins: [
+          'workspace.home',
+          'workspace.settings',
+          'design.requirements',
+        ],
+        allowedPermissions: [
+          'project:read',
+          'asset:read',
+          'settings:read',
+          'settings:write',
+          'design-requirement:read',
+          'design-requirement:write',
+          'design-requirement:ai',
+        ],
+      },
+      pluginGroups: [WORKSPACE_PLUGIN_GROUP, DESIGN_REQUIREMENTS_PLUGIN_GROUP],
+    },
+    {
       id: 'verification-app',
       label: 'Verification App',
-      description: 'Standalone identity verification service for reusable registration and password recovery flows.',
+      description:
+        'Standalone identity verification service for reusable registration and password recovery flows.',
       order: 30,
       policy: {
         enabledPlugins: ['workspace.home', 'workspace.settings', 'verification.sms'],
@@ -1126,6 +1442,10 @@ const PLUGIN_APP_IDS: readonly PluginAppId[] = [
   'reporting-console',
   'asset-console',
   'observability-console',
+  'admin-console',
+  'people-intelligence-app',
+  'wiki-app',
+  'design-requirements-app',
   'verification-app',
 ];
 
@@ -1178,12 +1498,17 @@ export function getNavPluginRoutes(appId?: PluginAppId): PluginRoute[] {
   return app ? navAppPluginRoutes(app) : [];
 }
 
-export function getPluginGroup(id: PluginGroupId, appId?: PluginAppId): ResolvedPluginGroup | undefined {
+export function getPluginGroup(
+  id: PluginGroupId,
+  appId?: PluginAppId,
+): ResolvedPluginGroup | undefined {
   return getPluginGroups(appId).find((group) => group.id === id);
 }
 
 export function resolvePluginRoute(pathname: string, appId?: PluginAppId): PluginRoute | undefined {
   return getPluginRoutes(appId).find((route) =>
-    route.exact ? pathname === route.href : pathname === route.href || pathname.startsWith(`${route.href}/`)
+    route.exact
+      ? pathname === route.href
+      : pathname === route.href || pathname.startsWith(`${route.href}/`),
   );
 }

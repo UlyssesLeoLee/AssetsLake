@@ -101,10 +101,19 @@ test('role matrix separates producer artist reviewer and admin capabilities', ()
   const service = readText(FILES.authorizationService);
 
   assert.match(service, /if role == "admin"[\s\S]*return true/);
-  assert.match(service, /RoutePermission::AssetWrite => matches!\(role\.as_str\(\), "producer" \| "artist"\)/);
-  assert.match(service, /RoutePermission::IssueReview => matches!\(role\.as_str\(\), "producer" \| "reviewer"\)/);
+  assert.match(
+    service,
+    /RoutePermission::AssetWrite => matches!\(role\.as_str\(\), "producer" \| "artist"\)/,
+  );
+  assert.match(
+    service,
+    /RoutePermission::IssueReview => matches!\(role\.as_str\(\), "producer" \| "reviewer"\)/,
+  );
   assert.match(service, /RoutePermission::DeliveryWrite => role == "producer"/);
-  assert.match(service, /RoutePermission::EnterpriseAdmin \| RoutePermission::FallbackAdmin => false/);
+  assert.match(
+    service,
+    /RoutePermission::EnterpriseAdmin \| RoutePermission::FallbackAdmin => false/,
+  );
   assert.match(service, /assert!\(!role_allows\("reviewer", RoutePermission::AssetWrite\)\)/);
   assert.match(service, /assert!\(!role_allows\("producer", RoutePermission::EnterpriseAdmin\)\)/);
 });
@@ -115,12 +124,19 @@ test('frontend filters navigation and direct route access by role', () => {
   const routeHost = readText(FILES.routeHost);
   const appShell = readText(FILES.appShell);
 
-  assert.match(rolePermissions, /PUBLIC_ROUTE_IDS = new Set<string>\(\['workspace\.home', 'verification\.sms'\]\)/);
+  assert.match(
+    rolePermissions,
+    /PUBLIC_ROUTE_IDS = new Set<string>\(\['workspace\.home', 'verification\.sms'\]\)/,
+  );
+  assert.match(rolePermissions, /'admin\.control': \['enterprise:admin'\]/);
   assert.match(rolePermissions, /'production\.enterprise': \['enterprise:admin'\]/);
   assert.match(rolePermissions, /'production\.security-audit': \['enterprise:admin'\]/);
   assert.match(rolePermissions, /'assets\.upload': \['asset:write'\]/);
   assert.match(rolePermissions, /producer:[\s\S]*'observability:read'/);
-  assert.match(rolePermissions, /artist: \['asset:read', 'asset:write', 'issue:read', 'issue:write', 'project:read'\]/);
+  assert.match(
+    rolePermissions,
+    /artist:[\s\S]*?'asset:read'[\s\S]*?'asset:write'[\s\S]*?'issue:read'[\s\S]*?'issue:write'[\s\S]*?'project:read'[\s\S]*?\],/,
+  );
   assert.match(rolePermissions, /roleCanAccessRouteId/);
   assert.match(rolePermissions, /filterPluginRoutesForRole/);
 
@@ -128,6 +144,7 @@ test('frontend filters navigation and direct route access by role', () => {
   assert.match(authGate, /roleCanAccessRouteId\(session\.user\.role, routeId\)/);
   assert.match(authGate, /Access denied/);
   assert.match(appShell, /filterPluginRoutesForRole\(PRIMARY_NAV_ITEMS, role\)/);
+  assert.match(appShell, /visiblePrimaryNavItems\.map/);
   assert.match(appShell, /roleCanAccessRouteId\(role, OBSERVABILITY_NAV_ITEM\.id\)/);
   assert.match(appShell, /roleCanAccessRouteId\(role, SETTINGS_NAV_ITEM\.id\)/);
 });

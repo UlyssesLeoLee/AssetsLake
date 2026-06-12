@@ -115,7 +115,9 @@ export function latestFlowPoint(reports?: ProjectReportsSnapshot): ProjectCumula
   );
 }
 
-export function buildReadinessStatus(readyPercent: number): ReportDashboardModel['readinessStatus'] {
+export function buildReadinessStatus(
+  readyPercent: number,
+): ReportDashboardModel['readinessStatus'] {
   if (readyPercent >= 85) {
     return 'ready';
   }
@@ -157,10 +159,30 @@ export function buildReportsDashboardModel(reports?: ProjectReportsSnapshot): Re
     ],
     burndownPoints,
     flowSegments: [
-      { label: 'Backlog', value: flowPoint.backlog, percent: safePercent(flowPoint.backlog, flowTotal), className: 'bg-amber-400' },
-      { label: 'Active', value: flowPoint.active, percent: safePercent(flowPoint.active, flowTotal), className: 'bg-brand-400' },
-      { label: 'Review', value: flowPoint.review, percent: safePercent(flowPoint.review, flowTotal), className: 'bg-cyan-400' },
-      { label: 'Done', value: flowPoint.done, percent: safePercent(flowPoint.done, flowTotal), className: 'bg-emerald-400' },
+      {
+        label: 'Backlog',
+        value: flowPoint.backlog,
+        percent: safePercent(flowPoint.backlog, flowTotal),
+        className: 'bg-amber-400',
+      },
+      {
+        label: 'Active',
+        value: flowPoint.active,
+        percent: safePercent(flowPoint.active, flowTotal),
+        className: 'bg-brand-400',
+      },
+      {
+        label: 'Review',
+        value: flowPoint.review,
+        percent: safePercent(flowPoint.review, flowTotal),
+        className: 'bg-cyan-400',
+      },
+      {
+        label: 'Done',
+        value: flowPoint.done,
+        percent: safePercent(flowPoint.done, flowTotal),
+        className: 'bg-emerald-400',
+      },
     ],
     velocityAverage: reports?.velocity.average_completed ?? 0,
     velocityPredictability: formatPercent(reports?.velocity.predictability_percent ?? 0),

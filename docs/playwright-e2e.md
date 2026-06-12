@@ -1,5 +1,16 @@
 # Playwright E2E Test System
 
+## Browserbase Cloud Smoke Test
+
+`pnpm run test:browserbase` creates an isolated Browserbase browser session,
+connects through Playwright, visits `BROWSERBASE_TEST_URL`, and releases the
+session after the assertion completes. Set `BROWSERBASE_EXPECTED_TEXT` when the
+test should also require visible page content.
+
+Keep `BROWSERBASE_API_KEY` in the user environment or CI secret store. Never
+commit it to `.env` files. The cloud browser cannot reach a local
+`127.0.0.1` server directly, so use a deployed test URL or an approved tunnel.
+
 ## Scope
 
 The Playwright suite runs real Chromium browser journeys against the Next app.
@@ -28,6 +39,9 @@ route compilation on Windows workstations.
 - `pnpm run test:e2e:branches` records separate traces for the main operation
   branches, including navigation, issue actions, delivery, upload, and AI
   settings.
+- `pnpm run test:uat` runs the acceptance journeys used as the UAT gate:
+  product navigation, operation branches, issue lifecycle, delivery, upload,
+  reports, and AI control.
 - `pnpm run test:e2e:report` opens the saved HTML report.
 - `pnpm run test:full` runs static regression, Playwright E2E, smoke, type
   check, and production build.

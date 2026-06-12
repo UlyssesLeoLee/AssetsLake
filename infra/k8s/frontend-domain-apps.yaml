@@ -305,3 +305,129 @@ spec:
     - name: http
       port: 3000
       targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-wiki-frontend
+  labels:
+    app.kubernetes.io/component: wiki-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-wiki-frontend
+  template:
+    metadata:
+      labels:
+        app: assetslake-wiki-frontend
+        app.kubernetes.io/component: wiki-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: assetslake-frontend-wiki:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: wiki-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-wiki-frontend
+spec:
+  selector:
+    app: assetslake-wiki-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-design-requirements-frontend
+  labels:
+    app.kubernetes.io/component: design-requirements-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-design-requirements-frontend
+  template:
+    metadata:
+      labels:
+        app: assetslake-design-requirements-frontend
+        app.kubernetes.io/component: design-requirements-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: assetslake-frontend-design-requirements:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: design-requirements-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-design-requirements-frontend
+spec:
+  selector:
+    app: assetslake-design-requirements-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-people-intelligence-frontend
+  labels:
+    app.kubernetes.io/component: people-intelligence-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-people-intelligence-frontend
+  template:
+    metadata:
+      labels:
+        app: assetslake-people-intelligence-frontend
+        app.kubernetes.io/component: people-intelligence-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: assetslake-frontend-people-intelligence:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          env:
+            - name: NEXT_PUBLIC_APP_ID
+              value: people-intelligence-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-people-intelligence-frontend
+spec:
+  selector:
+    app: assetslake-people-intelligence-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

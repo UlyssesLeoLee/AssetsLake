@@ -47,9 +47,17 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, Database, RefreshCw, ShieldCheck } from 'lucide-react';
 
-import { securityAuditApi, type SecurityAuditEvent, type SecurityAuditQuery } from '@/lib/securityAuditApi';
+import {
+  securityAuditApi,
+  type SecurityAuditEvent,
+  type SecurityAuditQuery,
+} from '@/lib/securityAuditApi';
 import { cn } from '@/lib/utils';
-import { Metric, PageShell, Panel } from '@/plugin-groups/production/ProjectManagementPluginPrimitives';
+import {
+  Metric,
+  PageShell,
+  Panel,
+} from '@/plugin-groups/production/ProjectManagementPluginPrimitives';
 
 const ACTION_OPTIONS = [
   '',
@@ -74,7 +82,7 @@ export function SecurityAuditPage() {
       outcome: filters.outcome,
       entity_type: filters.entity_type,
     }),
-    [filters.action, filters.entity_type, filters.limit, filters.outcome]
+    [filters.action, filters.entity_type, filters.limit, filters.outcome],
   );
 
   const {
@@ -92,15 +100,35 @@ export function SecurityAuditPage() {
 
   const deniedEvents = events.filter((event) => diffString(event, 'outcome') === 'denied');
   const assetEvents = events.filter((event) => event.entity_type === 'asset');
-  const accessEvents = events.filter((event) => event.action.includes('content') || event.action.includes('download'));
+  const accessEvents = events.filter(
+    (event) => event.action.includes('content') || event.action.includes('download'),
+  );
 
   return (
-    <PageShell title="Security Audit" subtitle="RBAC denials, asset access, signed download, and storage security audit trail">
+    <PageShell
+      title="Security Audit"
+      subtitle="RBAC denials, asset access, signed download, and storage security audit trail"
+    >
       <div className="grid gap-4 md:grid-cols-4">
         <Metric label="Loaded Events" value={events.length} detail="latest audit rows" />
-        <Metric label="Denied" value={deniedEvents.length} detail="auth and RBAC blocks" tone="text-amber-300" />
-        <Metric label="Asset Events" value={assetEvents.length} detail="storage and object access" tone="text-emerald-300" />
-        <Metric label="Content Access" value={accessEvents.length} detail="preview and download reads" tone="text-cyan-300" />
+        <Metric
+          label="Denied"
+          value={deniedEvents.length}
+          detail="auth and RBAC blocks"
+          tone="text-amber-300"
+        />
+        <Metric
+          label="Asset Events"
+          value={assetEvents.length}
+          detail="storage and object access"
+          tone="text-emerald-300"
+        />
+        <Metric
+          label="Content Access"
+          value={accessEvents.length}
+          detail="preview and download reads"
+          tone="text-cyan-300"
+        />
       </div>
 
       <section className="mt-5 rounded-lg border border-surface-border bg-surface-secondary/90 px-4 py-3 shadow-[0_14px_34px_rgba(0,0,0,0.16)]">
@@ -145,7 +173,10 @@ export function SecurityAuditPage() {
               className="h-9 rounded-md border border-surface-border bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-brand-400"
               value={filters.entity_type ?? ''}
               onChange={(event) =>
-                setFilters((current) => ({ ...current, entity_type: event.target.value || undefined }))
+                setFilters((current) => ({
+                  ...current,
+                  entity_type: event.target.value || undefined,
+                }))
               }
             >
               {ENTITY_OPTIONS.map((option) => (
@@ -208,27 +239,35 @@ export function SecurityAuditPage() {
               <tbody className="divide-y divide-surface-border">
                 {events.map((event) => (
                   <tr key={event.id} className="align-top transition hover:bg-slate-900/50">
-                    <td className="px-3 py-3 text-xs text-slate-400">{formatTimestamp(event.created_at)}</td>
+                    <td className="px-3 py-3 text-xs text-slate-400">
+                      {formatTimestamp(event.created_at)}
+                    </td>
                     <td className="px-3 py-3">
                       <span className={cn('badge', eventToneClass(event))}>{event.action}</span>
                     </td>
                     <td className="px-3 py-3 text-slate-300">{diffString(event, 'outcome')}</td>
                     <td className="px-3 py-3">
                       <div className="font-medium text-slate-100">{event.actor ?? 'system'}</div>
-                      <div className="mt-1 text-xs text-slate-500">{diffString(event, 'actor_role')}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {diffString(event, 'actor_role')}
+                      </div>
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2 text-slate-100">
                         <Database className="h-3.5 w-3.5 text-slate-500" />
                         {event.entity_type}
                       </div>
-                      <div className="mt-1 font-mono text-xs text-slate-500">{shortId(event.entity_id)}</div>
+                      <div className="mt-1 font-mono text-xs text-slate-500">
+                        {shortId(event.entity_id)}
+                      </div>
                     </td>
                     <td className="px-3 py-3">
                       <div className="text-xs text-slate-400">
                         {diffString(event, 'method')} {diffString(event, 'path')}
                       </div>
-                      <div className="mt-1 text-xs text-slate-500">{diffString(event, 'client_ip')}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {diffString(event, 'client_ip')}
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-xs text-slate-400">{metadataSummary(event)}</td>
                   </tr>
@@ -238,7 +277,9 @@ export function SecurityAuditPage() {
 
             {isLoading && <div className="p-4 text-sm text-slate-500">Loading audit events</div>}
             {!isLoading && events.length === 0 && (
-              <div className="p-4 text-sm text-slate-500">No audit events match the current filters</div>
+              <div className="p-4 text-sm text-slate-500">
+                No audit events match the current filters
+              </div>
             )}
           </div>
         </Panel>

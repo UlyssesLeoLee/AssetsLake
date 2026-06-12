@@ -68,7 +68,7 @@ export function buildLaneSummaries(calendar?: ProjectCalendarSnapshot): Calendar
 
 export function buildCalendarWorkloadModel(
   calendar: ProjectCalendarSnapshot | undefined,
-  undatedCount: number
+  undatedCount: number,
 ): CalendarWorkloadModel {
   const events = sortEventsByDate(calendar?.events ?? []);
   const riskEvents = events.filter((event) => event.risk !== 'normal');

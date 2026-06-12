@@ -17,12 +17,19 @@ import { clearStoredAuthSession, getStoredAuthToken } from '@/lib/authSession';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 const AI_HEADER_ENDPOINTS = [
+  '/api/management/intelligence',
   '/api/management/chat',
+  '/api/management/ai/test',
+  '/api/management/autopilot-plan',
   '/api/management/rag/search',
   '/api/management/replica-actions',
   '/api/data-lake/query/sql',
   '/api/data-lake/query/cypher',
   '/api/project-management/automation',
+  '/api/admin/control/ai/risk-analysis',
+  '/api/design-requirements/ai/draft',
+  '/api/people/search',
+  '/api/people/admin/reindex',
 ];
 
 export const apiClient = axios.create({
@@ -65,7 +72,7 @@ apiClient.interceptors.response.use(
       error.message ||
       'Unknown error';
     return Promise.reject(new Error(message));
-  }
+  },
 );
 
 // ─── Assets ──────────────────────────────────────────────────────────────────
@@ -79,7 +86,7 @@ export const assetsApi = {
       }
     });
     const { data } = await apiClient.get<PaginatedResponse<AssetSummary>>(
-      `/api/assets?${params.toString()}`
+      `/api/assets?${params.toString()}`,
     );
     return data;
   },
@@ -92,7 +99,7 @@ export const assetsApi = {
       }
     });
     const { data } = await apiClient.get<PaginatedResponse<AssetSummary>>(
-      `/api/assets/search?${params.toString()}`
+      `/api/assets/search?${params.toString()}`,
     );
     return data;
   },
@@ -104,26 +111,22 @@ export const assetsApi = {
 
   versions: async (id: string): Promise<AssetVersionSummary[]> => {
     const { data } = await apiClient.get<ApiResponse<AssetVersionSummary[]>>(
-      `/api/assets/${id}/versions`
+      `/api/assets/${id}/versions`,
     );
     return data.data;
   },
 
-  compareVersions: async (
-    id: string,
-    base: number,
-    head: number
-  ): Promise<AssetVersionDiff> => {
+  compareVersions: async (id: string, base: number, head: number): Promise<AssetVersionDiff> => {
     const params = new URLSearchParams({ base: String(base), head: String(head) });
     const { data } = await apiClient.get<ApiResponse<AssetVersionDiff>>(
-      `/api/assets/${id}/versions/compare?${params.toString()}`
+      `/api/assets/${id}/versions/compare?${params.toString()}`,
     );
     return data.data;
   },
 
   upload: async (
     formData: FormData,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
   ): Promise<UploadResult> => {
     const { data } = await apiClient.post<ApiResponse<UploadResult>>(
       '/api/assets/upload',
@@ -136,7 +139,7 @@ export const assetsApi = {
             onProgress(Math.round((event.loaded / event.total) * 100));
           }
         },
-      }
+      },
     );
     return data.data;
   },
@@ -152,14 +155,14 @@ export const assetsApi = {
 
   insights: async (id: string): Promise<AssetAiInsight[]> => {
     const { data } = await apiClient.get<ApiResponse<AssetAiInsight[]>>(
-      `/api/assets/${id}/insights`
+      `/api/assets/${id}/insights`,
     );
     return data.data;
   },
 
   analyze: async (id: string): Promise<AnalyzeAssetResponse> => {
     const { data } = await apiClient.post<ApiResponse<AnalyzeAssetResponse>>(
-      `/api/assets/${id}/analyze`
+      `/api/assets/${id}/analyze`,
     );
     return data.data;
   },

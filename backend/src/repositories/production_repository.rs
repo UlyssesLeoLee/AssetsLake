@@ -7,6 +7,7 @@ CREATE
   (fn1:Function {name: "ProductionRepository::new", type: "function", language: "rust", signature: "fn new(pool: PgPool) -> Self"}),
   (fn2:Function {name: "ProductionRepository::create_issue", type: "function", language: "rust", signature: "async fn create_issue(&self, req: CreateIssueRequest) -> Result<Issue, AppError>"}),
   (fn3:Function {name: "ProductionRepository::list_issues", type: "function", language: "rust", signature: "async fn list_issues(&self, query: &IssueQuery) -> Result<(Vec<IssueSummary>, i64), AppError>"}),
+  (fn25:Function {name: "ProductionRepository::board_sync_snapshot", type: "function", language: "rust", signature: "async fn board_sync_snapshot(&self, query: &IssueBoardSyncQuery) -> Result<IssueBoardSyncSnapshot, AppError>"}),
   (fn4:Function {name: "ProductionRepository::find_issue", type: "function", language: "rust", signature: "async fn find_issue(&self, id: Uuid) -> Result<Issue, AppError>"}),
   (fn5:Function {name: "ProductionRepository::update_issue", type: "function", language: "rust", signature: "async fn update_issue(&self, id: Uuid, req: UpdateIssueRequest) -> Result<Issue, AppError>"}),
   (fn6:Function {name: "ProductionRepository::transition_issue", type: "function", language: "rust", signature: "async fn transition_issue(&self, id: Uuid, req: TransitionIssueRequest) -> Result<Issue, AppError>"}),
@@ -42,6 +43,7 @@ CREATE
   (c1)-[:HAS_METHOD]->(fn1),
   (c1)-[:HAS_METHOD]->(fn2),
   (c1)-[:HAS_METHOD]->(fn3),
+  (c1)-[:HAS_METHOD]->(fn25),
   (c1)-[:HAS_METHOD]->(fn4),
   (c1)-[:HAS_METHOD]->(fn5),
   (c1)-[:HAS_METHOD]->(fn6),
@@ -101,6 +103,7 @@ CREATE
 
 use std::collections::HashSet;
 
+use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
@@ -112,11 +115,11 @@ use crate::{
         production::{
             AiQaStatus, ApproveIssueRequest, AttachIssueAssetRequest, CreateDeliveryPackageRequest,
             CreateIssueCommentRequest, CreateIssueRequest, CreateIssueWorkLogRequest,
-            CreateReviewRequest, DeliveryPackage, Issue, IssueAssetSummary, IssueComment,
-            IssueQuery, IssueStatus, IssueStatusHistory, IssueSummary, IssueType, IssueWorkLog,
-            Milestone, MilestoneQuery, QaSeverity, RequestRevisionRequest, ReviewRound,
-            ReviewRoundStatus, ReviewScope, SubmitDeliveryPackageRequest, TransitionIssueRequest,
-            UpdateIssueRequest,
+            CreateReviewRequest, DeliveryPackage, Issue, IssueAssetSummary, IssueBoardSyncActivity,
+            IssueBoardSyncQuery, IssueBoardSyncSnapshot, IssueComment, IssueQuery, IssueStatus,
+            IssueStatusHistory, IssueSummary, IssueType, IssueWorkLog, Milestone, MilestoneQuery,
+            QaSeverity, RequestRevisionRequest, ReviewRound, ReviewRoundStatus, ReviewScope,
+            SubmitDeliveryPackageRequest, TransitionIssueRequest, UpdateIssueRequest,
         },
     },
 };
@@ -331,6 +334,93 @@ impl ProductionRepository {
         .await?;
 
         Ok((issues, total))
+    }
+
+    pub async fn board_sync_snapshot(
+        &self,
+        query: &IssueBoardSyncQuery,
+    ) -> Result<IssueBoardSyncSnapshot, AppError> {
+        let cursor = sqlx::query_scalar::<_, DateTime<Utc>>(
+            r#"
+            SELECT COALESCE(MAX(updated_at), NOW())
+            FROM issues
+            WHERE deleted_at IS NULL
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        let changed_count = if let Some(since) = query.since.as_ref() {
+            sqlx::query_scalar::<_, i64>(
+                r#"
+                SELECT COUNT(*)
+                FROM issues
+                WHERE deleted_at IS NULL AND updated_at > $1
+                "#,
+            )
+            .bind(since)
+            .fetch_one(&self.pool)
+            .await?
+        } else {
+            0
+        };
+
+        let recent_activity = if let Some(since) = query.since.as_ref() {
+            sqlx::query_as::<_, IssueBoardSyncActivity>(
+                r#"
+                SELECT
+                    h.id,
+                    h.issue_id,
+                    i.issue_key,
+                    i.title,
+                    h.from_status,
+                    h.to_status,
+                    h.actor,
+                    h.created_at,
+                    i.version AS issue_version,
+                    i.updated_at AS issue_updated_at
+                FROM issue_status_history h
+                JOIN issues i ON i.id = h.issue_id
+                WHERE i.deleted_at IS NULL AND h.created_at > $1
+                ORDER BY h.created_at DESC
+                LIMIT $2
+                "#,
+            )
+            .bind(since)
+            .bind(query.limit())
+            .fetch_all(&self.pool)
+            .await?
+        } else {
+            sqlx::query_as::<_, IssueBoardSyncActivity>(
+                r#"
+                SELECT
+                    h.id,
+                    h.issue_id,
+                    i.issue_key,
+                    i.title,
+                    h.from_status,
+                    h.to_status,
+                    h.actor,
+                    h.created_at,
+                    i.version AS issue_version,
+                    i.updated_at AS issue_updated_at
+                FROM issue_status_history h
+                JOIN issues i ON i.id = h.issue_id
+                WHERE i.deleted_at IS NULL
+                ORDER BY h.created_at DESC
+                LIMIT $1
+                "#,
+            )
+            .bind(query.limit())
+            .fetch_all(&self.pool)
+            .await?
+        };
+
+        Ok(IssueBoardSyncSnapshot {
+            cursor,
+            changed_count,
+            recent_activity,
+        })
     }
 
     pub async fn find_issue(&self, id: Uuid) -> Result<Issue, AppError> {

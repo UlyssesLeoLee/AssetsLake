@@ -24,17 +24,40 @@ CREATE
 import { AlertTriangle, ShieldCheck } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import type { EnterpriseGovernanceModel, EnterpriseGovernanceRisk } from '@/plugin-groups/production/enterpriseGovernanceModel';
+import type {
+  EnterpriseGovernanceModel,
+  EnterpriseGovernanceRisk,
+} from '@/plugin-groups/production/enterpriseGovernanceModel';
 import { Metric, Panel } from '@/plugin-groups/production/ProjectManagementPluginPrimitives';
 
 export function GovernanceReadinessPanel({ model }: { model: EnterpriseGovernanceModel }) {
   return (
     <Panel title="Governance Readiness" icon={<ShieldCheck className="h-4 w-4" />}>
       <div className="grid gap-3 md:grid-cols-4">
-        <Metric label="Score" value={`${model.score}%`} detail="policy readiness" tone="text-emerald-300" />
-        <Metric label="CI" value={`${model.requiredCiPassing}/${model.requiredCiTotal}`} detail="required passing" tone="text-amber-300" />
-        <Metric label="Imports" value={model.importReadyCount} detail="ready jobs" tone="text-cyan-300" />
-        <Metric label="Audit" value={model.auditDrilldownCount} detail="drilldowns" tone="text-brand-300" />
+        <Metric
+          label="Score"
+          value={`${model.score}%`}
+          detail="policy readiness"
+          tone="text-emerald-300"
+        />
+        <Metric
+          label="CI"
+          value={`${model.requiredCiPassing}/${model.requiredCiTotal}`}
+          detail="required passing"
+          tone="text-amber-300"
+        />
+        <Metric
+          label="Imports"
+          value={model.importReadyCount}
+          detail="ready jobs"
+          tone="text-cyan-300"
+        />
+        <Metric
+          label="Audit"
+          value={model.auditDrilldownCount}
+          detail="drilldowns"
+          tone="text-brand-300"
+        />
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         {model.permissionCoverage.slice(0, 12).map((permission) => (
@@ -52,7 +75,10 @@ export function GovernanceRiskPanel({ model }: { model: EnterpriseGovernanceMode
     <Panel title="Governance Risks" icon={<AlertTriangle className="h-4 w-4" />}>
       <div className="space-y-3">
         {model.risks.map((risk) => (
-          <div key={risk.id} className="rounded-md border border-surface-border bg-slate-900/40 p-3">
+          <div
+            key={risk.id}
+            className="rounded-md border border-surface-border bg-slate-900/40 p-3"
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="text-sm font-semibold text-slate-100">{risk.label}</div>
               <span className={cn('badge', severityClass(risk.severity))}>{risk.severity}</span>
@@ -60,7 +86,9 @@ export function GovernanceRiskPanel({ model }: { model: EnterpriseGovernanceMode
             <div className="mt-1 text-xs text-slate-500">{risk.detail}</div>
           </div>
         ))}
-        {model.risks.length === 0 && <div className="p-4 text-sm text-slate-500">No governance risk</div>}
+        {model.risks.length === 0 && (
+          <div className="p-4 text-sm text-slate-500">No governance risk</div>
+        )}
       </div>
     </Panel>
   );

@@ -34,7 +34,10 @@ import { ArrowRight, Clock3, GitBranch, ShieldCheck } from 'lucide-react';
 
 import { useProjectGantt } from '@/hooks/useProjectManagement';
 import { cn } from '@/lib/utils';
-import { buildGanttTimelineModel, formatGanttDateRange } from '@/plugin-groups/production/ganttModel';
+import {
+  buildGanttTimelineModel,
+  formatGanttDateRange,
+} from '@/plugin-groups/production/ganttModel';
 import {
   DEFAULT_PROJECT_ID,
   formatDate,
@@ -57,19 +60,49 @@ export function GanttPage() {
   const { data: gantt } = useProjectGantt(DEFAULT_PROJECT_ID);
   const scheduleItems = gantt?.schedule_items ?? [];
   const dependencyCount = gantt?.dependencies.length ?? plan?.dependencies.length ?? 0;
-  const timeline = buildGanttTimelineModel(scheduleItems, gantt?.dependencies ?? plan?.dependencies ?? []);
+  const timeline = buildGanttTimelineModel(
+    scheduleItems,
+    gantt?.dependencies ?? plan?.dependencies ?? [],
+  );
   const rowByIssueId = new Map(timeline.rows.map((row) => [row.item.id, row]));
   const riskRows = timeline.rows
-    .filter((row) => row.scheduleRisk === 'blocked' || row.scheduleRisk === 'overdue' || row.scheduleRisk === 'unscheduled')
+    .filter(
+      (row) =>
+        row.scheduleRisk === 'blocked' ||
+        row.scheduleRisk === 'overdue' ||
+        row.scheduleRisk === 'unscheduled',
+    )
     .slice(0, 8);
 
   return (
-    <PageShell title="Gantt" subtitle="Schedule, dependencies, baseline drift, and critical path readiness">
+    <PageShell
+      title="Gantt"
+      subtitle="Schedule, dependencies, baseline drift, and critical path readiness"
+    >
       <div className="grid gap-4 md:grid-cols-4">
-        <Metric label="Bars" value={scheduleItems.length || issues.length} detail="planned or active issues" />
-        <Metric label="Dependencies" value={dependencyCount} detail="blocking edges" tone="text-cyan-300" />
-        <Metric label="Critical Path" value={timeline.criticalPath.issueIds.length || '-'} detail={`${timeline.criticalPath.durationDays}d chain`} tone="text-amber-300" />
-        <Metric label="Baseline" value={gantt?.baseline_status ?? 'pending'} detail="capture status" tone="text-amber-300" />
+        <Metric
+          label="Bars"
+          value={scheduleItems.length || issues.length}
+          detail="planned or active issues"
+        />
+        <Metric
+          label="Dependencies"
+          value={dependencyCount}
+          detail="blocking edges"
+          tone="text-cyan-300"
+        />
+        <Metric
+          label="Critical Path"
+          value={timeline.criticalPath.issueIds.length || '-'}
+          detail={`${timeline.criticalPath.durationDays}d chain`}
+          tone="text-amber-300"
+        />
+        <Metric
+          label="Baseline"
+          value={gantt?.baseline_status ?? 'pending'}
+          detail="capture status"
+          tone="text-amber-300"
+        />
       </div>
       <div className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <Panel title="Schedule Timeline" icon={<GitBranch className="h-4 w-4" />}>
@@ -95,14 +128,22 @@ export function GanttPage() {
               </div>
               <div className="divide-y divide-surface-border">
                 {timeline.rows.slice(0, 12).map((row) => (
-                  <Link key={row.item.id} href={`/issues/${row.item.id}`} className="grid grid-cols-[15rem_1fr] gap-3 py-3 transition hover:bg-slate-800/40">
+                  <Link
+                    key={row.item.id}
+                    href={`/issues/${row.item.id}`}
+                    className="grid grid-cols-[15rem_1fr] gap-3 py-3 transition hover:bg-slate-800/40"
+                  >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-xs font-medium text-brand-300">
                         <span>{row.item.issue_key}</span>
                         <span className={cn('h-2 w-2 rounded-full', riskTone[row.scheduleRisk])} />
                       </div>
-                      <div className="mt-1 truncate text-sm font-medium text-slate-100">{row.item.title}</div>
-                      <div className="mt-1 text-xs text-slate-500">{formatGanttDateRange(row.startDate, row.endDate)}</div>
+                      <div className="mt-1 truncate text-sm font-medium text-slate-100">
+                        {row.item.title}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {formatGanttDateRange(row.startDate, row.endDate)}
+                      </div>
                     </div>
                     <div className="relative h-14">
                       <div className="absolute inset-x-0 top-1/2 h-px bg-slate-800" />
@@ -116,7 +157,9 @@ export function GanttPage() {
                       <div
                         className={cn(
                           'absolute top-5 h-4 rounded-sm shadow-sm',
-                          row.isUnscheduled ? 'border border-dashed border-slate-500 bg-slate-800' : riskTone[row.scheduleRisk]
+                          row.isUnscheduled
+                            ? 'border border-dashed border-slate-500 bg-slate-800'
+                            : riskTone[row.scheduleRisk],
                         )}
                         style={{ left: `${row.leftPercent}%`, width: `${row.widthPercent}%` }}
                       />
@@ -130,7 +173,9 @@ export function GanttPage() {
                 ))}
               </div>
               {timeline.rows.length === 0 && (
-                <div className="p-6 text-sm text-slate-500">{loading ? 'Loading schedule' : 'No schedule items'}</div>
+                <div className="p-6 text-sm text-slate-500">
+                  {loading ? 'Loading schedule' : 'No schedule items'}
+                </div>
               )}
             </div>
           </div>
@@ -143,13 +188,20 @@ export function GanttPage() {
                   const row = rowByIssueId.get(issueId);
                   if (!row) return null;
                   return (
-                    <div key={issueId} className="flex items-center gap-3 rounded-md border border-amber-400/20 bg-amber-400/5 p-3">
+                    <div
+                      key={issueId}
+                      className="flex items-center gap-3 rounded-md border border-amber-400/20 bg-amber-400/5 p-3"
+                    >
                       <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-amber-400/20 text-xs font-semibold text-amber-200">
                         {index + 1}
                       </div>
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-slate-100">{row.item.title}</div>
-                        <div className="text-xs text-slate-500">{row.item.issue_key} · {row.durationDays}d · due {formatDate(row.endDate)}</div>
+                        <div className="truncate text-sm font-medium text-slate-100">
+                          {row.item.title}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {row.item.issue_key} · {row.durationDays}d · due {formatDate(row.endDate)}
+                        </div>
                       </div>
                     </div>
                   );
@@ -165,7 +217,10 @@ export function GanttPage() {
                 const source = rowByIssueId.get(edge.fromIssueId)?.item;
                 const target = rowByIssueId.get(edge.toIssueId)?.item;
                 return (
-                  <div key={edge.id} className="rounded-md border border-surface-border bg-slate-900/40 p-3">
+                  <div
+                    key={edge.id}
+                    className="rounded-md border border-surface-border bg-slate-900/40 p-3"
+                  >
                     <div className="flex items-center gap-2 text-xs uppercase text-slate-500">
                       <span>{source?.issue_key ?? edge.fromIssueId}</span>
                       <ArrowRight className="h-3 w-3" />
@@ -180,17 +235,25 @@ export function GanttPage() {
                   </div>
                 );
               })}
-              {timeline.blockingEdges.length === 0 && <div className="p-4 text-sm text-slate-500">No blocking dependencies</div>}
+              {timeline.blockingEdges.length === 0 && (
+                <div className="p-4 text-sm text-slate-500">No blocking dependencies</div>
+              )}
             </div>
           </Panel>
           <Panel title="Risk Queue" icon={<ShieldCheck className="h-4 w-4" />}>
             <div className="divide-y divide-surface-border">
               {riskRows.map((row) => (
-                <Link key={row.item.id} href={`/issues/${row.item.id}`} className="block py-3 transition hover:bg-slate-800/40">
+                <Link
+                  key={row.item.id}
+                  href={`/issues/${row.item.id}`}
+                  className="block py-3 transition hover:bg-slate-800/40"
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs font-medium text-brand-300">{row.item.issue_key}</div>
-                      <div className="mt-1 truncate text-sm font-medium text-slate-100">{row.item.title}</div>
+                      <div className="mt-1 truncate text-sm font-medium text-slate-100">
+                        {row.item.title}
+                      </div>
                     </div>
                     <span className="shrink-0 rounded-sm border border-surface-border px-2 py-1 text-xs capitalize text-slate-300">
                       {row.scheduleRisk}
@@ -198,7 +261,9 @@ export function GanttPage() {
                   </div>
                 </Link>
               ))}
-              {riskRows.length === 0 && <div className="p-4 text-sm text-slate-500">No schedule risks</div>}
+              {riskRows.length === 0 && (
+                <div className="p-4 text-sm text-slate-500">No schedule risks</div>
+              )}
             </div>
           </Panel>
         </div>

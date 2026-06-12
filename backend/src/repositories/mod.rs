@@ -6,8 +6,9 @@ pub mod production_repository;
 pub mod project_management_repository;
 pub mod project_repository;
 
-use sqlx::postgres::PgPoolOptions;
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::PgPool;
+use std::str::FromStr;
 
 pub async fn create_pool(database_url: &str) -> anyhow::Result<PgPool> {
     let max_connections = env::var("DB_MAX_CONNECTIONS")
@@ -22,6 +23,20 @@ pub async fn create_pool(database_url: &str) -> anyhow::Result<PgPool> {
         .unwrap_or_else(|_| "5".to_string())
         .parse()
         .unwrap_or(5);
+    let statement_timeout_ms = env::var("DB_STATEMENT_TIMEOUT_MS")
+        .unwrap_or_else(|_| "2500".to_string())
+        .parse::<u64>()
+        .unwrap_or(2500);
+    let lock_timeout_ms = env::var("DB_LOCK_TIMEOUT_MS")
+        .unwrap_or_else(|_| "2000".to_string())
+        .parse::<u64>()
+        .unwrap_or(2000);
+    let statement_timeout = format!("{statement_timeout_ms}ms");
+    let lock_timeout = format!("{lock_timeout_ms}ms");
+    let connect_options = PgConnectOptions::from_str(database_url)?.options([
+        ("statement_timeout", statement_timeout),
+        ("lock_timeout", lock_timeout),
+    ]);
 
     let pool = PgPoolOptions::new()
         .max_connections(max_connections)
@@ -29,7 +44,7 @@ pub async fn create_pool(database_url: &str) -> anyhow::Result<PgPool> {
         .acquire_timeout(Duration::from_secs(acquire_timeout_seconds))
         .idle_timeout(Duration::from_secs(300))
         .max_lifetime(Duration::from_secs(1800))
-        .connect(database_url)
+        .connect_with(connect_options)
         .await?;
     Ok(pool)
 }

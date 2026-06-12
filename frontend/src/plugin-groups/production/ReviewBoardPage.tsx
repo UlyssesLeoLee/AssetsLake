@@ -26,10 +26,10 @@ import { PageHeader, ReviewLane } from '@/plugin-groups/production/ProductionPlu
 export function ReviewBoardPage() {
   const { data, isLoading } = useIssues({ page_size: 150 });
   const reviewIssues = (data?.data ?? []).filter((issue) =>
-    ['submitted', 'internal_review', 'client_review', 'revision_required'].includes(issue.status)
+    ['submitted', 'internal_review', 'client_review', 'revision_required'].includes(issue.status),
   );
   const internal = reviewIssues.filter((issue) =>
-    ['submitted', 'internal_review', 'revision_required'].includes(issue.status)
+    ['submitted', 'internal_review', 'revision_required'].includes(issue.status),
   );
   const client = reviewIssues.filter((issue) => issue.status === 'client_review');
 

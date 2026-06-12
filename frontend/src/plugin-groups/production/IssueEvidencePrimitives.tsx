@@ -47,10 +47,18 @@ export function IssueEvidenceReadinessPanel({ model }: { model: IssueEvidenceMod
       </div>
       <div className="mt-4 space-y-2">
         {model.checklist.map((item) => (
-          <div key={item.id} className="rounded-md border border-surface-border bg-surface-elevated p-3">
+          <div
+            key={item.id}
+            className="rounded-md border border-surface-border bg-surface-elevated p-3"
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 text-sm font-medium text-slate-100">{item.label}</div>
-              <CheckCircle2 className={cn('h-4 w-4 shrink-0', item.passed ? 'text-emerald-300' : 'text-slate-600')} />
+              <CheckCircle2
+                className={cn(
+                  'h-4 w-4 shrink-0',
+                  item.passed ? 'text-emerald-300' : 'text-slate-600',
+                )}
+              />
             </div>
             <div className="mt-1 text-xs text-slate-500">{item.detail}</div>
           </div>
@@ -66,15 +74,22 @@ export function DataLakeEvidencePanel({ model }: { model: IssueEvidenceModel }) 
       <SectionTitle icon={<Database className="h-4 w-4" />} title="Data Lake Evidence" />
       <div className="mt-3 space-y-2">
         {model.dataLakeLinks.slice(0, 6).map((link) => (
-          <div key={link.id} className="rounded-md border border-surface-border bg-surface-elevated px-3 py-2">
+          <div
+            key={link.id}
+            className="rounded-md border border-surface-border bg-surface-elevated px-3 py-2"
+          >
             <div className="flex items-center justify-between gap-3 text-xs">
               <span className="truncate font-medium text-slate-200">{link.label}</span>
               <span className="text-slate-500">{link.source}</span>
             </div>
-            <div className="mt-1 text-xs text-slate-500">{link.assetType} / {link.status}</div>
+            <div className="mt-1 text-xs text-slate-500">
+              {link.assetType} / {link.status}
+            </div>
           </div>
         ))}
-        {model.dataLakeLinks.length === 0 && <div className="text-sm text-slate-500">No data lake evidence linked</div>}
+        {model.dataLakeLinks.length === 0 && (
+          <div className="text-sm text-slate-500">No data lake evidence linked</div>
+        )}
       </div>
     </section>
   );
@@ -86,15 +101,24 @@ export function LangGraphRecommendationPanel({ model }: { model: IssueEvidenceMo
       <SectionTitle icon={<Network className="h-4 w-4" />} title="LangGraph Recommendations" />
       <div className="mt-3 space-y-2">
         {model.suggestions.map((suggestion) => (
-          <div key={`${suggestion.node}-${suggestion.action}`} className="rounded-md border border-surface-border bg-surface-elevated p-3">
+          <div
+            key={`${suggestion.node}-${suggestion.action}`}
+            className="rounded-md border border-surface-border bg-surface-elevated p-3"
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-xs font-semibold text-brand-300">{suggestion.node}</div>
+                <div className="truncate text-xs font-semibold text-brand-300">
+                  {suggestion.node}
+                </div>
                 <div className="mt-1 text-sm text-slate-100">{suggestion.action}</div>
               </div>
-              <span className="shrink-0 text-xs text-slate-500">{Math.round(suggestion.confidence * 100)}%</span>
+              <span className="shrink-0 text-xs text-slate-500">
+                {Math.round(suggestion.confidence * 100)}%
+              </span>
             </div>
-            {suggestion.approvalRequired && <div className="mt-2 text-xs text-amber-300">human approval required</div>}
+            {suggestion.approvalRequired && (
+              <div className="mt-2 text-xs text-amber-300">human approval required</div>
+            )}
           </div>
         ))}
       </div>

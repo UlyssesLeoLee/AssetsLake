@@ -61,7 +61,13 @@ CREATE
 ```
 */
 
-import type { Plugin, PluginApp, PluginGroup, PluginRoute, ProductArchitecture } from '@/plugin-groups/types';
+import type {
+  Plugin,
+  PluginApp,
+  PluginGroup,
+  PluginRoute,
+  ProductArchitecture,
+} from '@/plugin-groups/types';
 
 export type PluginArchitectureIssueSeverity = 'error' | 'warning';
 
@@ -78,7 +84,9 @@ export interface PluginArchitectureHealth {
   warnings: PluginArchitectureIssue[];
 }
 
-export function validateProductArchitecture(product: ProductArchitecture): PluginArchitectureHealth {
+export function validateProductArchitecture(
+  product: ProductArchitecture,
+): PluginArchitectureHealth {
   const issues: PluginArchitectureIssue[] = [];
 
   if (isBlank(product.id)) {
@@ -99,7 +107,14 @@ export function validateProductArchitecture(product: ProductArchitecture): Plugi
     });
   }
 
-  expectUnique(product.apps, 'product.apps', 'app.id.unique', 'plugin app id', (app) => app.id, issues);
+  expectUnique(
+    product.apps,
+    'product.apps',
+    'app.id.unique',
+    'plugin app id',
+    (app) => app.id,
+    issues,
+  );
   product.apps.forEach((app) => validateApp(app, issues));
 
   const errors = issues.filter((issue) => issue.severity === 'error');
@@ -116,8 +131,12 @@ export function assertHealthyProductArchitecture<T extends ProductArchitecture>(
   return product;
 }
 
-export function formatProductArchitectureIssues(issues: readonly PluginArchitectureIssue[]): string {
-  return issues.map((issue) => `[${issue.severity}] ${issue.path} ${issue.code}: ${issue.message}`).join('\n');
+export function formatProductArchitectureIssues(
+  issues: readonly PluginArchitectureIssue[],
+): string {
+  return issues
+    .map((issue) => `[${issue.severity}] ${issue.path} ${issue.code}: ${issue.message}`)
+    .join('\n');
 }
 
 function validateApp(app: PluginApp, issues: PluginArchitectureIssue[]): void {
@@ -146,11 +165,46 @@ function validateApp(app: PluginApp, issues: PluginArchitectureIssue[]): void {
   const pluginIds = new Set(plugins.map((plugin) => plugin.id));
   const policy = app.policy;
 
-  expectUnique(app.pluginGroups, `${path}.pluginGroups`, 'group.id.unique', 'plugin group id', (group) => group.id, issues);
-  expectUnique(plugins, `${path}.plugins`, 'plugin.id.unique', 'plugin id', (plugin) => plugin.id, issues);
-  expectUnique(routes, `${path}.routes`, 'route.id.unique', 'route id', (route) => route.id, issues);
-  expectUnique(routes, `${path}.routes`, 'route.href.unique', 'route href', (route) => route.href, issues);
-  expectUnique(routes, `${path}.routes`, 'route.order.unique', 'route order', (route) => route.order, issues);
+  expectUnique(
+    app.pluginGroups,
+    `${path}.pluginGroups`,
+    'group.id.unique',
+    'plugin group id',
+    (group) => group.id,
+    issues,
+  );
+  expectUnique(
+    plugins,
+    `${path}.plugins`,
+    'plugin.id.unique',
+    'plugin id',
+    (plugin) => plugin.id,
+    issues,
+  );
+  expectUnique(
+    routes,
+    `${path}.routes`,
+    'route.id.unique',
+    'route id',
+    (route) => route.id,
+    issues,
+  );
+  expectUnique(
+    routes,
+    `${path}.routes`,
+    'route.href.unique',
+    'route href',
+    (route) => route.href,
+    issues,
+  );
+  expectUnique(
+    routes,
+    `${path}.routes`,
+    'route.order.unique',
+    'route order',
+    (route) => route.order,
+    issues,
+  );
 
   for (const plugin of plugins) {
     for (const dependencyId of plugin.manifest?.dependencies ?? []) {
@@ -187,7 +241,9 @@ function validateApp(app: PluginApp, issues: PluginArchitectureIssue[]): void {
     }
   }
 
-  app.pluginGroups.forEach((group) => validateGroup(group, `${path}.pluginGroups.${group.id}`, issues));
+  app.pluginGroups.forEach((group) =>
+    validateGroup(group, `${path}.pluginGroups.${group.id}`, issues),
+  );
 }
 
 function validateGroup(group: PluginGroup, path: string, issues: PluginArchitectureIssue[]): void {
@@ -218,7 +274,14 @@ function validateGroup(group: PluginGroup, path: string, issues: PluginArchitect
     });
   }
 
-  expectUnique(group.plugins, `${path}.plugins`, 'plugin.order.unique-in-group', 'plugin order', (plugin) => plugin.order, issues);
+  expectUnique(
+    group.plugins,
+    `${path}.plugins`,
+    'plugin.order.unique-in-group',
+    'plugin order',
+    (plugin) => plugin.order,
+    issues,
+  );
   group.plugins.forEach((plugin) => validatePlugin(plugin, `${path}.plugins.${plugin.id}`, issues));
 }
 
@@ -288,7 +351,14 @@ function validatePlugin(plugin: Plugin, path: string, issues: PluginArchitecture
     });
   }
 
-  expectUnique(plugin.routes, `${path}.routes`, 'route.order.unique-in-plugin', 'route order', (route) => route.order, issues);
+  expectUnique(
+    plugin.routes,
+    `${path}.routes`,
+    'route.order.unique-in-plugin',
+    'route order',
+    (route) => route.order,
+    issues,
+  );
   plugin.routes.forEach((route) => validateRoute(route, `${path}.routes.${route.id}`, issues));
 }
 
@@ -336,7 +406,7 @@ function expectUnique<T>(
   code: string,
   label: string,
   pick: (item: T) => string | number,
-  issues: PluginArchitectureIssue[]
+  issues: PluginArchitectureIssue[],
 ): void {
   const seen = new Set<string | number>();
   for (const item of items) {

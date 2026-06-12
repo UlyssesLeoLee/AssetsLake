@@ -1,2 +1,10 @@
 import { PluginRouteHost } from '@/plugin-groups/route-host';
-export default function Page({ params }: { params: { id: string } }) { return <PluginRouteHost pathname={`/assets/${params.id}`} expectedRouteId="assets.library" pageKey="AssetDetailPage" />; }
+export default function Page({ params }: { params: { id: string } }) {
+  return (
+    <PluginRouteHost
+      pathname={`/assets/${params.id}`}
+      expectedRouteId="assets.library"
+      pageKey="AssetDetailPage"
+    />
+  );
+}

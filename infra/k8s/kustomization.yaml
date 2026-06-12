@@ -11,6 +11,7 @@ resources:
   - postgres-poolers.yaml
   - postgres-domain-migrations.yaml
   - minio.yaml
+  - qdrant.yaml
   - event-analytics.yaml
   - observability-mesh.yaml
   - skywalking.yaml
@@ -42,3 +43,10 @@ configMapGenerator:
       - migrations/011_resource_lock_token_hash.sql
       - migrations/012_cross_database_collaboration.sql
       - migrations/013_issue_optimistic_version.sql
+      - migrations/014_multi_user_test_accounts.sql
+      - migrations/015_admin_control_settings.sql
+      - migrations/016_admin_governance_ai.sql
+      - migrations/017_local_account_credentials.sql
+      - migrations/018_wiki_design_requirements.sql
+      - migrations/019_people_intelligence.sql
+      - migrations/020_people_event_consumer.sql

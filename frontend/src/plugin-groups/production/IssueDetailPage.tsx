@@ -131,7 +131,8 @@ export function IssueDetailPage() {
   const [editStoryPoints, setEditStoryPoints] = useState('');
   const [editRankKey, setEditRankKey] = useState('000000');
   const [attachAssetId, setAttachAssetId] = useState('');
-  const [attachLinkType, setAttachLinkType] = useState<NonNullable<AttachIssueAssetRequest['link_type']>>('reference');
+  const [attachLinkType, setAttachLinkType] =
+    useState<NonNullable<AttachIssueAssetRequest['link_type']>>('reference');
   const [annotation, setAnnotation] = useState({ x: 0.5, y: 0.5, width: 0.25, height: 0.2 });
 
   const createReview = useMutation({
@@ -252,11 +253,19 @@ export function IssueDetailPage() {
             <div className="mt-3 grid gap-3 lg:grid-cols-2">
               <label className="lg:col-span-2">
                 <span className="label">Title</span>
-                <input className="input" value={editTitle} onChange={(event) => setEditTitle(event.target.value)} />
+                <input
+                  className="input"
+                  value={editTitle}
+                  onChange={(event) => setEditTitle(event.target.value)}
+                />
               </label>
               <label>
                 <span className="label">Status</span>
-                <select className="input" value={editStatus} onChange={(event) => setEditStatus(event.target.value as IssueStatus)}>
+                <select
+                  className="input"
+                  value={editStatus}
+                  onChange={(event) => setEditStatus(event.target.value as IssueStatus)}
+                >
                   {ISSUE_STATUSES.map((status) => (
                     <option key={status} value={status}>
                       {ISSUE_STATUS_LABELS[status]}
@@ -266,7 +275,11 @@ export function IssueDetailPage() {
               </label>
               <label>
                 <span className="label">Priority</span>
-                <select className="input" value={editPriority} onChange={(event) => setEditPriority(event.target.value as IssuePriority)}>
+                <select
+                  className="input"
+                  value={editPriority}
+                  onChange={(event) => setEditPriority(event.target.value as IssuePriority)}
+                >
                   {(['low', 'medium', 'high', 'urgent'] as IssuePriority[]).map((priority) => (
                     <option key={priority} value={priority}>
                       {ISSUE_PRIORITY_LABELS[priority]}
@@ -276,15 +289,31 @@ export function IssueDetailPage() {
               </label>
               <label>
                 <span className="label">Due Date</span>
-                <input className="input" type="date" value={editDueDate} onChange={(event) => setEditDueDate(event.target.value)} />
+                <input
+                  className="input"
+                  type="date"
+                  value={editDueDate}
+                  onChange={(event) => setEditDueDate(event.target.value)}
+                />
               </label>
               <label>
                 <span className="label">Story Points</span>
-                <input className="input" type="number" min={0} step={0.5} value={editStoryPoints} onChange={(event) => setEditStoryPoints(event.target.value)} />
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={editStoryPoints}
+                  onChange={(event) => setEditStoryPoints(event.target.value)}
+                />
               </label>
               <label className="lg:col-span-2">
                 <span className="label">Rank Key</span>
-                <input className="input" value={editRankKey} onChange={(event) => setEditRankKey(event.target.value)} />
+                <input
+                  className="input"
+                  value={editRankKey}
+                  onChange={(event) => setEditRankKey(event.target.value)}
+                />
               </label>
             </div>
           </section>
@@ -320,7 +349,11 @@ export function IssueDetailPage() {
                 <select
                   className="input"
                   value={attachLinkType}
-                  onChange={(event) => setAttachLinkType(event.target.value as NonNullable<AttachIssueAssetRequest['link_type']>)}
+                  onChange={(event) =>
+                    setAttachLinkType(
+                      event.target.value as NonNullable<AttachIssueAssetRequest['link_type']>,
+                    )
+                  }
                 >
                   <option value="reference">Reference</option>
                   <option value="submission">Submission</option>
@@ -340,14 +373,16 @@ export function IssueDetailPage() {
                         actor: 'producer',
                       },
                     },
-                    { onSuccess: () => setAttachAssetId('') }
+                    { onSuccess: () => setAttachAssetId('') },
                   )
                 }
               >
                 <Link2 className="h-4 w-4" />
                 Attach Evidence
               </button>
-              {attachIssueAsset.isSuccess && <div className="text-xs text-emerald-300 md:col-span-3">Evidence linked</div>}
+              {attachIssueAsset.isSuccess && (
+                <div className="text-xs text-emerald-300 md:col-span-3">Evidence linked</div>
+              )}
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {assets.map((asset) => (
@@ -385,7 +420,10 @@ export function IssueDetailPage() {
             <SectionTitle icon={<MessageSquare className="h-4 w-4" />} title="Comments" />
             <div className="mt-3 space-y-3">
               {comments.map((comment) => (
-                <div key={comment.id} className="rounded-lg border border-surface-border bg-surface-elevated p-3">
+                <div
+                  key={comment.id}
+                  className="rounded-lg border border-surface-border bg-surface-elevated p-3"
+                >
                   <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
                     <span>{comment.author_name}</span>
                     <span>{formatDate(comment.created_at)}</span>
@@ -406,8 +444,11 @@ export function IssueDetailPage() {
               disabled={!commentBody.trim() || addComment.isPending}
               onClick={() =>
                 addComment.mutate(
-                  { id: issue.id, req: { author_name: 'Producer', body: commentBody, visibility: 'internal' } },
-                  { onSuccess: () => setCommentBody('') }
+                  {
+                    id: issue.id,
+                    req: { author_name: 'Producer', body: commentBody, visibility: 'internal' },
+                  },
+                  { onSuccess: () => setCommentBody('') },
                 )
               }
             >
@@ -421,11 +462,21 @@ export function IssueDetailPage() {
             <div className="mt-3 grid gap-3 md:grid-cols-[140px_1fr]">
               <label>
                 <span className="label">Minutes</span>
-                <input className="input" type="number" min={1} value={workLogMinutes} onChange={(event) => setWorkLogMinutes(Number(event.target.value))} />
+                <input
+                  className="input"
+                  type="number"
+                  min={1}
+                  value={workLogMinutes}
+                  onChange={(event) => setWorkLogMinutes(Number(event.target.value))}
+                />
               </label>
               <label>
                 <span className="label">Note</span>
-                <input className="input" value={workLogBody} onChange={(event) => setWorkLogBody(event.target.value)} />
+                <input
+                  className="input"
+                  value={workLogBody}
+                  onChange={(event) => setWorkLogBody(event.target.value)}
+                />
               </label>
             </div>
             <button
@@ -435,9 +486,13 @@ export function IssueDetailPage() {
                 createWorkLog.mutate(
                   {
                     id: issue.id,
-                    req: { author_name: 'Artist', time_spent_minutes: workLogMinutes, body: workLogBody || undefined },
+                    req: {
+                      author_name: 'Artist',
+                      time_spent_minutes: workLogMinutes,
+                      body: workLogBody || undefined,
+                    },
                   },
-                  { onSuccess: () => setWorkLogBody('') }
+                  { onSuccess: () => setWorkLogBody('') },
                 )
               }
             >
@@ -446,7 +501,10 @@ export function IssueDetailPage() {
             </button>
             <div className="mt-3 space-y-2">
               {workLogs.map((log) => (
-                <div key={log.id} className="flex items-center justify-between rounded-md border border-surface-border bg-surface-elevated px-3 py-2 text-sm">
+                <div
+                  key={log.id}
+                  className="flex items-center justify-between rounded-md border border-surface-border bg-surface-elevated px-3 py-2 text-sm"
+                >
                   <span className="text-slate-300">{log.author_name}</span>
                   <span className="text-slate-500">{formatMinutes(log.time_spent_minutes)}</span>
                 </div>
@@ -513,10 +571,16 @@ export function IssueDetailPage() {
               ))}
             </div>
             <div className="mt-3 flex gap-2">
-              <button className="btn-secondary flex-1" onClick={() => createReview.mutate('internal')}>
+              <button
+                className="btn-secondary flex-1"
+                onClick={() => createReview.mutate('internal')}
+              >
                 Internal
               </button>
-              <button className="btn-secondary flex-1" onClick={() => createReview.mutate('client')}>
+              <button
+                className="btn-secondary flex-1"
+                onClick={() => createReview.mutate('client')}
+              >
                 Client
               </button>
             </div>
@@ -531,7 +595,12 @@ export function IssueDetailPage() {
                   className="flex items-center justify-between rounded-lg border border-surface-border bg-surface-elevated px-3 py-2"
                 >
                   <span className="text-xs text-slate-300">{rule}</span>
-                  <span className={cn('h-2 w-2 rounded-full', index < 5 ? 'bg-emerald-400' : 'bg-amber-400')} />
+                  <span
+                    className={cn(
+                      'h-2 w-2 rounded-full',
+                      index < 5 ? 'bg-emerald-400' : 'bg-amber-400',
+                    )}
+                  />
                 </div>
               ))}
             </div>

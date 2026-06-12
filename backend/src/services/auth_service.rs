@@ -18,9 +18,13 @@ CREATE
   (fn10:Function {name: "password_hash", type: "function", language: "rust", signature: "fn password_hash(salt: &str, password: &str) -> String"}),
   (fn11:Function {name: "generate_session_token", type: "function", language: "rust", signature: "fn generate_session_token() -> String"}),
   (fn12:Function {name: "row_user", type: "function", language: "rust", signature: "fn row_user(row: &UserCredentialRow) -> UserAccount"}),
+  (fn13:Function {name: "session_touch_interval_seconds", type: "function", language: "rust", signature: "fn session_touch_interval_seconds() -> i64"}),
+  (fn14:Function {name: "should_touch_session", type: "function", language: "rust", signature: "fn should_touch_session(last_seen_at: Option<chrono::DateTime<Utc>>) -> bool"}),
+  (fn15:Function {name: "is_idle_expired", type: "function", language: "rust", signature: "fn is_idle_expired(last_seen_at: Option<chrono::DateTime<Utc>>, idle_timeout_seconds: i64) -> bool"}),
   (v1:Variable {name: "pool", type: "variable"}),
   (v2:Variable {name: "token_hash", type: "variable"}),
   (v3:Variable {name: "headers", type: "variable"}),
+  (v4:Variable {name: "last_seen_at", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(c1),
   (m)-[:CONTAINS]->(c2),
@@ -37,11 +41,15 @@ CREATE
   (m)-[:CONTAINS]->(fn10),
   (m)-[:CONTAINS]->(fn11),
   (m)-[:CONTAINS]->(fn12),
+  (m)-[:CONTAINS]->(fn13),
+  (m)-[:CONTAINS]->(fn14),
+  (m)-[:CONTAINS]->(fn15),
   (fn1)-[:USES]->(v1),
   (fn2)-[:CALLS]->(fn10),
   (fn2)-[:CALLS]->(fn11),
   (fn2)-[:CALLS]->(fn9),
   (fn2)-[:CALLS]->(fn12),
+  (fn2)-[:CALLS]->(fn15),
   (fn3)-[:CALLS]->(fn7),
   (fn3)-[:CALLS]->(fn9),
   (fn3)-[:CALLS]->(fn6),
@@ -49,6 +57,10 @@ CREATE
   (fn4)-[:CALLS]->(fn3),
   (fn6)-[:USES]->(v1),
   (fn6)-[:USES]->(v2),
+  (fn6)-[:CALLS]->(fn14),
+  (fn6)-[:CALLS]->(fn15),
+  (fn14)-[:CALLS]->(fn13),
+  (fn14)-[:USES]->(v4),
   (fn7)-[:CALLS]->(fn8),
   (fn7)-[:USES]->(v3),
   (fn8)-[:USES]->(v3),
@@ -65,9 +77,12 @@ use uuid::Uuid;
 use crate::{
     errors::AppError,
     models::auth::{LoginRequest, LoginResponse, SessionContext, TestAccount, UserAccount},
+    services::admin_control_service::{
+        configured_session_ttl_seconds, DEFAULT_IDLE_TIMEOUT_SECONDS,
+    },
 };
 
-const SESSION_TTL_HOURS: i64 = 12;
+const DEFAULT_SESSION_TOUCH_INTERVAL_SECONDS: i64 = 60;
 
 #[derive(Clone)]
 pub struct AuthService {
@@ -96,6 +111,8 @@ struct SessionRow {
     role: String,
     avatar_url: Option<String>,
     expires_at: chrono::DateTime<Utc>,
+    last_seen_at: Option<chrono::DateTime<Utc>>,
+    idle_timeout_seconds: i64,
 }
 
 impl AuthService {
@@ -113,7 +130,9 @@ impl AuthService {
             r#"
             SELECT id, username, display_name, email, role, avatar_url, password_salt, password_hash
             FROM users
-            WHERE lower(username) = lower($1) AND deleted_at IS NULL
+            WHERE lower(username) = lower($1)
+              AND deleted_at IS NULL
+              AND COALESCE(user_status, 'active') = 'active'
             "#,
         )
         .bind(username)
@@ -136,7 +155,8 @@ impl AuthService {
         let session_id = Uuid::new_v4();
         let token = generate_session_token();
         let token_hash = hash_secret(&token);
-        let expires_at = Utc::now() + Duration::hours(SESSION_TTL_HOURS);
+        let expires_at =
+            Utc::now() + Duration::seconds(configured_session_ttl_seconds(&self.pool).await);
 
         sqlx::query(
             r#"
@@ -190,8 +210,20 @@ impl AuthService {
             r#"
             SELECT username, display_name, role
             FROM users
-            WHERE username IN ('alice.producer', 'bob.artist', 'chen.reviewer', 'dana.manager')
+            WHERE username IN (
+                'alice.producer',
+                'bob.artist',
+                'chen.reviewer',
+                'dana.manager',
+                'eve.producer',
+                'felix.artist',
+                'grace.reviewer',
+                'hao.manager',
+                'iris.artist',
+                'jo.viewer'
+            )
               AND deleted_at IS NULL
+              AND COALESCE(user_status, 'active') = 'active'
             ORDER BY username
             "#,
         )
@@ -215,24 +247,41 @@ pub async fn authenticate_token_hash(
             u.email,
             u.role,
             u.avatar_url,
-            s.expires_at
+            s.expires_at,
+            s.last_seen_at,
+            COALESCE(cfg.idle_timeout_seconds, $2) AS idle_timeout_seconds
         FROM user_sessions s
         JOIN users u ON u.id = s.user_id
+        LEFT JOIN admin_control_settings cfg ON cfg.id = 'default'
         WHERE s.token_hash = $1
           AND s.revoked_at IS NULL
           AND s.expires_at > NOW()
           AND u.deleted_at IS NULL
+          AND COALESCE(u.user_status, 'active') = 'active'
         "#,
     )
     .bind(token_hash)
+    .bind(DEFAULT_IDLE_TIMEOUT_SECONDS)
     .fetch_optional(pool)
     .await?
     .ok_or_else(|| AppError::unauthorized("Session token is invalid or expired"))?;
 
-    sqlx::query("UPDATE user_sessions SET last_seen_at = NOW() WHERE id = $1")
+    if is_idle_expired(row.last_seen_at, row.idle_timeout_seconds) {
+        sqlx::query(
+            "UPDATE user_sessions SET revoked_at = NOW() WHERE id = $1 AND revoked_at IS NULL",
+        )
         .bind(row.session_id)
         .execute(pool)
         .await?;
+        return Err(AppError::unauthorized("Session token is idle-expired"));
+    }
+
+    if should_touch_session(row.last_seen_at) {
+        sqlx::query("UPDATE user_sessions SET last_seen_at = NOW() WHERE id = $1")
+            .bind(row.session_id)
+            .execute(pool)
+            .await?;
+    }
 
     Ok(SessionContext {
         session_id: row.session_id,
@@ -276,6 +325,28 @@ fn generate_session_token() -> String {
         Uuid::new_v4().simple(),
         Uuid::new_v4().simple()
     )
+}
+
+fn session_touch_interval_seconds() -> i64 {
+    std::env::var("SESSION_TOUCH_INTERVAL_SECONDS")
+        .ok()
+        .and_then(|value| value.parse::<i64>().ok())
+        .unwrap_or(DEFAULT_SESSION_TOUCH_INTERVAL_SECONDS)
+        .max(1)
+}
+
+fn should_touch_session(last_seen_at: Option<chrono::DateTime<Utc>>) -> bool {
+    let interval = Duration::seconds(session_touch_interval_seconds());
+    last_seen_at
+        .map(|last_seen_at| Utc::now() - last_seen_at >= interval)
+        .unwrap_or(true)
+}
+
+fn is_idle_expired(last_seen_at: Option<chrono::DateTime<Utc>>, idle_timeout_seconds: i64) -> bool {
+    let timeout = Duration::seconds(idle_timeout_seconds.max(1));
+    last_seen_at
+        .map(|last_seen_at| Utc::now() - last_seen_at >= timeout)
+        .unwrap_or(false)
 }
 
 fn row_user(row: &UserCredentialRow) -> UserAccount {

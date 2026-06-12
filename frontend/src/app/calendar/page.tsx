@@ -1,2 +1,4 @@
 import { PluginRouteHost } from '@/plugin-groups/route-host';
-export default function Page() { return <PluginRouteHost pathname="/calendar" expectedRouteId="production.calendar" />; }
+export default function Page() {
+  return <PluginRouteHost pathname="/calendar" expectedRouteId="production.calendar" />;
+}

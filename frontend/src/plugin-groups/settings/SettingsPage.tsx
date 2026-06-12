@@ -38,7 +38,15 @@ CREATE
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { AlertTriangle, CheckCircle2, FlaskConical, KeyRound, Loader2, RotateCcw, Save } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FlaskConical,
+  KeyRound,
+  Loader2,
+  RotateCcw,
+  Save,
+} from 'lucide-react';
 
 import { productionApi } from '@/lib/productionApi';
 import {
@@ -88,20 +96,17 @@ export default function SettingsPage() {
     saveAiSettings(settings);
 
     try {
-      const result = await productionApi.management.chat({
-        message: 'Confirm the AssetsLake AI API connection in one concise sentence.',
-        context: 'Settings connection test for chat and guarded AI control.',
-      });
+      const result = await productionApi.management.testConnection();
       const status = result.ai_status;
-      if (status?.used) {
+      if (result.ok && status?.used) {
         setTestResult({
           ok: true,
-          message: `${status.provider ?? 'AI provider'} responded with ${result.actions.length} chat control actions.`,
+          message: `${status.provider ?? 'AI provider'} responded in ${result.latency_ms}ms. ${result.message}`,
         });
         queryClient.invalidateQueries({ queryKey: ['management-intelligence'] });
         toast.success('AI API test passed');
       } else {
-        const message = status?.error ?? 'AI API is not configured';
+        const message = result.message ?? status?.error ?? 'AI API is not configured';
         setTestResult({ ok: false, message });
         toast.error(message);
       }
@@ -122,7 +127,9 @@ export default function SettingsPage() {
           Settings
         </div>
         <h1 className="mt-1 truncate text-xl font-bold text-white">AI API</h1>
-        <p className="mt-0.5 text-sm text-slate-400">Provider credentials for LangGraph and management intelligence.</p>
+        <p className="mt-0.5 text-sm text-slate-400">
+          Provider credentials for LangGraph and management intelligence.
+        </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-5">
@@ -130,7 +137,9 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between gap-4 border-b border-surface-border px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold text-slate-100">Connection</h2>
-              <div className="mt-1 text-xs text-slate-500">{settings.provider || 'Custom AI'} / {settings.model || 'No model selected'}</div>
+              <div className="mt-1 text-xs text-slate-500">
+                {settings.provider || 'Custom AI'} / {settings.model || 'No model selected'}
+              </div>
             </div>
             <button
               type="button"
@@ -139,13 +148,15 @@ export default function SettingsPage() {
               onClick={() => updateSetting('enabled', !settings.enabled)}
               className={cn(
                 'relative h-6 w-11 rounded-full border transition-colors',
-                settings.enabled ? 'border-brand-500/60 bg-brand-500/40' : 'border-surface-border bg-surface-elevated'
+                settings.enabled
+                  ? 'border-brand-500/60 bg-brand-500/40'
+                  : 'border-surface-border bg-surface-elevated',
               )}
             >
               <span
                 className={cn(
                   'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
-                  settings.enabled ? 'translate-x-5' : 'translate-x-0.5'
+                  settings.enabled ? 'translate-x-5' : 'translate-x-0.5',
                 )}
               />
             </button>
@@ -207,8 +218,17 @@ export default function SettingsPage() {
 
           {testResult && (
             <div className="mx-4 mb-4 rounded-lg border border-surface-border bg-surface-elevated p-3">
-              <div className={cn('flex items-start gap-2 text-sm', testResult.ok ? 'text-emerald-300' : 'text-amber-300')}>
-                {testResult.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />}
+              <div
+                className={cn(
+                  'flex items-start gap-2 text-sm',
+                  testResult.ok ? 'text-emerald-300' : 'text-amber-300',
+                )}
+              >
+                {testResult.ok ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                ) : (
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                )}
                 <span>{testResult.message}</span>
               </div>
             </div>
@@ -220,7 +240,11 @@ export default function SettingsPage() {
               Reset
             </button>
             <button type="button" className="btn-secondary" onClick={handleTest} disabled={testing}>
-              {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
+              {testing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FlaskConical className="h-4 w-4" />
+              )}
               Test
             </button>
             <button type="button" className="btn-primary" onClick={handleSave}>

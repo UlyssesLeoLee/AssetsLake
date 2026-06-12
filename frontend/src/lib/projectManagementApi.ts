@@ -99,7 +99,7 @@ export const projectManagementApi = {
     plan: async (projectId: string): Promise<ProjectManagementPlan> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<ProjectManagementPlan>>(
-        `/api/project-management/plan?${params}`
+        `/api/project-management/plan?${params}`,
       );
       return data.data;
     },
@@ -107,7 +107,7 @@ export const projectManagementApi = {
     epics: async (projectId: string): Promise<ProjectManagementEpic[]> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<ProjectManagementEpic[]>>(
-        `/api/project-management/epics?${params}`
+        `/api/project-management/epics?${params}`,
       );
       return data.data;
     },
@@ -115,7 +115,7 @@ export const projectManagementApi = {
     createEpic: async (req: CreateEpicRequest): Promise<ProjectManagementEpic> => {
       const { data } = await apiClient.post<ApiResponse<ProjectManagementEpic>>(
         '/api/project-management/epics',
-        req
+        req,
       );
       return data.data;
     },
@@ -123,7 +123,7 @@ export const projectManagementApi = {
     sprints: async (projectId: string): Promise<ProjectManagementSprint[]> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<ProjectManagementSprint[]>>(
-        `/api/project-management/sprints?${params}`
+        `/api/project-management/sprints?${params}`,
       );
       return data.data;
     },
@@ -131,7 +131,7 @@ export const projectManagementApi = {
     createSprint: async (req: CreateSprintRequest): Promise<ProjectManagementSprint> => {
       const { data } = await apiClient.post<ApiResponse<ProjectManagementSprint>>(
         '/api/project-management/sprints',
-        req
+        req,
       );
       return data.data;
     },
@@ -141,7 +141,7 @@ export const projectManagementApi = {
     dependencies: async (projectId: string): Promise<IssueDependency[]> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<IssueDependency[]>>(
-        `/api/project-management/dependencies?${params}`
+        `/api/project-management/dependencies?${params}`,
       );
       return data.data;
     },
@@ -149,7 +149,7 @@ export const projectManagementApi = {
     createDependency: async (req: CreateIssueDependencyRequest): Promise<IssueDependency> => {
       const { data } = await apiClient.post<ApiResponse<IssueDependency>>(
         '/api/project-management/dependencies',
-        req
+        req,
       );
       return data.data;
     },
@@ -157,7 +157,7 @@ export const projectManagementApi = {
     events: async (projectId: string): Promise<IssueEvent[]> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<IssueEvent[]>>(
-        `/api/project-management/events?${params}`
+        `/api/project-management/events?${params}`,
       );
       return data.data;
     },
@@ -167,7 +167,7 @@ export const projectManagementApi = {
     gantt: async (projectId: string): Promise<ProjectGanttSnapshot> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<ProjectGanttSnapshot>>(
-        `/api/project-management/gantt?${params}`
+        `/api/project-management/gantt?${params}`,
       );
       return data.data;
     },
@@ -175,7 +175,7 @@ export const projectManagementApi = {
     calendar: async (projectId: string): Promise<ProjectCalendarSnapshot> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<ProjectCalendarSnapshot>>(
-        `/api/project-management/calendar?${params}`
+        `/api/project-management/calendar?${params}`,
       );
       return data.data;
     },
@@ -183,7 +183,7 @@ export const projectManagementApi = {
     reports: async (projectId: string): Promise<ProjectReportsSnapshot> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<ProjectReportsSnapshot>>(
-        `/api/project-management/reports?${params}`
+        `/api/project-management/reports?${params}`,
       );
       return data.data;
     },
@@ -191,7 +191,7 @@ export const projectManagementApi = {
     workflow: async (projectId: string): Promise<ProjectWorkflowCatalog> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<ProjectWorkflowCatalog>>(
-        `/api/project-management/workflow?${params}`
+        `/api/project-management/workflow?${params}`,
       );
       return data.data;
     },
@@ -199,7 +199,7 @@ export const projectManagementApi = {
     automation: async (projectId: string): Promise<ProjectAutomationCatalog> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<ProjectAutomationCatalog>>(
-        `/api/project-management/automation?${params}`
+        `/api/project-management/automation?${params}`,
       );
       return data.data;
     },
@@ -207,7 +207,7 @@ export const projectManagementApi = {
     enterprise: async (projectId: string): Promise<ProjectEnterpriseControls> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<ProjectEnterpriseControls>>(
-        `/api/project-management/enterprise?${params}`
+        `/api/project-management/enterprise?${params}`,
       );
       return data.data;
     },

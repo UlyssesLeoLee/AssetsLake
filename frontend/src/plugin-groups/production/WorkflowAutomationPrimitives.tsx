@@ -29,7 +29,10 @@ CREATE
 
 import { CheckCircle2, GitBranch, ShieldCheck, Sparkles } from 'lucide-react';
 
-import type { AutomationExecutionPlan, WorkflowDesignerModel } from '@/plugin-groups/production/workflowAutomationModel';
+import type {
+  AutomationExecutionPlan,
+  WorkflowDesignerModel,
+} from '@/plugin-groups/production/workflowAutomationModel';
 import { labelStatus } from '@/plugin-groups/production/workflowAutomationModel';
 import { Panel } from '@/plugin-groups/production/ProjectManagementPluginPrimitives';
 
@@ -44,7 +47,9 @@ export function WorkflowTransitionDesigner({ model }: { model: WorkflowDesignerM
           >
             <div>
               <div className="text-xs uppercase tracking-wide text-slate-500">From</div>
-              <div className="mt-1 text-sm font-semibold text-slate-100">{transition.fromLabel}</div>
+              <div className="mt-1 text-sm font-semibold text-slate-100">
+                {transition.fromLabel}
+              </div>
             </div>
             <div>
               <div className="text-xs uppercase tracking-wide text-slate-500">To</div>
@@ -56,12 +61,18 @@ export function WorkflowTransitionDesigner({ model }: { model: WorkflowDesignerM
             </div>
             <div className="flex items-center gap-2 md:justify-end">
               {transition.evidence_required && (
-                <span className="badge border-cyan-500/30 bg-cyan-500/10 text-cyan-300">Evidence</span>
+                <span className="badge border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
+                  Evidence
+                </span>
               )}
               {transition.approval_required && (
-                <span className="badge border-amber-500/30 bg-amber-500/10 text-amber-300">Approval</span>
+                <span className="badge border-amber-500/30 bg-amber-500/10 text-amber-300">
+                  Approval
+                </span>
               )}
-              <span className="badge border-slate-700 bg-slate-900 text-slate-300">{transition.sla_hours}h</span>
+              <span className="badge border-slate-700 bg-slate-900 text-slate-300">
+                {transition.sla_hours}h
+              </span>
             </div>
           </div>
         ))}
@@ -82,22 +93,31 @@ export function WorkflowPolicyPanel({ model }: { model: WorkflowDesignerModel })
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-md border border-surface-border bg-slate-900/40 p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Coverage</div>
-            <div className="mt-1 text-lg font-semibold text-emerald-300">{model.coveragePercent}%</div>
+            <div className="mt-1 text-lg font-semibold text-emerald-300">
+              {model.coveragePercent}%
+            </div>
           </div>
           <div className="rounded-md border border-surface-border bg-slate-900/40 p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Evidence</div>
-            <div className="mt-1 text-lg font-semibold text-cyan-300">{model.evidenceGateCount}</div>
+            <div className="mt-1 text-lg font-semibold text-cyan-300">
+              {model.evidenceGateCount}
+            </div>
           </div>
           <div className="rounded-md border border-surface-border bg-slate-900/40 p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Approvals</div>
-            <div className="mt-1 text-lg font-semibold text-amber-300">{model.approvalGateCount}</div>
+            <div className="mt-1 text-lg font-semibold text-amber-300">
+              {model.approvalGateCount}
+            </div>
           </div>
         </div>
         <div>
           <div className="text-xs uppercase tracking-wide text-slate-500">Human Review</div>
           <div className="mt-2 flex flex-wrap gap-2">
             {model.humanApprovalStatuses.map((status) => (
-              <span key={status} className="badge border-amber-500/30 bg-amber-500/10 text-amber-300">
+              <span
+                key={status}
+                className="badge border-amber-500/30 bg-amber-500/10 text-amber-300"
+              >
                 {labelStatus(status)}
               </span>
             ))}
@@ -117,13 +137,18 @@ export function AutomationRuleCards({ plan }: { plan: AutomationExecutionPlan })
     <Panel title="Automation Rules" icon={<Sparkles className="h-4 w-4" />}>
       <div className="grid gap-3 md:grid-cols-2">
         {plan.rules.map(({ rule, state, conditionCount, actionCount, readsDataLake }) => (
-          <div key={rule.id} className="rounded-md border border-surface-border bg-slate-900/40 p-4">
+          <div
+            key={rule.id}
+            className="rounded-md border border-surface-border bg-slate-900/40 p-4"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-slate-100">{rule.name}</div>
                 <div className="mt-1 text-xs text-slate-500">{rule.trigger}</div>
               </div>
-              <span className="badge border-brand-500/30 bg-brand-500/10 text-brand-300">{state}</span>
+              <span className="badge border-brand-500/30 bg-brand-500/10 text-brand-300">
+                {state}
+              </span>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
               <div className="rounded-md border border-surface-border bg-slate-950/40 p-2">
@@ -136,13 +161,19 @@ export function AutomationRuleCards({ plan }: { plan: AutomationExecutionPlan })
               </div>
               <div className="rounded-md border border-surface-border bg-slate-950/40 p-2">
                 <div className="text-slate-500">Lake</div>
-                <div className="mt-1 font-semibold text-slate-100">{readsDataLake ? 'yes' : 'no'}</div>
+                <div className="mt-1 font-semibold text-slate-100">
+                  {readsDataLake ? 'yes' : 'no'}
+                </div>
               </div>
             </div>
-            <div className="mt-3 text-xs uppercase tracking-wide text-cyan-300">{rule.langgraph_node}</div>
+            <div className="mt-3 text-xs uppercase tracking-wide text-cyan-300">
+              {rule.langgraph_node}
+            </div>
           </div>
         ))}
-        {plan.rules.length === 0 && <div className="p-4 text-sm text-slate-500">Loading automation catalog</div>}
+        {plan.rules.length === 0 && (
+          <div className="p-4 text-sm text-slate-500">Loading automation catalog</div>
+        )}
       </div>
     </Panel>
   );
@@ -153,7 +184,10 @@ export function AutomationExecutionPlanPanel({ plan }: { plan: AutomationExecuti
     <Panel title="Execution Plan" icon={<CheckCircle2 className="h-4 w-4" />}>
       <div className="space-y-3">
         {plan.runbook.map((step, index) => (
-          <div key={step.id} className="rounded-md border border-surface-border bg-slate-900/40 p-3">
+          <div
+            key={step.id}
+            className="rounded-md border border-surface-border bg-slate-900/40 p-3"
+          >
             <div className="flex items-center gap-3">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-500/15 text-xs font-semibold text-brand-300">
                 {index + 1}
@@ -170,17 +204,24 @@ export function AutomationExecutionPlanPanel({ plan }: { plan: AutomationExecuti
                 </span>
               ))}
               {step.writes.map((item) => (
-                <span key={item} className="badge border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
+                <span
+                  key={item}
+                  className="badge border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                >
                   write:{item}
                 </span>
               ))}
               {step.requires_approval && (
-                <span className="badge border-amber-500/30 bg-amber-500/10 text-amber-300">approval</span>
+                <span className="badge border-amber-500/30 bg-amber-500/10 text-amber-300">
+                  approval
+                </span>
               )}
             </div>
           </div>
         ))}
-        {plan.runbook.length === 0 && <div className="p-4 text-sm text-slate-500">Loading LangGraph runbook</div>}
+        {plan.runbook.length === 0 && (
+          <div className="p-4 text-sm text-slate-500">Loading LangGraph runbook</div>
+        )}
       </div>
     </Panel>
   );

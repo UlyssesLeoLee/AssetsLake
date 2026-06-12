@@ -79,8 +79,14 @@ test('plugin routes are protected by a shared auth gate', () => {
   assert.match(authGate, /authApi\.login/);
   assert.match(authGate, /storeAuthSession\(nextSession\)/);
   assert.match(authGate, /authApi[\s\S]*\.me\(\)/);
-  assert.match(routeHost, /<AuthGate pathname=\{pathname\} routeId=\{route\.id\}>[\s\S]*<PageComponent \/>[\s\S]*<\/AuthGate>/);
-  assert.match(rolePermissions, /PUBLIC_ROUTE_IDS = new Set<string>\(\['verification\.sms'\]\)/);
+  assert.match(
+    routeHost,
+    /<AuthGate pathname=\{pathname\} routeId=\{route\.id\}>[\s\S]*<PageComponent \/>[\s\S]*<\/AuthGate>/,
+  );
+  assert.match(
+    rolePermissions,
+    /PUBLIC_ROUTE_IDS = new Set<string>\(\['workspace\.home', 'verification\.sms'\]\)/,
+  );
   assert.match(rolePermissions, /'workspace\.home': \['project:read'\]/);
   assert.match(packageJson, /test:auth-session/);
 });

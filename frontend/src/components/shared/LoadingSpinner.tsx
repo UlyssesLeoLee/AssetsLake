@@ -12,7 +12,5 @@ const SIZE_MAP = {
 };
 
 export function LoadingSpinner({ size = 'md' }: LoadingSpinnerProps) {
-  return (
-    <Loader2 className={cn(SIZE_MAP[size], 'text-brand-400 animate-spin')} />
-  );
+  return <Loader2 className={cn(SIZE_MAP[size], 'text-brand-400 animate-spin')} />;
 }

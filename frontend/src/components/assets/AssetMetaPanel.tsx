@@ -61,7 +61,9 @@ export function AssetMetaPanel({ asset }: AssetMetaPanelProps) {
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {asset.tags.map((tag) => (
-                  <span key={tag} className="tag">{tag}</span>
+                  <span key={tag} className="tag">
+                    {tag}
+                  </span>
                 ))}
               </div>
             </div>
@@ -109,13 +111,7 @@ export function AssetMetaPanel({ asset }: AssetMetaPanelProps) {
   );
 }
 
-function MetaRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <span className="text-xs text-slate-500 shrink-0">{label}</span>

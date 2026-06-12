@@ -43,7 +43,13 @@ const ts = require('typescript');
 
 const FRONTEND_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = {
-  issueEvidenceModel: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'issueEvidenceModel.ts'),
+  issueEvidenceModel: join(
+    FRONTEND_ROOT,
+    'src',
+    'plugin-groups',
+    'production',
+    'issueEvidenceModel.ts',
+  ),
 };
 
 function readText(filePath) {
@@ -68,7 +74,10 @@ function loadIssueEvidenceModel() {
     },
   };
 
-  vm.runInNewContext(compiled.outputText, sandbox, { filename: FILES.issueEvidenceModel, timeout: 1000 });
+  vm.runInNewContext(compiled.outputText, sandbox, {
+    filename: FILES.issueEvidenceModel,
+    timeout: 1000,
+  });
   return module.exports;
 }
 
@@ -105,8 +114,14 @@ test('issue evidence model derives readiness, data lake links, and LangGraph sug
   assert.equal(evidence.missingEvidenceCount, 1);
   assert.equal(evidence.approvalRequired, true);
   assert.equal(evidence.suggestions[0].node, 'evidence_retriever');
-  assert.equal(evidence.suggestions.some((suggestion) => suggestion.node === 'priority_planner'), true);
-  assert.equal(evidence.suggestions.some((suggestion) => suggestion.node === 'action_proposer'), true);
+  assert.equal(
+    evidence.suggestions.some((suggestion) => suggestion.node === 'priority_planner'),
+    true,
+  );
+  assert.equal(
+    evidence.suggestions.some((suggestion) => suggestion.node === 'action_proposer'),
+    true,
+  );
 
   const blocked = model.buildIssueEvidenceModel({ ...issue, qa_status: 'pending' }, [], [], []);
   assert.equal(blocked.risk, 'blocked');

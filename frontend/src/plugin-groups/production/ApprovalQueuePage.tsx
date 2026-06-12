@@ -20,19 +20,26 @@ CREATE
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 import { useApproveIssue, useIssues, useRequestRevision } from '@/hooks/useProduction';
-import { EmptyPanel, IssueRow, PageHeader } from '@/plugin-groups/production/ProductionPluginPrimitives';
+import {
+  EmptyPanel,
+  IssueRow,
+  PageHeader,
+} from '@/plugin-groups/production/ProductionPluginPrimitives';
 
 export function ApprovalQueuePage() {
   const { data, isLoading } = useIssues({ page_size: 150 });
   const approveIssue = useApproveIssue();
   const requestRevision = useRequestRevision();
   const queue = (data?.data ?? []).filter((issue) =>
-    ['submitted', 'internal_review', 'client_review'].includes(issue.status)
+    ['submitted', 'internal_review', 'client_review'].includes(issue.status),
   );
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <PageHeader title="Art Director Approval Queue" subtitle={`${queue.length} issues pending decision`} />
+      <PageHeader
+        title="Art Director Approval Queue"
+        subtitle={`${queue.length} issues pending decision`}
+      />
       <div className="flex-1 overflow-y-auto p-5">
         <div className="rounded-lg border border-surface-border bg-surface-secondary">
           {queue.map((issue) => (

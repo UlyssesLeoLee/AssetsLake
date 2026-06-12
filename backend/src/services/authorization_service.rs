@@ -18,12 +18,14 @@ CREATE
   (fn12:Function {name: "normalized_role", type: "function", language: "rust", signature: "fn normalized_role(role: &str) -> String"}),
   (fn13:Function {name: "permission_name", type: "function", language: "rust", signature: "fn permission_name(permission: RoutePermission) -> &'static str"}),
   (fn14:Function {name: "is_asset_content_route", type: "function", language: "rust", signature: "fn is_asset_content_route(path: &str) -> bool"}),
+  (fn15:Function {name: "people_permission", type: "function", language: "rust", signature: "fn people_permission(method: &Method, path: &str) -> RoutePermission"}),
   (tm:Module {name: "crate::services::authorization_service::tests", type: "module"}),
   (tfn1:Function {name: "public_routes_do_not_require_sessions", type: "function", language: "rust", signature: "fn public_routes_do_not_require_sessions()"}),
   (tfn2:Function {name: "maps_asset_permissions", type: "function", language: "rust", signature: "fn maps_asset_permissions()"}),
   (tfn3:Function {name: "maps_production_permissions", type: "function", language: "rust", signature: "fn maps_production_permissions()"}),
   (tfn4:Function {name: "maps_planning_reporting_and_ai_permissions", type: "function", language: "rust", signature: "fn maps_planning_reporting_and_ai_permissions()"}),
   (tfn5:Function {name: "role_matrix_blocks_cross_domain_writes", type: "function", language: "rust", signature: "fn role_matrix_blocks_cross_domain_writes()"}),
+  (tfn6:Function {name: "maps_people_intelligence_permissions", type: "function", language: "rust", signature: "fn maps_people_intelligence_permissions()"}),
   (v1:Variable {name: "req", type: "variable"}),
   (v2:Variable {name: "permission", type: "variable"}),
   (v3:Variable {name: "state", type: "variable"}),
@@ -46,12 +48,14 @@ CREATE
   (m)-[:CONTAINS]->(fn12),
   (m)-[:CONTAINS]->(fn13),
   (m)-[:CONTAINS]->(fn14),
+  (m)-[:CONTAINS]->(fn15),
   (m)-[:CONTAINS]->(tm),
   (tm)-[:CONTAINS]->(tfn1),
   (tm)-[:CONTAINS]->(tfn2),
   (tm)-[:CONTAINS]->(tfn3),
   (tm)-[:CONTAINS]->(tfn4),
   (tm)-[:CONTAINS]->(tfn5),
+  (tm)-[:CONTAINS]->(tfn6),
   (fn1)-[:CALLS]->(fn2),
   (fn1)-[:CALLS]->(fn10),
   (fn1)-[:CALLS]->(fn12),
@@ -67,6 +71,7 @@ CREATE
   (fn2)-[:CALLS]->(fn6),
   (fn2)-[:CALLS]->(fn9),
   (fn2)-[:CALLS]->(fn14),
+  (fn2)-[:CALLS]->(fn15),
   (fn3)-[:CALLS]->(fn7),
   (fn3)-[:CALLS]->(fn8),
   (fn4)-[:CALLS]->(fn7),
@@ -85,7 +90,9 @@ CREATE
   (tfn2)-[:CALLS]->(fn2),
   (tfn3)-[:CALLS]->(fn2),
   (tfn4)-[:CALLS]->(fn2),
-  (tfn5)-[:CALLS]->(fn10);
+  (tfn5)-[:CALLS]->(fn10),
+  (tfn6)-[:CALLS]->(fn2),
+  (tfn6)-[:CALLS]->(fn10);
 ```
 */
 
@@ -121,6 +128,15 @@ enum RoutePermission {
     DataLakeQuery,
     AiControlRead,
     AiControlWrite,
+    WikiRead,
+    WikiWrite,
+    DesignRequirementRead,
+    DesignRequirementWrite,
+    DesignRequirementAi,
+    PeopleRead,
+    PeopleWrite,
+    PeopleEvaluate,
+    PeopleAdmin,
     EnterpriseAdmin,
     FallbackAdmin,
 }
@@ -234,8 +250,35 @@ fn permission_for_route(method: &Method, path: &str) -> Option<RoutePermission> 
         return Some(RoutePermission::EnterpriseAdmin);
     }
 
+    if path.starts_with("/api/admin/") {
+        return Some(RoutePermission::EnterpriseAdmin);
+    }
+
     if path.starts_with("/api/management/") {
         return Some(management_permission(method, path));
+    }
+
+    if path.starts_with("/api/wiki/") {
+        return Some(if is_read_method(method) {
+            RoutePermission::WikiRead
+        } else {
+            RoutePermission::WikiWrite
+        });
+    }
+
+    if path == "/api/design-requirements" || path.starts_with("/api/design-requirements/") {
+        if path == "/api/design-requirements/ai/draft" {
+            return Some(RoutePermission::DesignRequirementAi);
+        }
+        return Some(if is_read_method(method) {
+            RoutePermission::DesignRequirementRead
+        } else {
+            RoutePermission::DesignRequirementWrite
+        });
+    }
+
+    if path == "/api/people" || path.starts_with("/api/people/") {
+        return Some(people_permission(method, path));
     }
 
     Some(RoutePermission::FallbackAdmin)
@@ -302,10 +345,27 @@ fn project_management_permission(method: &Method, path: &str) -> RoutePermission
 }
 
 fn management_permission(method: &Method, path: &str) -> RoutePermission {
-    if is_read_method(method) || path.ends_with("/chat") || path.ends_with("/rag/search") {
+    if is_read_method(method)
+        || path.ends_with("/chat")
+        || path.ends_with("/autopilot-plan")
+        || path.ends_with("/rag/search")
+    {
         return RoutePermission::AiControlRead;
     }
     RoutePermission::AiControlWrite
+}
+
+fn people_permission(method: &Method, path: &str) -> RoutePermission {
+    if path.starts_with("/api/people/admin/") {
+        return RoutePermission::PeopleAdmin;
+    }
+    if path.ends_with("/verify") || path.ends_with("/evaluation") {
+        return RoutePermission::PeopleEvaluate;
+    }
+    if is_read_method(method) || path == "/api/people/search" || path == "/api/people/personalize" {
+        return RoutePermission::PeopleRead;
+    }
+    RoutePermission::PeopleWrite
 }
 
 fn is_read_method(method: &Method) -> bool {
@@ -385,6 +445,37 @@ fn role_allows(role: &str, permission: RoutePermission) -> bool {
         }
         RoutePermission::AiControlRead => matches!(role.as_str(), "producer" | "reviewer"),
         RoutePermission::AiControlWrite => role == "producer",
+        RoutePermission::WikiRead => is_known_authenticated_role(&role),
+        RoutePermission::WikiWrite => {
+            matches!(
+                role.as_str(),
+                "producer" | "artist" | "reviewer" | "manager"
+            )
+        }
+        RoutePermission::DesignRequirementRead => is_known_authenticated_role(&role),
+        RoutePermission::DesignRequirementWrite => {
+            matches!(role.as_str(), "producer" | "artist" | "reviewer")
+        }
+        RoutePermission::DesignRequirementAi => matches!(role.as_str(), "producer" | "artist"),
+        RoutePermission::PeopleRead => {
+            matches!(
+                role.as_str(),
+                "producer" | "artist" | "reviewer" | "manager"
+            )
+        }
+        RoutePermission::PeopleWrite => {
+            matches!(
+                role.as_str(),
+                "producer" | "artist" | "reviewer" | "manager"
+            )
+        }
+        RoutePermission::PeopleEvaluate => {
+            matches!(
+                role.as_str(),
+                "producer" | "artist" | "reviewer" | "manager"
+            )
+        }
+        RoutePermission::PeopleAdmin => false,
         RoutePermission::EnterpriseAdmin | RoutePermission::FallbackAdmin => false,
     }
 }
@@ -421,6 +512,15 @@ fn permission_name(permission: RoutePermission) -> &'static str {
         RoutePermission::DataLakeQuery => "data lake query",
         RoutePermission::AiControlRead => "AI control read",
         RoutePermission::AiControlWrite => "AI control write",
+        RoutePermission::WikiRead => "wiki read",
+        RoutePermission::WikiWrite => "wiki write",
+        RoutePermission::DesignRequirementRead => "design requirement read",
+        RoutePermission::DesignRequirementWrite => "design requirement write",
+        RoutePermission::DesignRequirementAi => "design requirement AI draft",
+        RoutePermission::PeopleRead => "people intelligence read",
+        RoutePermission::PeopleWrite => "people intelligence write",
+        RoutePermission::PeopleEvaluate => "people intelligence evaluation",
+        RoutePermission::PeopleAdmin => "people intelligence admin",
         RoutePermission::EnterpriseAdmin => "enterprise admin",
         RoutePermission::FallbackAdmin => "admin access",
     }
@@ -520,6 +620,14 @@ mod tests {
             Some(RoutePermission::EnterpriseAdmin)
         );
         assert_eq!(
+            permission_for_route(&Method::GET, "/api/admin/control"),
+            Some(RoutePermission::EnterpriseAdmin)
+        );
+        assert_eq!(
+            permission_for_route(&Method::PATCH, "/api/admin/control/settings"),
+            Some(RoutePermission::EnterpriseAdmin)
+        );
+        assert_eq!(
             permission_for_route(&Method::POST, "/api/data-lake/query/sql"),
             Some(RoutePermission::DataLakeQuery)
         );
@@ -531,6 +639,22 @@ mod tests {
             permission_for_route(&Method::POST, "/api/management/replica-actions"),
             Some(RoutePermission::AiControlWrite)
         );
+        assert_eq!(
+            permission_for_route(&Method::GET, "/api/wiki/spaces"),
+            Some(RoutePermission::WikiRead)
+        );
+        assert_eq!(
+            permission_for_route(&Method::POST, "/api/wiki/pages/page-id/updates"),
+            Some(RoutePermission::WikiWrite)
+        );
+        assert_eq!(
+            permission_for_route(&Method::GET, "/api/design-requirements"),
+            Some(RoutePermission::DesignRequirementRead)
+        );
+        assert_eq!(
+            permission_for_route(&Method::POST, "/api/design-requirements/ai/draft"),
+            Some(RoutePermission::DesignRequirementAi)
+        );
     }
 
     #[test]
@@ -540,14 +664,50 @@ mod tests {
         assert!(role_allows("artist", RoutePermission::AssetWrite));
         assert!(role_allows("reviewer", RoutePermission::IssueReview));
         assert!(role_allows("reviewer", RoutePermission::DataLakeQuery));
+        assert!(role_allows("manager", RoutePermission::WikiWrite));
+        assert!(role_allows("artist", RoutePermission::DesignRequirementAi));
 
         assert!(!role_allows("artist", RoutePermission::IssueReview));
         assert!(!role_allows("reviewer", RoutePermission::AssetWrite));
         assert!(!role_allows("artist", RoutePermission::DeliveryWrite));
         assert!(!role_allows("producer", RoutePermission::EnterpriseAdmin));
+        assert!(!role_allows("viewer", RoutePermission::WikiWrite));
+        assert!(!role_allows(
+            "reviewer",
+            RoutePermission::DesignRequirementAi
+        ));
         assert!(!role_allows(
             "unknown",
             RoutePermission::AuthenticatedSession
         ));
+    }
+
+    #[test]
+    fn maps_people_intelligence_permissions() {
+        assert_eq!(
+            permission_for_route(&Method::POST, "/api/people/search"),
+            Some(RoutePermission::PeopleRead)
+        );
+        assert_eq!(
+            permission_for_route(&Method::PATCH, "/api/people/me"),
+            Some(RoutePermission::PeopleWrite)
+        );
+        assert_eq!(
+            permission_for_route(&Method::GET, "/api/people/user-id/evaluation"),
+            Some(RoutePermission::PeopleEvaluate)
+        );
+        assert_eq!(
+            permission_for_route(&Method::POST, "/api/people/admin/reindex"),
+            Some(RoutePermission::PeopleAdmin)
+        );
+        assert_eq!(
+            permission_for_route(
+                &Method::POST,
+                "/api/people/admin/capabilities/capability-id/approve"
+            ),
+            Some(RoutePermission::PeopleAdmin)
+        );
+        assert!(role_allows("artist", RoutePermission::PeopleEvaluate));
+        assert!(!role_allows("client", RoutePermission::PeopleRead));
     }
 }

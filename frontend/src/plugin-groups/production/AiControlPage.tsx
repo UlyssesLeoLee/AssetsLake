@@ -40,6 +40,9 @@ CREATE
   (fn29:Function {name: "updateAutopilotCommandStatus", type: "function", language: "typescript", signature: "function updateAutopilotCommandStatus(commandId: string, status: AutopilotCommand['status'])"}),
   (fn30:Function {name: "handleExecuteAutopilotCommand", type: "function", language: "typescript", signature: "async function handleExecuteAutopilotCommand(command: AutopilotCommand)"}),
   (fn31:Function {name: "handleRunApprovedAutopilot", type: "function", language: "typescript", signature: "async function handleRunApprovedAutopilot()"}),
+  (fn32:Function {name: "DecisionReviewPanel", type: "function", language: "typescript", signature: "function DecisionReviewPanel(props: { review: AutopilotPlan['decisionReview'] })"}),
+  (fn33:Function {name: "LangGraphChain", type: "function", language: "typescript", signature: "function LangGraphChain(props: { nodes: AutopilotPlan['langgraphNodes'] })"}),
+  (fn34:Function {name: "toDecisionReview", type: "function", language: "typescript", signature: "function toDecisionReview(response: AiAutopilotPlanResponse, fallback: AutopilotPlan): AutopilotPlan['decisionReview']"}),
   (v1:Variable {name: "DEFAULT_PROJECT_ID", type: "variable"}),
   (v2:Variable {name: "AI_CONTROL_APPS", type: "variable"}),
   (v3:Variable {name: "settings", type: "variable"}),
@@ -80,6 +83,9 @@ CREATE
   (m)-[:CONTAINS]->(fn21),
   (m)-[:CONTAINS]->(fn23),
   (m)-[:CONTAINS]->(fn26),
+  (m)-[:CONTAINS]->(fn32),
+  (m)-[:CONTAINS]->(fn33),
+  (m)-[:CONTAINS]->(fn34),
   (fn1)-[:CONTAINS]->(fn27),
   (fn1)-[:CONTAINS]->(fn28),
   (fn1)-[:CONTAINS]->(fn29),
@@ -111,6 +117,8 @@ CREATE
   (fn6)-[:CALLS]->(fn8),
   (fn7)-[:CALLS]->(fn9),
   (fn26)-[:CALLS]->(fn9),
+  (fn26)-[:CALLS]->(fn32),
+  (fn26)-[:CALLS]->(fn33),
   (fn20)-[:CALLS]->(fn8),
   (fn20)-[:CALLS]->(fn9),
   (fn10)-[:CALLS]->(fn11),
@@ -136,6 +144,7 @@ CREATE
   (fn31)-[:CALLS]->(fn30),
   (fn31)-[:USES]->(v6),
   (fn31)-[:USES]->(v7),
+  (fn34)-[:USES]->(v6),
   (fn14)-[:CALLS]->(fn17);
 ```
 */
@@ -193,15 +202,36 @@ import {
   type AutopilotPlan,
 } from '@/plugin-groups/production/aiAutopilotModel';
 import type { AssetSummary, AssetType } from '@/types/asset';
-import type { IssueSummary } from '@/types/production';
+import type { AiAutopilotPlanResponse, IssueSummary } from '@/types/production';
 
 const DEFAULT_PROJECT_ID = '00000000-0000-0000-0000-000000000001';
 
 const AI_CONTROL_APPS: AiControlAppSurface[] = [
-  { name: 'Jira Flow', reads: ['issues', 'reviews', 'work logs'], writes: ['replica issue proposals', 'replica comments', 'replica transitions', 'replica evidence links'] },
-  { name: 'Data Lake', reads: ['assets', 'code category', 'tags'], writes: ['replica asset tags', 'replica review notes', 'replica AI index state'] },
-  { name: 'Version Graph', reads: ['asset versions', 'branches', 'commit ids'], writes: ['replica version gates', 'replica commit review notes'] },
-  { name: 'Governance', reads: ['roles', 'CI gates', 'audit policy'], writes: ['replica approval proposals'] },
+  {
+    name: 'Jira Flow',
+    reads: ['issues', 'reviews', 'work logs'],
+    writes: [
+      'replica issue proposals',
+      'replica comments',
+      'replica transitions',
+      'replica evidence links',
+    ],
+  },
+  {
+    name: 'Data Lake',
+    reads: ['assets', 'code category', 'tags'],
+    writes: ['replica asset tags', 'replica review notes', 'replica AI index state'],
+  },
+  {
+    name: 'Version Graph',
+    reads: ['asset versions', 'branches', 'commit ids'],
+    writes: ['replica version gates', 'replica commit review notes'],
+  },
+  {
+    name: 'Governance',
+    reads: ['roles', 'CI gates', 'audit policy'],
+    writes: ['replica approval proposals'],
+  },
 ];
 
 type AiControlActionType =
@@ -310,6 +340,7 @@ interface AutopilotPlanPanelProps {
   goal: string;
   plan: AutopilotPlan | null;
   approvedCommandIds: Set<string>;
+  planning: boolean;
   runningCommandId: string | null;
   onGoalChange: (value: string) => void;
   onGeneratePlan: () => void;
@@ -326,17 +357,21 @@ export function AiControlPage() {
   const [chatInput, setChatInput] = useState('');
   const [sending, setSending] = useState(false);
   const [executingId, setExecutingId] = useState<string | null>(null);
+  const [planningPlan, setPlanningPlan] = useState(false);
   const [runningCommandId, setRunningCommandId] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [ragMemoryStatus, setRagMemoryStatus] = useState<string | null>(null);
-  const [autopilotGoal, setAutopilotGoal] = useState('Drive this project to delivery readiness with lake evidence, version gates, and issue flow.');
+  const [autopilotGoal, setAutopilotGoal] = useState(
+    'Drive this project to delivery readiness with lake evidence, version gates, and issue flow.',
+  );
   const [autopilotPlan, setAutopilotPlan] = useState<AutopilotPlan | null>(null);
   const [approvedCommandIds, setApprovedCommandIds] = useState<Set<string>>(() => new Set());
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'AI Control can correlate data lake assets, version history, and Jira-style flow. Control buttons now record replica-only shadow actions for review.',
+      content:
+        'AI Control can correlate data lake assets, version history, and Jira-style flow. Control buttons now record replica-only shadow actions for review.',
     },
   ]);
 
@@ -372,11 +407,20 @@ export function AiControlPage() {
           (enterprise?.ci_gates.length ?? 0),
         deliveryReadyPercent: reports?.delivery_readiness.ready_percent ?? 0,
       }),
-    [assets, automation?.rules.length, enterprise, intelligence?.automation_rules.length, issues, plan, reports, workflow?.transitions.length]
+    [
+      assets,
+      automation?.rules.length,
+      enterprise,
+      intelligence?.automation_rules.length,
+      issues,
+      plan,
+      reports,
+      workflow?.transitions.length,
+    ],
   );
 
-  function handleGenerateAutopilotPlan() {
-    const plan = buildAutopilotPlan({
+  async function handleGenerateAutopilotPlan() {
+    const localInput = {
       goal: autopilotGoal,
       issues: model.totalIssues,
       assets: model.activeAssets,
@@ -396,10 +440,43 @@ export function AiControlPage() {
         source: signal.source,
         strength: signal.strength,
       })),
-    });
-    setAutopilotPlan(plan);
-    setApprovedCommandIds(new Set());
-    toast.success('Autopilot plan generated');
+    };
+    const fallbackPlan = buildAutopilotPlan(localInput);
+    setPlanningPlan(true);
+    saveAiSettings(settings);
+
+    try {
+      const aiPlan = await productionApi.management.autopilotPlan({
+        goal: autopilotGoal,
+        context: JSON.parse(buildChatContext(model)) as Record<string, unknown>,
+        actions: model.actions.map((action) => ({
+          id: action.id,
+          title: action.title,
+          app: action.app,
+          target_label: action.targetLabel,
+          writes: action.writes,
+          disabled: Boolean(action.disabledReason),
+        })),
+        signals: model.emergentSignals.map((signal) => ({
+          id: signal.id,
+          source: signal.source,
+          strength: signal.strength,
+        })),
+      });
+      setAutopilotPlan(toAutopilotPlan(aiPlan, fallbackPlan));
+      setApprovedCommandIds(new Set());
+      toast.success(
+        aiPlan.ai_status?.used ? 'AI Autopilot plan generated' : 'Local Autopilot plan generated',
+      );
+    } catch (error) {
+      setAutopilotPlan(fallbackPlan);
+      setApprovedCommandIds(new Set());
+      const message =
+        error instanceof Error ? error.message : 'AI plan failed; local plan generated';
+      toast.error(message);
+    } finally {
+      setPlanningPlan(false);
+    }
   }
 
   function handleToggleCommandApproval(commandId: string) {
@@ -420,7 +497,7 @@ export function AiControlPage() {
       return {
         ...current,
         commands: current.commands.map((command) =>
-          command.id === commandId ? { ...command, status } : command
+          command.id === commandId ? { ...command, status } : command,
         ),
       };
     });
@@ -466,7 +543,7 @@ export function AiControlPage() {
         (command) =>
           command.status !== 'done' &&
           command.status !== 'blocked' &&
-          (!command.approvalRequired || approvedCommandIds.has(command.id))
+          (!command.approvalRequired || approvedCommandIds.has(command.id)),
       ) ?? [];
 
     if (runnableCommands.length === 0) {
@@ -516,16 +593,16 @@ export function AiControlPage() {
     saveAiSettings(settings);
 
     try {
-      const result = await productionApi.management.chat({
-        message: 'Confirm the AI Control API connection in one concise sentence.',
-        context: buildChatContext(model),
-      });
+      const result = await productionApi.management.testConnection();
       const status = result.ai_status;
-      if (status?.used) {
-        setTestResult({ ok: true, message: `${status.provider ?? 'AI provider'} responded with ${result.actions.length} control actions.` });
+      if (result.ok && status?.used) {
+        setTestResult({
+          ok: true,
+          message: `${status.provider ?? 'AI provider'} responded in ${result.latency_ms}ms: ${result.message}`,
+        });
         toast.success('AI API test passed');
       } else {
-        const message = status?.error ?? 'AI API is not configured';
+        const message = result.message ?? status?.error ?? 'AI API is not configured';
         setTestResult({ ok: false, message });
         toast.error(message);
       }
@@ -576,7 +653,9 @@ export function AiControlPage() {
         limit: 3,
       });
       const state = result.qdrant_enabled ? 'Qdrant indexed' : 'disabled';
-      setRagMemoryStatus(`${state}: ${result.matches.length} related operation memories via ${result.embedding_provider}`);
+      setRagMemoryStatus(
+        `${state}: ${result.matches.length} related operation memories via ${result.embedding_provider}`,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'RAG memory unavailable';
       setRagMemoryStatus(`RAG memory unavailable: ${message}`);
@@ -611,7 +690,7 @@ export function AiControlPage() {
         </div>
         <h1 className="mt-1 truncate text-xl font-bold text-white">AI Control</h1>
         <p className="mt-0.5 max-w-3xl text-sm text-slate-400">
-            Configure the AI API, chat with the operator, then record guarded replica-only actions.
+          Configure the AI API, chat with the operator, then record guarded replica-only actions.
         </p>
       </div>
 
@@ -639,6 +718,7 @@ export function AiControlPage() {
           goal={autopilotGoal}
           plan={autopilotPlan}
           approvedCommandIds={approvedCommandIds}
+          planning={planningPlan}
           runningCommandId={runningCommandId}
           onGoalChange={setAutopilotGoal}
           onGeneratePlan={handleGenerateAutopilotPlan}
@@ -669,7 +749,11 @@ export function AiControlPage() {
 
         <div className="mt-4 space-y-3">
           <EmergentControlMenu model={model} />
-          <ControlButtonMenu actions={model.actions} executingId={executingId} onExecute={handleExecute} />
+          <ControlButtonMenu
+            actions={model.actions}
+            executingId={executingId}
+            onExecute={handleExecute}
+          />
           <ContextMenu model={model} />
           <AppAccessMenu apps={model.apps} onRefresh={invalidateAiContext} />
         </div>
@@ -695,7 +779,9 @@ function ApiConnectionPanel({
             <KeyRound className="h-4 w-4 text-brand-300" />
             API Connection
           </div>
-          <div className="mt-1 text-xs text-slate-500">{settings.provider || 'Custom AI'} / {settings.model || 'No model'}</div>
+          <div className="mt-1 text-xs text-slate-500">
+            {settings.provider || 'Custom AI'} / {settings.model || 'No model'}
+          </div>
         </div>
         <button
           type="button"
@@ -704,29 +790,52 @@ function ApiConnectionPanel({
           onClick={() => onUpdate('enabled', !settings.enabled)}
           className={cn(
             'relative h-6 w-11 rounded-full border transition-colors',
-            settings.enabled ? 'border-brand-500/60 bg-brand-500/40' : 'border-surface-border bg-surface-elevated'
+            settings.enabled
+              ? 'border-brand-500/60 bg-brand-500/40'
+              : 'border-surface-border bg-surface-elevated',
           )}
         >
-          <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform', settings.enabled ? 'translate-x-5' : 'translate-x-0.5')} />
+          <span
+            className={cn(
+              'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
+              settings.enabled ? 'translate-x-5' : 'translate-x-0.5',
+            )}
+          />
         </button>
       </div>
 
       <div className="grid gap-4 p-4">
         <label>
           <span className="label">Provider</span>
-          <input className="input" value={settings.provider} onChange={(event) => onUpdate('provider', event.target.value)} />
+          <input
+            className="input"
+            value={settings.provider}
+            onChange={(event) => onUpdate('provider', event.target.value)}
+          />
         </label>
         <label>
           <span className="label">Model</span>
-          <input className="input" value={settings.model} onChange={(event) => onUpdate('model', event.target.value)} />
+          <input
+            className="input"
+            value={settings.model}
+            onChange={(event) => onUpdate('model', event.target.value)}
+          />
         </label>
         <label>
           <span className="label">Embedding Model</span>
-          <input className="input" value={settings.embeddingModel} onChange={(event) => onUpdate('embeddingModel', event.target.value)} />
+          <input
+            className="input"
+            value={settings.embeddingModel}
+            onChange={(event) => onUpdate('embeddingModel', event.target.value)}
+          />
         </label>
         <label>
           <span className="label">Base URL</span>
-          <input className="input" value={settings.baseUrl} onChange={(event) => onUpdate('baseUrl', event.target.value)} />
+          <input
+            className="input"
+            value={settings.baseUrl}
+            onChange={(event) => onUpdate('baseUrl', event.target.value)}
+          />
         </label>
         <label>
           <span className="label">API Key</span>
@@ -743,8 +852,17 @@ function ApiConnectionPanel({
 
       {testResult && (
         <div className="mx-4 mb-4 rounded-lg border border-surface-border bg-surface-elevated p-3">
-          <div className={cn('flex items-start gap-2 text-sm', testResult.ok ? 'text-emerald-300' : 'text-amber-300')}>
-            {testResult.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />}
+          <div
+            className={cn(
+              'flex items-start gap-2 text-sm',
+              testResult.ok ? 'text-emerald-300' : 'text-amber-300',
+            )}
+          >
+            {testResult.ok ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : (
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            )}
             <span>{testResult.message}</span>
           </div>
         </div>
@@ -756,7 +874,11 @@ function ApiConnectionPanel({
           Reset
         </button>
         <button type="button" className="btn-secondary" onClick={onTest} disabled={testing}>
-          {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
+          {testing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FlaskConical className="h-4 w-4" />
+          )}
           Test API
         </button>
         <button type="button" className="btn-primary" onClick={onSave}>
@@ -777,7 +899,9 @@ function ChatPanel({ messages, value, sending, onChange, onSend }: ChatPanelProp
             <MessageSquare className="h-4 w-4 text-brand-300" />
             Chat
           </div>
-          <div className="mt-1 text-xs text-slate-500">Ask, plan, and decide before running a control button.</div>
+          <div className="mt-1 text-xs text-slate-500">
+            Ask, plan, and decide before running a control button.
+          </div>
         </div>
         <StatusPill label="control gated" tone="text-brand-300" />
       </div>
@@ -791,8 +915,8 @@ function ChatPanel({ messages, value, sending, onChange, onSend }: ChatPanelProp
               message.role === 'user'
                 ? 'ml-auto border-brand-500/30 bg-brand-500/10 text-brand-100'
                 : message.role === 'system'
-                ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                : 'border-surface-border bg-surface-elevated text-slate-200'
+                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                  : 'border-surface-border bg-surface-elevated text-slate-200',
             )}
           >
             {message.content}
@@ -801,7 +925,9 @@ function ChatPanel({ messages, value, sending, onChange, onSend }: ChatPanelProp
       </div>
 
       <div className="border-t border-surface-border p-4">
-        <label className="sr-only" htmlFor="ai-control-message">Message</label>
+        <label className="sr-only" htmlFor="ai-control-message">
+          Message
+        </label>
         <textarea
           id="ai-control-message"
           className="input min-h-[86px] resize-y"
@@ -816,7 +942,12 @@ function ChatPanel({ messages, value, sending, onChange, onSend }: ChatPanelProp
           }}
         />
         <div className="mt-3 flex justify-end">
-          <button type="button" className="btn-primary" onClick={onSend} disabled={sending || !value.trim()}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={onSend}
+            disabled={sending || !value.trim()}
+          >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Send
           </button>
@@ -830,6 +961,7 @@ function AutopilotPlanPanel({
   goal,
   plan,
   approvedCommandIds,
+  planning,
   runningCommandId,
   onGoalChange,
   onGeneratePlan,
@@ -846,16 +978,36 @@ function AutopilotPlanPanel({
             AI Autopilot
           </div>
           <div className="mt-1 text-xs text-slate-500">
-            {plan ? `${plan.mode} / ${(plan.confidence * 100).toFixed(0)}% confidence` : 'goal-driven command queue'}
+            {plan
+              ? `${plan.mode} / ${(plan.confidence * 100).toFixed(0)}% confidence`
+              : 'goal-driven command queue'}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn-secondary" onClick={onGeneratePlan}>
-            <ListChecks className="h-4 w-4" />
-            Generate Plan
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onGeneratePlan}
+            disabled={planning}
+          >
+            {planning ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ListChecks className="h-4 w-4" />
+            )}
+            {planning ? 'Planning' : 'Generate Plan'}
           </button>
-          <button type="button" className="btn-primary" onClick={onRunApproved} disabled={!plan || Boolean(runningCommandId)}>
-            {runningCommandId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={onRunApproved}
+            disabled={!plan || Boolean(runningCommandId)}
+          >
+            {runningCommandId ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
             Run Approved
           </button>
         </div>
@@ -874,9 +1026,25 @@ function AutopilotPlanPanel({
           {plan && (
             <div className="rounded-lg border border-surface-border bg-surface-elevated p-3">
               <div className="text-sm font-medium text-slate-100">{plan.summary}</div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-surface-border bg-surface px-2 py-1.5">
+                <StatusPill
+                  label={plan.aiStatus?.used ? 'AI planned' : 'local planned'}
+                  tone={plan.aiStatus?.used ? 'text-emerald-300' : 'text-amber-300'}
+                />
+                <span className="truncate text-xs text-slate-500">
+                  {plan.aiStatus?.provider ?? 'fallback'} / {plan.aiStatus?.model ?? 'local'}
+                </span>
+              </div>
+              {plan.aiStatus?.error ? (
+                <div className="mt-2 text-xs text-amber-300">{plan.aiStatus.error}</div>
+              ) : null}
+              <LangGraphChain nodes={plan.langgraphNodes} />
+              <DecisionReviewPanel review={plan.decisionReview} />
               <div className="mt-3 space-y-1">
                 {plan.auditTrail.map((entry) => (
-                  <div key={entry} className="text-xs text-slate-500">{entry}</div>
+                  <div key={entry} className="text-xs text-slate-500">
+                    {entry}
+                  </div>
                 ))}
               </div>
             </div>
@@ -899,7 +1067,10 @@ function AutopilotPlanPanel({
               (command.approvalRequired && !approved);
 
             return (
-              <section key={command.id} className="rounded-lg border border-surface-border bg-surface-elevated p-3">
+              <section
+                key={command.id}
+                className="rounded-lg border border-surface-border bg-surface-elevated p-3"
+              >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -907,15 +1078,31 @@ function AutopilotPlanPanel({
                       <StatusPill label={command.app} tone="text-brand-300" />
                       <StatusPill
                         label={command.risk}
-                        tone={command.risk === 'high' ? 'text-red-300' : command.risk === 'medium' ? 'text-amber-300' : 'text-emerald-300'}
+                        tone={
+                          command.risk === 'high'
+                            ? 'text-red-300'
+                            : command.risk === 'medium'
+                              ? 'text-amber-300'
+                              : 'text-emerald-300'
+                        }
                       />
                       <StatusPill
                         label={command.status}
-                        tone={command.status === 'done' ? 'text-emerald-300' : command.status === 'blocked' ? 'text-red-300' : 'text-slate-300'}
+                        tone={
+                          command.status === 'done'
+                            ? 'text-emerald-300'
+                            : command.status === 'blocked'
+                              ? 'text-red-300'
+                              : 'text-slate-300'
+                        }
                       />
                     </div>
-                    <div className="mt-1 font-mono text-xs text-brand-300">{command.targetLabel}</div>
-                    <div className="mt-2 text-xs leading-relaxed text-slate-400">{command.intent}</div>
+                    <div className="mt-1 font-mono text-xs text-brand-300">
+                      {command.targetLabel}
+                    </div>
+                    <div className="mt-2 text-xs leading-relaxed text-slate-400">
+                      {command.intent}
+                    </div>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
                     {command.approvalRequired && (
@@ -935,16 +1122,27 @@ function AutopilotPlanPanel({
                       onClick={() => onExecuteCommand(command)}
                       disabled={executeDisabled}
                     >
-                      {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                      {running ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Play className="h-4 w-4" />
+                      )}
                       Execute
                     </button>
                   </div>
                 </div>
                 <div className="mt-3 rounded-lg border border-surface-border bg-surface p-3">
-                  <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Impact Preview</div>
+                  <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Impact Preview
+                  </div>
                   <div className="mt-2 grid gap-2 md:grid-cols-3">
                     {command.impactPreview.map((item) => (
-                      <div key={item} className="rounded-md bg-surface-elevated px-2 py-1 text-xs text-slate-400">{item}</div>
+                      <div
+                        key={item}
+                        className="rounded-md bg-surface-elevated px-2 py-1 text-xs text-slate-400"
+                      >
+                        {item}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -954,6 +1152,111 @@ function AutopilotPlanPanel({
         </div>
       </div>
     </section>
+  );
+}
+
+function LangGraphChain({ nodes }: { nodes: AutopilotPlan['langgraphNodes'] }) {
+  if (!nodes?.length) return null;
+
+  return (
+    <div className="mt-3 border-t border-surface-border pt-3">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <Network className="h-3.5 w-3.5 text-brand-300" />
+        LangGraph Chain
+      </div>
+      <div className="mt-2 grid gap-2">
+        {nodes.map((node, index) => (
+          <div
+            key={`${node.name}-${node.state}-${index}`}
+            className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2"
+          >
+            <div className="flex flex-col items-center">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full border border-brand-300/40 bg-brand-300/10 text-[10px] font-semibold text-brand-200">
+                {index + 1}
+              </span>
+              {index < nodes.length - 1 ? (
+                <span className="mt-1 h-full min-h-5 w-px bg-surface-border" />
+              ) : null}
+            </div>
+            <div className="min-w-0 pb-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-medium text-slate-200">{node.name}</span>
+                <span className="shrink-0 text-[11px] text-brand-300">{node.state}</span>
+              </div>
+              <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-slate-500">
+                {node.detail}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DecisionReviewPanel({ review }: { review: AutopilotPlan['decisionReview'] }) {
+  const visibleRisks = review.riskAssessment.slice(0, 4);
+
+  return (
+    <div className="mt-3 border-t border-surface-border pt-3">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
+        Decision Review
+      </div>
+
+      <div className="mt-2 grid gap-2">
+        {review.evidence.slice(0, 4).map((item) => (
+          <div
+            key={`${item.label}-${item.source}`}
+            className="grid grid-cols-[6rem_minmax(0,1fr)] gap-2 text-xs"
+          >
+            <span className="truncate text-slate-500">{item.label}</span>
+            <span className="min-w-0">
+              <span className="text-slate-300">{item.value}</span>
+              <span className="ml-2 font-mono text-[11px] text-brand-300">{item.source}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {visibleRisks.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          {visibleRisks.map((item) => (
+            <div key={item.commandId} className="text-xs leading-relaxed">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusPill
+                  label={item.risk}
+                  tone={
+                    item.risk === 'high'
+                      ? 'text-red-300'
+                      : item.risk === 'medium'
+                        ? 'text-amber-300'
+                        : 'text-emerald-300'
+                  }
+                />
+                <span className="min-w-0 truncate font-mono text-[11px] text-slate-500">
+                  {item.commandId}
+                </span>
+              </div>
+              <div className="mt-1 text-slate-400">{item.reason}</div>
+              <div className="mt-1 font-mono text-[11px] text-brand-300">{item.guardrail}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-3 grid gap-2 text-xs text-slate-400">
+        {review.approvalGates.slice(0, 2).map((item) => (
+          <div key={item}>Approval: {item}</div>
+        ))}
+        {review.outcomeChecks.slice(0, 2).map((item) => (
+          <div key={item}>Check: {item}</div>
+        ))}
+        {review.governanceNotes.slice(0, 2).map((item) => (
+          <div key={item}>Governance: {item}</div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -969,26 +1272,59 @@ function EmergentControlMenu({ model }: { model: AiControlModel }) {
       </summary>
       <div className="border-t border-surface-border p-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Data Lake" value={model.activeAssets} detail={`${model.codeAssets} code assets`} tone="text-emerald-300" />
-          <Metric label="Version Graph" value={model.versionedAssets} detail="branch-ready records" tone="text-cyan-300" />
-          <Metric label="Jira Flow" value={model.totalIssues} detail={`${model.reviewIssues} review gates`} tone="text-brand-300" />
-          <Metric label="Signals" value={model.emergentSignals.length} detail={`${model.riskIssues} risk inputs`} tone="text-amber-300" />
+          <Metric
+            label="Data Lake"
+            value={model.activeAssets}
+            detail={`${model.codeAssets} code assets`}
+            tone="text-emerald-300"
+          />
+          <Metric
+            label="Version Graph"
+            value={model.versionedAssets}
+            detail="branch-ready records"
+            tone="text-cyan-300"
+          />
+          <Metric
+            label="Jira Flow"
+            value={model.totalIssues}
+            detail={`${model.reviewIssues} review gates`}
+            tone="text-brand-300"
+          />
+          <Metric
+            label="Signals"
+            value={model.emergentSignals.length}
+            detail={`${model.riskIssues} risk inputs`}
+            tone="text-amber-300"
+          />
         </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           {model.emergentSignals.map((signal) => (
-            <section key={signal.id} className="rounded-lg border border-surface-border bg-surface-elevated p-3">
+            <section
+              key={signal.id}
+              className="rounded-lg border border-surface-border bg-surface-elevated p-3"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium text-slate-100">{signal.title}</div>
-                  <div className="mt-1 truncate font-mono text-xs text-brand-300">{signal.source}</div>
+                  <div className="mt-1 truncate font-mono text-xs text-brand-300">
+                    {signal.source}
+                  </div>
                 </div>
                 <StatusPill
                   label={signal.strength}
-                  tone={signal.strength === 'blocked' ? 'text-red-300' : signal.strength === 'watch' ? 'text-amber-300' : 'text-emerald-300'}
+                  tone={
+                    signal.strength === 'blocked'
+                      ? 'text-red-300'
+                      : signal.strength === 'watch'
+                        ? 'text-amber-300'
+                        : 'text-emerald-300'
+                  }
                 />
               </div>
-              <div className="mt-3 line-clamp-3 text-xs leading-relaxed text-slate-400">{signal.detail}</div>
+              <div className="mt-3 line-clamp-3 text-xs leading-relaxed text-slate-400">
+                {signal.detail}
+              </div>
             </section>
           ))}
         </div>
@@ -1056,7 +1392,13 @@ function ControlButton({
         </div>
         <StatusPill
           label={action.severity}
-          tone={action.severity === 'critical' ? 'text-red-300' : action.severity === 'warning' ? 'text-amber-300' : 'text-emerald-300'}
+          tone={
+            action.severity === 'critical'
+              ? 'text-red-300'
+              : action.severity === 'warning'
+                ? 'text-amber-300'
+                : 'text-emerald-300'
+          }
         />
       </div>
       <div className="mt-3 line-clamp-3 text-xs leading-relaxed text-slate-400">
@@ -1081,17 +1423,47 @@ function ContextMenu({ model }: { model: AiControlModel }) {
         <ChevronDown className="h-4 w-4 text-slate-500 transition-transform group-open:rotate-180" />
       </summary>
       <div className="grid gap-3 border-t border-surface-border p-4 md:grid-cols-2 xl:grid-cols-5">
-        <Metric label="Issues" value={model.totalIssues} detail={`${model.riskIssues} risk inputs`} />
-        <Metric label="Assets" value={model.activeAssets} detail="data lake records" tone="text-emerald-300" />
-        <Metric label="Planning" value={model.planningRecords} detail="epics, sprints, links" tone="text-cyan-300" />
-        <Metric label="Automation" value={model.automationRules} detail={`${model.workflowTransitions} transitions`} tone="text-brand-300" />
-        <Metric label="Readiness" value={`${model.deliveryReadyPercent}%`} detail="delivery signal" tone="text-amber-300" />
+        <Metric
+          label="Issues"
+          value={model.totalIssues}
+          detail={`${model.riskIssues} risk inputs`}
+        />
+        <Metric
+          label="Assets"
+          value={model.activeAssets}
+          detail="data lake records"
+          tone="text-emerald-300"
+        />
+        <Metric
+          label="Planning"
+          value={model.planningRecords}
+          detail="epics, sprints, links"
+          tone="text-cyan-300"
+        />
+        <Metric
+          label="Automation"
+          value={model.automationRules}
+          detail={`${model.workflowTransitions} transitions`}
+          tone="text-brand-300"
+        />
+        <Metric
+          label="Readiness"
+          value={`${model.deliveryReadyPercent}%`}
+          detail="delivery signal"
+          tone="text-amber-300"
+        />
       </div>
     </details>
   );
 }
 
-function AppAccessMenu({ apps, onRefresh }: { apps: AiControlAppSurface[]; onRefresh: () => void }) {
+function AppAccessMenu({
+  apps,
+  onRefresh,
+}: {
+  apps: AiControlAppSurface[];
+  onRefresh: () => void;
+}) {
   return (
     <details className="group rounded-lg border border-surface-border bg-surface-secondary">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
@@ -1104,13 +1476,20 @@ function AppAccessMenu({ apps, onRefresh }: { apps: AiControlAppSurface[]; onRef
       <div className="border-t border-surface-border p-4">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {apps.map((app) => (
-            <div key={app.name} className="rounded-lg border border-surface-border bg-surface-elevated p-3">
+            <div
+              key={app.name}
+              className="rounded-lg border border-surface-border bg-surface-elevated p-3"
+            >
               <div className="flex items-center justify-between gap-2">
                 <div className="text-sm font-medium text-slate-100">{app.name}</div>
                 <StatusPill label="read/write" tone="text-emerald-300" />
               </div>
-              <div className="mt-2 text-xs leading-relaxed text-slate-500">Reads: {app.reads.join(', ')}</div>
-              <div className="mt-1 text-xs leading-relaxed text-slate-500">Replica writes: {app.writes.join(', ')}</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-500">
+                Reads: {app.reads.join(', ')}
+              </div>
+              <div className="mt-1 text-xs leading-relaxed text-slate-500">
+                Replica writes: {app.writes.join(', ')}
+              </div>
             </div>
           ))}
         </div>
@@ -1147,7 +1526,9 @@ function Metric({
 
 function StatusPill({ label, tone = 'text-slate-300' }: { label: string; tone?: string }) {
   return (
-    <span className={cn('rounded-md border border-surface-border bg-surface px-2 py-0.5 text-xs', tone)}>
+    <span
+      className={cn('rounded-md border border-surface-border bg-surface px-2 py-0.5 text-xs', tone)}
+    >
       {label}
     </span>
   );
@@ -1155,14 +1536,21 @@ function StatusPill({ label, tone = 'text-slate-300' }: { label: string; tone?: 
 
 function buildAiControlModel(input: BuildAiControlModelInput): AiControlModel {
   const reviewIssues = input.issues.filter((issue) =>
-    ['submitted', 'internal_review', 'client_review', 'revision_required'].includes(issue.status)
+    ['submitted', 'internal_review', 'client_review', 'revision_required'].includes(issue.status),
   );
   const riskIssues = input.issues.filter(
-    (issue) => issue.priority === 'urgent' || ['warning', 'failed'].includes(issue.qa_status) || isOverdue(issue)
+    (issue) =>
+      issue.priority === 'urgent' ||
+      ['warning', 'failed'].includes(issue.qa_status) ||
+      isOverdue(issue),
   );
   const codeAssets = input.assets.filter((asset) => asset.asset_type === 'code');
   const versionedAssets = input.assets.filter((asset) => asset.version > 1);
-  const emergentSignals = buildEmergentSignals(input.issues, input.assets, input.deliveryReadyPercent);
+  const emergentSignals = buildEmergentSignals(
+    input.issues,
+    input.assets,
+    input.deliveryReadyPercent,
+  );
 
   return {
     totalIssues: input.issues.length,
@@ -1185,7 +1573,8 @@ function buildAiControlModel(input: BuildAiControlModelInput): AiControlModel {
 function buildActionQueue(issues: IssueSummary[], assets: AssetSummary[]): AiControlAction[] {
   const riskIssue = pickRiskIssue(issues);
   const reviewIssue = pickReviewIssue(issues);
-  const workIssue = issues.find((issue) => issue.status === 'in_progress') ?? riskIssue ?? issues[0];
+  const workIssue =
+    issues.find((issue) => issue.status === 'in_progress') ?? riskIssue ?? issues[0];
   const asset = pickAssetTarget(assets);
   const codeAsset = assets.find((item) => item.asset_type === 'code');
   const versionAsset = pickVersionedAsset(assets) ?? asset;
@@ -1200,11 +1589,17 @@ function buildActionQueue(issues: IssueSummary[], assets: AssetSummary[]): AiCon
       title: 'Risk Comment',
       app: 'Jira Flow',
       targetIssueId: riskTarget?.id,
-      targetLabel: riskTarget ? `${riskTarget.issue_key} / ${shortDate(riskTarget.due_date)}` : 'No issue target',
+      targetLabel: riskTarget
+        ? `${riskTarget.issue_key} / ${shortDate(riskTarget.due_date)}`
+        : 'No issue target',
       severity: riskTarget?.qa_status === 'failed' ? 'critical' : 'warning',
-      intent: riskTarget ? `Propose an internal AI risk note for ${riskTarget.title}.` : 'No issue is available for risk annotation.',
+      intent: riskTarget
+        ? `Propose an internal AI risk note for ${riskTarget.title}.`
+        : 'No issue is available for risk annotation.',
       writes: ['replica comment proposal'],
-      disabledReason: riskTarget ? undefined : 'Create or sync an issue before writing a risk comment.',
+      disabledReason: riskTarget
+        ? undefined
+        : 'Create or sync an issue before writing a risk comment.',
     },
     {
       id: 'transition-review',
@@ -1212,11 +1607,17 @@ function buildActionQueue(issues: IssueSummary[], assets: AssetSummary[]): AiCon
       title: 'Review Transition',
       app: 'Jira Flow',
       targetIssueId: reviewTarget?.id,
-      targetLabel: reviewTarget ? `${reviewTarget.issue_key} / ${reviewTarget.status}` : 'No issue target',
+      targetLabel: reviewTarget
+        ? `${reviewTarget.issue_key} / ${reviewTarget.status}`
+        : 'No issue target',
       severity: 'normal',
-      intent: reviewTarget ? `Propose moving ${reviewTarget.title} into internal review with an auditable AI actor.` : 'No issue is available for workflow transition.',
+      intent: reviewTarget
+        ? `Propose moving ${reviewTarget.title} into internal review with an auditable AI actor.`
+        : 'No issue is available for workflow transition.',
       writes: ['replica status transition proposal'],
-      disabledReason: reviewTarget ? undefined : 'Create or sync an issue before running a workflow transition.',
+      disabledReason: reviewTarget
+        ? undefined
+        : 'Create or sync an issue before running a workflow transition.',
     },
     {
       id: 'log-ai-work',
@@ -1224,9 +1625,13 @@ function buildActionQueue(issues: IssueSummary[], assets: AssetSummary[]): AiCon
       title: 'AI Work Log',
       app: 'Jira Flow',
       targetIssueId: workIssue?.id,
-      targetLabel: workIssue ? `${workIssue.issue_key} / ${workIssue.story_points ?? 0} pts` : 'No issue target',
+      targetLabel: workIssue
+        ? `${workIssue.issue_key} / ${workIssue.story_points ?? 0} pts`
+        : 'No issue target',
       severity: 'normal',
-      intent: workIssue ? `Propose a cross-app context synthesis log for ${workIssue.title}.` : 'No issue is available for AI work logging.',
+      intent: workIssue
+        ? `Propose a cross-app context synthesis log for ${workIssue.title}.`
+        : 'No issue is available for AI work logging.',
       writes: ['replica work log proposal'],
       disabledReason: workIssue ? undefined : 'Create or sync an issue before logging AI work.',
     },
@@ -1243,7 +1648,9 @@ function buildActionQueue(issues: IssueSummary[], assets: AssetSummary[]): AiCon
       targetProjectId: asset?.project_id,
       targetLabel: asset?.original_filename ?? 'No asset target',
       severity: asset?.asset_type === 'code' ? 'warning' : 'normal',
-      intent: asset ? `Propose marking ${asset.name} as AI-reviewed evidence for cross-app retrieval.` : 'No data lake asset is available for evidence tagging.',
+      intent: asset
+        ? `Propose marking ${asset.name} as AI-reviewed evidence for cross-app retrieval.`
+        : 'No data lake asset is available for evidence tagging.',
       writes: ['replica asset tag proposal', 'replica review note'],
       disabledReason: asset ? undefined : 'Upload or sync an asset before writing evidence tags.',
     },
@@ -1263,10 +1670,11 @@ function buildActionQueue(issues: IssueSummary[], assets: AssetSummary[]): AiCon
       intent: codeAsset
         ? `Propose promoting ${codeAsset.name} into the AI-readable code asset index.`
         : asset
-        ? `Propose promoting ${asset.name} into the AI-readable data lake index.`
-        : 'No asset is available for lake indexing.',
+          ? `Propose promoting ${asset.name} into the AI-readable data lake index.`
+          : 'No asset is available for lake indexing.',
       writes: ['replica index proposal', 'replica review note'],
-      disabledReason: codeAsset || asset ? undefined : 'Upload or sync an asset before indexing the data lake.',
+      disabledReason:
+        codeAsset || asset ? undefined : 'Upload or sync an asset before indexing the data lake.',
     },
     {
       id: 'version-gate',
@@ -1279,13 +1687,17 @@ function buildActionQueue(issues: IssueSummary[], assets: AssetSummary[]): AiCon
       targetAssetType: versionAsset?.asset_type,
       targetAssetVersion: versionAsset?.version,
       targetProjectId: versionAsset?.project_id,
-      targetLabel: versionAsset ? `${versionAsset.original_filename} / v${versionAsset.version}` : 'No version target',
+      targetLabel: versionAsset
+        ? `${versionAsset.original_filename} / v${versionAsset.version}`
+        : 'No version target',
       severity: versionAsset && versionAsset.version > 1 ? 'warning' : 'normal',
       intent: versionAsset
         ? `Propose stamping ${versionAsset.name} with a GitHub-style version gate for branch and commit review.`
         : 'No versioned asset is available for branch review.',
       writes: ['replica version gate proposal', 'replica review note'],
-      disabledReason: versionAsset ? undefined : 'Upload or sync an asset before stamping a version gate.',
+      disabledReason: versionAsset
+        ? undefined
+        : 'Upload or sync an asset before stamping a version gate.',
     },
     {
       id: 'create-issue-from-asset',
@@ -1300,7 +1712,9 @@ function buildActionQueue(issues: IssueSummary[], assets: AssetSummary[]): AiCon
       targetProjectId: asset?.project_id,
       targetLabel: asset?.original_filename ?? 'No asset target',
       severity: asset?.asset_type === 'code' ? 'warning' : 'normal',
-      intent: asset ? `Propose a Jira-style follow-up issue from ${asset.name} and attach the source asset.` : 'No data lake asset is available for issue creation.',
+      intent: asset
+        ? `Propose a Jira-style follow-up issue from ${asset.name} and attach the source asset.`
+        : 'No data lake asset is available for issue creation.',
       writes: ['replica issue proposal', 'replica asset link'],
       disabledReason: asset ? undefined : 'Upload or sync an asset before opening an issue.',
     },
@@ -1316,12 +1730,20 @@ function buildActionQueue(issues: IssueSummary[], assets: AssetSummary[]): AiCon
       targetAssetType: asset?.asset_type,
       targetAssetVersion: asset?.version,
       targetProjectId: asset?.project_id,
-      targetLabel: evidenceTarget && asset ? `${evidenceTarget.issue_key} / ${asset.original_filename}` : 'No link target',
+      targetLabel:
+        evidenceTarget && asset
+          ? `${evidenceTarget.issue_key} / ${asset.original_filename}`
+          : 'No link target',
       severity: evidenceTarget?.priority === 'urgent' ? 'warning' : 'normal',
-      intent: evidenceTarget && asset ? `Propose attaching ${asset.name} as AI-selected evidence for ${evidenceTarget.title}.` : 'An issue and an asset are required for evidence linking.',
+      intent:
+        evidenceTarget && asset
+          ? `Propose attaching ${asset.name} as AI-selected evidence for ${evidenceTarget.title}.`
+          : 'An issue and an asset are required for evidence linking.',
       writes: ['replica issue asset link', 'replica comment'],
       disabledReason:
-        evidenceTarget && asset ? undefined : 'Create or sync both an issue and an asset before attaching evidence.',
+        evidenceTarget && asset
+          ? undefined
+          : 'Create or sync both an issue and an asset before attaching evidence.',
     },
   ];
 }
@@ -1335,7 +1757,9 @@ async function executeAiControlAction(action: AiControlAction): Promise<void> {
     app: action.app,
     target_label: action.targetLabel,
     intent: action.intent,
-    writes: action.writes.map((write) => (write.startsWith('replica') ? write : `replica:${write}`)),
+    writes: action.writes.map((write) =>
+      write.startsWith('replica') ? write : `replica:${write}`,
+    ),
     metadata: {
       type: action.type,
       severity: action.severity,
@@ -1347,6 +1771,81 @@ async function executeAiControlAction(action: AiControlAction): Promise<void> {
       target_project_id: action.targetProjectId,
     },
   });
+}
+
+function toAutopilotPlan(
+  response: AiAutopilotPlanResponse,
+  fallback: AutopilotPlan,
+): AutopilotPlan {
+  const commands = response.commands.map(
+    (command): AutopilotCommand => ({
+      id: command.id,
+      actionId: command.action_id ?? undefined,
+      title: command.title,
+      app: command.app,
+      targetLabel: command.target_label,
+      intent: command.intent,
+      writes: command.writes,
+      impactPreview: command.impact_preview,
+      risk: ['low', 'medium', 'high'].includes(command.risk)
+        ? (command.risk as AutopilotCommand['risk'])
+        : 'low',
+      approvalRequired: command.approval_required,
+      status: ['queued', 'requires_approval', 'blocked', 'done'].includes(command.status)
+        ? (command.status as AutopilotCommand['status'])
+        : 'queued',
+    }),
+  );
+
+  return {
+    id: response.id || fallback.id,
+    goal: response.goal || fallback.goal,
+    mode: ['advisor', 'operator', 'manager'].includes(response.mode)
+      ? (response.mode as AutopilotPlan['mode'])
+      : fallback.mode,
+    confidence: Number.isFinite(response.confidence) ? response.confidence : fallback.confidence,
+    summary: response.summary || fallback.summary,
+    commands: commands.length > 0 ? commands : fallback.commands,
+    decisionReview: toDecisionReview(response, fallback),
+    auditTrail: response.audit_trail.length > 0 ? response.audit_trail : fallback.auditTrail,
+    langgraphNodes: response.langgraph_nodes,
+    aiStatus: response.ai_status,
+  };
+}
+
+function toDecisionReview(
+  response: AiAutopilotPlanResponse,
+  fallback: AutopilotPlan,
+): AutopilotPlan['decisionReview'] {
+  const review = response.decision_review;
+  if (!review) return fallback.decisionReview;
+
+  const riskAssessment = review.risk_assessment.map((item) => ({
+    commandId: item.command_id,
+    risk: ['low', 'medium', 'high'].includes(item.risk)
+      ? (item.risk as AutopilotCommand['risk'])
+      : 'low',
+    reason: item.reason,
+    guardrail: item.guardrail,
+  }));
+
+  return {
+    evidence: review.evidence.length > 0 ? review.evidence : fallback.decisionReview.evidence,
+    riskAssessment:
+      riskAssessment.length > 0 ? riskAssessment : fallback.decisionReview.riskAssessment,
+    approvalGates:
+      review.approval_gates.length > 0
+        ? review.approval_gates
+        : fallback.decisionReview.approvalGates,
+    outcomeChecks:
+      review.outcome_checks.length > 0
+        ? review.outcome_checks
+        : fallback.decisionReview.outcomeChecks,
+    governanceNotes:
+      review.governance_notes.length > 0
+        ? review.governance_notes
+        : fallback.decisionReview.governanceNotes,
+  };
 }
 
 function buildChatContext(model: AiControlModel): string {
@@ -1379,7 +1878,11 @@ function buildChatContext(model: AiControlModel): string {
   });
 }
 
-function buildEmergentSignals(issues: IssueSummary[], assets: AssetSummary[], deliveryReadyPercent: number): EmergentSignal[] {
+function buildEmergentSignals(
+  issues: IssueSummary[],
+  assets: AssetSummary[],
+  deliveryReadyPercent: number,
+): EmergentSignal[] {
   const signals: EmergentSignal[] = [];
   const codeAsset = assets.find((asset) => asset.asset_type === 'code');
   const versionAsset = pickVersionedAsset(assets);
@@ -1388,13 +1891,17 @@ function buildEmergentSignals(issues: IssueSummary[], assets: AssetSummary[], de
 
   signals.push({
     id: 'lake-index',
-    title: codeAsset ? 'Code Lake Ready' : assets.length > 0 ? 'Asset Lake Ready' : 'Lake Intake Gap',
+    title: codeAsset
+      ? 'Code Lake Ready'
+      : assets.length > 0
+        ? 'Asset Lake Ready'
+        : 'Lake Intake Gap',
     source: 'Data Lake',
     detail: codeAsset
       ? `${codeAsset.original_filename} can seed code-aware retrieval and issue creation.`
       : assets.length > 0
-      ? `${assets.length} assets can be indexed as AI evidence.`
-      : 'No assets are available for AI evidence control.',
+        ? `${assets.length} assets can be indexed as AI evidence.`
+        : 'No assets are available for AI evidence control.',
     strength: assets.length > 0 ? 'ready' : 'blocked',
   });
 
@@ -1415,8 +1922,8 @@ function buildEmergentSignals(issues: IssueSummary[], assets: AssetSummary[], de
     detail: riskIssue
       ? `${riskIssue.issue_key} is the strongest control target.`
       : reviewIssue
-      ? `${reviewIssue.issue_key} is ready for review coordination.`
-      : `${issues.length} issues are available for planning control.`,
+        ? `${reviewIssue.issue_key} is ready for review coordination.`
+        : `${issues.length} issues are available for planning control.`,
     strength: riskIssue ? 'watch' : issues.length > 0 ? 'ready' : 'blocked',
   });
 
@@ -1457,7 +1964,11 @@ function pickVersionedAsset(assets: AssetSummary[]): AssetSummary | undefined {
 }
 
 function isOverdue(issue: IssueSummary): boolean {
-  return Boolean(issue.due_date && new Date(issue.due_date) < new Date() && !['delivered', 'archived'].includes(issue.status));
+  return Boolean(
+    issue.due_date &&
+    new Date(issue.due_date) < new Date() &&
+    !['delivered', 'archived'].includes(issue.status),
+  );
 }
 
 function shortDate(value?: string): string {

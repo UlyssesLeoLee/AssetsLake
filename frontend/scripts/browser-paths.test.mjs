@@ -91,7 +91,9 @@ const APP_DIR = join(FRONTEND_ROOT, 'src', 'app');
 
 const ICON_NAMES = [
   'Boxes',
+  'BookOpen',
   'ClipboardCheck',
+  'ClipboardList',
   'Database',
   'FileText',
   'KanbanSquare',
@@ -110,6 +112,8 @@ const ICON_NAMES = [
 const REGISTRY_CONSTS = [
   'WORKSPACE_PLUGIN_GROUP',
   'IDENTITY_VERIFICATION_PLUGIN_GROUP',
+  'WIKI_PLUGIN_GROUP',
+  'DESIGN_REQUIREMENTS_PLUGIN_GROUP',
   'PRODUCTION_MANAGEMENT_PLUGIN_GROUP',
   'PRODUCTION_PLANNING_PLUGIN_GROUP',
   'PRODUCTION_EXECUTION_PLUGIN_GROUP',
@@ -137,23 +141,59 @@ const SELECTED_BROWSER_PATHS = [
     routeId: 'production.ai-control',
     appSegments: ['ai-control', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.ai-control"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'AiControlPage.tsx'),
-    implementationPatterns: [/loadAiSettings/, /productionApi\.management\.chat/, /productionApi\.management\.ragSearch/, /Embedding Model/, /RAG Memory/, /AI Autopilot/, /buildAutopilotPlan/, /Emergent Control Matrix/, /create_issue_from_asset/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'AiControlPage.tsx',
+    ),
+    implementationPatterns: [
+      /loadAiSettings/,
+      /productionApi\.management\.chat/,
+      /productionApi\.management\.autopilotPlan/,
+      /productionApi\.management\.ragSearch/,
+      /Embedding Model/,
+      /RAG Memory/,
+      /AI Autopilot/,
+      /Decision Review/,
+      /LangGraph Chain/,
+      /buildAutopilotPlan/,
+      /toDecisionReview/,
+      /AI planned/,
+      /Emergent Control Matrix/,
+      /create_issue_from_asset/,
+    ],
   },
   {
     pathname: '/planning',
     routeId: 'production.planning',
     appSegments: ['planning', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.planning"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'PlanningPage.tsx'),
-    implementationPatterns: [/useIssues\(\{ page_size: 250 \}\)/, /useMilestones\(DEFAULT_PROJECT_ID\)/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'PlanningPage.tsx',
+    ),
+    implementationPatterns: [
+      /useIssues\(\{ page_size: 250 \}\)/,
+      /useMilestones\(DEFAULT_PROJECT_ID\)/,
+    ],
   },
   {
     pathname: '/briefs',
     routeId: 'production.briefs',
     appSegments: ['briefs', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.briefs"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'BriefEditorPage.tsx'),
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'BriefEditorPage.tsx',
+    ),
     implementationPatterns: [/useCreateIssue/, /story_points/],
   },
   {
@@ -161,16 +201,43 @@ const SELECTED_BROWSER_PATHS = [
     routeId: 'production.board',
     appSegments: ['board', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.board"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'KanbanBoardPage.tsx'),
-    implementationPatterns: [/useTransitionIssue/, /buildBoardPlanningModel/, /BoardHealthPanel/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'KanbanBoardPage.tsx',
+    ),
+    implementationPatterns: [
+      /useTransitionIssue/,
+      /buildBoardPlanningModel/,
+      /BoardHealthPanel/,
+      /BoardAiAssistPanel/,
+      /productionApi\.management\.autopilotPlan/,
+      /buildBoardAiPlanRequest/,
+    ],
   },
   {
     pathname: '/issues/browser-path-issue',
     routeId: 'production.board.detail',
     appSegments: ['issues', '[id]', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.board\.detail"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'IssueDetailPage.tsx'),
-    implementationPatterns: [/useIssueComments/, /useIssueWorkLogs/, /useUpdateIssue/, /useDeleteIssue/, /useAttachIssueAsset/, /buildIssueEvidenceModel/, /LangGraphRecommendationPanel/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'IssueDetailPage.tsx',
+    ),
+    implementationPatterns: [
+      /useIssueComments/,
+      /useIssueWorkLogs/,
+      /useUpdateIssue/,
+      /useDeleteIssue/,
+      /useAttachIssueAsset/,
+      /buildIssueEvidenceModel/,
+      /LangGraphRecommendationPanel/,
+    ],
   },
   {
     pathname: '/gantt',
@@ -178,62 +245,136 @@ const SELECTED_BROWSER_PATHS = [
     appSegments: ['gantt', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.gantt"/,
     implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'GanttPage.tsx'),
-    implementationPatterns: [/useProjectGantt\(DEFAULT_PROJECT_ID\)/, /buildGanttTimelineModel/, /Critical Path/, /Dependency Map/],
+    implementationPatterns: [
+      /useProjectGantt\(DEFAULT_PROJECT_ID\)/,
+      /buildGanttTimelineModel/,
+      /Critical Path/,
+      /Dependency Map/,
+    ],
   },
   {
     pathname: '/calendar',
     routeId: 'production.calendar',
     appSegments: ['calendar', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.calendar"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'CalendarPage.tsx'),
-    implementationPatterns: [/useProjectCalendar\(DEFAULT_PROJECT_ID\)/, /buildCalendarWorkloadModel/, /CalendarWorkloadPanel/, /Upcoming Work/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'CalendarPage.tsx',
+    ),
+    implementationPatterns: [
+      /useProjectCalendar\(DEFAULT_PROJECT_ID\)/,
+      /buildCalendarWorkloadModel/,
+      /CalendarWorkloadPanel/,
+      /Upcoming Work/,
+    ],
   },
   {
     pathname: '/reports',
     routeId: 'production.reports',
     appSegments: ['reports', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.reports"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'ReportsPage.tsx'),
-    implementationPatterns: [/useProjectReports\(DEFAULT_PROJECT_ID\)/, /buildReportsDashboardModel/, /CycleSlaPanel/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'ReportsPage.tsx',
+    ),
+    implementationPatterns: [
+      /useProjectReports\(DEFAULT_PROJECT_ID\)/,
+      /buildReportsDashboardModel/,
+      /CycleSlaPanel/,
+    ],
   },
   {
     pathname: '/workflow',
     routeId: 'production.workflow',
     appSegments: ['workflow', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.workflow"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'WorkflowPage.tsx'),
-    implementationPatterns: [/useProjectWorkflow\(DEFAULT_PROJECT_ID\)/, /buildWorkflowDesignerModel/, /WorkflowPolicyPanel/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'WorkflowPage.tsx',
+    ),
+    implementationPatterns: [
+      /useProjectWorkflow\(DEFAULT_PROJECT_ID\)/,
+      /buildWorkflowDesignerModel/,
+      /WorkflowPolicyPanel/,
+    ],
   },
   {
     pathname: '/automation',
     routeId: 'production.automation',
     appSegments: ['automation', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.automation"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'AutomationPage.tsx'),
-    implementationPatterns: [/useProjectAutomation\(DEFAULT_PROJECT_ID\)/, /buildAutomationExecutionPlan/, /AutomationExecutionPlanPanel/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'AutomationPage.tsx',
+    ),
+    implementationPatterns: [
+      /useProjectAutomation\(DEFAULT_PROJECT_ID\)/,
+      /buildAutomationExecutionPlan/,
+      /AutomationExecutionPlanPanel/,
+    ],
   },
   {
     pathname: '/enterprise',
     routeId: 'production.enterprise',
     appSegments: ['enterprise', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.enterprise"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'EnterpriseAdminPage.tsx'),
-    implementationPatterns: [/useEnterpriseControls\(DEFAULT_PROJECT_ID\)/, /buildEnterpriseGovernanceModel/, /GovernanceReadinessPanel/, /Templates & CI Gates/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'EnterpriseAdminPage.tsx',
+    ),
+    implementationPatterns: [
+      /useEnterpriseControls\(DEFAULT_PROJECT_ID\)/,
+      /buildEnterpriseGovernanceModel/,
+      /GovernanceReadinessPanel/,
+      /Templates & CI Gates/,
+    ],
   },
   {
     pathname: '/security-audit',
     routeId: 'production.security-audit',
     appSegments: ['security-audit', 'page.tsx'],
     adapterPattern: /AuthGate[\s\S]*routeId="production\.security-audit"[\s\S]*SecurityAuditPage/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'SecurityAuditPage.tsx'),
-    implementationPatterns: [/securityAuditApi\.list/, /Security Audit/, /refetchInterval: 15_000/, /Audit Events/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'SecurityAuditPage.tsx',
+    ),
+    implementationPatterns: [
+      /securityAuditApi\.list/,
+      /Security Audit/,
+      /refetchInterval: 15_000/,
+      /Audit Events/,
+    ],
   },
   {
     pathname: '/delivery-packages',
     routeId: 'production.delivery',
     appSegments: ['delivery-packages', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="production\.delivery"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'DeliveryPackagePage.tsx'),
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'production',
+      'DeliveryPackagePage.tsx',
+    ),
     implementationPatterns: [/useCreateDeliveryPackage/, /deliveryPackages\.submit/],
   },
   {
@@ -241,7 +382,13 @@ const SELECTED_BROWSER_PATHS = [
     routeId: 'assets.library',
     appSegments: ['assets', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="assets\.library"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'asset-library', 'AssetsPage.tsx'),
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'asset-library',
+      'AssetsPage.tsx',
+    ),
     implementationPatterns: [/useAssets/, /AssetGrid/, /AssetTable/],
   },
   {
@@ -249,15 +396,33 @@ const SELECTED_BROWSER_PATHS = [
     routeId: 'assets.query',
     appSegments: ['data-lake-query', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="assets\.query"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'asset-library', 'DataLakeQueryPage.tsx'),
-    implementationPatterns: [/dataLakeQueryApi\.sql/, /dataLakeQueryApi\.cypher/, /Data Lake Query/, /MATCH \(i:Issue\)-\[r:HAS_EVIDENCE\]->\(a:Asset\)/, /HAS_INSIGHT/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'asset-library',
+      'DataLakeQueryPage.tsx',
+    ),
+    implementationPatterns: [
+      /dataLakeQueryApi\.sql/,
+      /dataLakeQueryApi\.cypher/,
+      /Data Lake Query/,
+      /MATCH \(i:Issue\)-\[r:HAS_EVIDENCE\]->\(a:Asset\)/,
+      /HAS_INSIGHT/,
+    ],
   },
   {
     pathname: '/upload',
     routeId: 'assets.upload',
     appSegments: ['upload', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="assets\.upload"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'asset-library', 'UploadPage.tsx'),
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'asset-library',
+      'UploadPage.tsx',
+    ),
     implementationPatterns: [/assetsApi\.upload/, /UploadSuccess/],
   },
   {
@@ -265,7 +430,13 @@ const SELECTED_BROWSER_PATHS = [
     routeId: 'verification.sms',
     appSegments: ['verification', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="verification\.sms"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'identity-verification', 'VerificationAppPage.tsx'),
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'identity-verification',
+      'VerificationAppPage.tsx',
+    ),
     implementationPatterns: [/verificationApi/, /startChallenge/, /verifyCode/, /Verify/],
   },
   {
@@ -273,8 +444,44 @@ const SELECTED_BROWSER_PATHS = [
     routeId: 'observability.runtime',
     appSegments: ['observability', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="observability\.runtime"/,
-    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'observability', 'ObservabilityPage.tsx'),
-    implementationPatterns: [/Kiali service mesh topology/, /SKYWALKING_UI_URL/, /KIALI_CONSOLE_URL/],
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'observability',
+      'ObservabilityPage.tsx',
+    ),
+    implementationPatterns: [
+      /Kiali service mesh topology/,
+      /SKYWALKING_UI_URL/,
+      /KIALI_CONSOLE_URL/,
+    ],
+  },
+  {
+    pathname: '/wiki',
+    routeId: 'wiki.editor',
+    appSegments: ['wiki', 'page.tsx'],
+    adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="wiki\.editor"/,
+    implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'wiki', 'WikiAppPage.tsx'),
+    implementationPatterns: [/wikiApi\.syncPage/, /\.applyUpdate\(/, /wikiApi\.touchPresence/],
+  },
+  {
+    pathname: '/design-requirements',
+    routeId: 'design.requirements',
+    appSegments: ['design-requirements', 'page.tsx'],
+    adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="design\.requirements"/,
+    implementationPath: join(
+      FRONTEND_ROOT,
+      'src',
+      'plugin-groups',
+      'design-requirements',
+      'DesignRequirementsPage.tsx',
+    ),
+    implementationPatterns: [
+      /designRequirementApi\.attachAsset/,
+      /designRequirementApi\.comment/,
+      /designRequirementApi\.aiDraft/,
+    ],
   },
   {
     pathname: '/settings',
@@ -282,7 +489,11 @@ const SELECTED_BROWSER_PATHS = [
     appSegments: ['settings', 'page.tsx'],
     adapterPattern: /PluginRouteHost[\s\S]*expectedRouteId="workspace\.settings"/,
     implementationPath: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'settings', 'SettingsPage.tsx'),
-    implementationPatterns: [/DEFAULT_AI_SETTINGS/, /productionApi\.management\.chat/, /AI API/],
+    implementationPatterns: [
+      /DEFAULT_AI_SETTINGS/,
+      /productionApi\.management\.testConnection/,
+      /AI API/,
+    ],
   },
 ];
 
@@ -316,7 +527,7 @@ function extractConstObject(source, constName) {
       continue;
     }
 
-    if (char === '\'' || char === '"' || char === '`') {
+    if (char === "'" || char === '"' || char === '`') {
       quote = char;
       continue;
     }
@@ -391,8 +602,8 @@ function flattenPluginRoutes(groups, app) {
           pluginAppLabel: plugin.pluginAppLabel,
           pluginGroupId: plugin.pluginGroupId,
           pluginGroupLabel: plugin.pluginGroupLabel,
-        }))
-      )
+        })),
+      ),
     )
     .sort((a, b) => a.order - b.order);
 }
@@ -417,7 +628,9 @@ function isPluginEnabledForApp(plugin, app) {
 
   const allowedPermissions = policy.allowedPermissions;
   if (allowedPermissions) {
-    return plugin.manifest.permissions.every((permission) => allowedPermissions.includes(permission));
+    return plugin.manifest.permissions.every((permission) =>
+      allowedPermissions.includes(permission),
+    );
   }
 
   return true;
@@ -431,7 +644,9 @@ function flattenAppPluginRoutes(app) {
 
 function resolvePluginRoute(routes, pathname) {
   return routes.find((route) =>
-    route.exact ? pathname === route.href : pathname === route.href || pathname.startsWith(`${route.href}/`)
+    route.exact
+      ? pathname === route.href
+      : pathname === route.href || pathname.startsWith(`${route.href}/`),
   );
 }
 
@@ -452,7 +667,11 @@ function collectAppPagePaths(dir) {
 function assertAdapter(step) {
   const pagePath = appPagePath(step.appSegments);
   assert.ok(existsSync(pagePath), `${step.pathname} App Router page exists`);
-  assert.match(readText(pagePath), step.adapterPattern, `${step.pathname} App Router adapter targets expected page`);
+  assert.match(
+    readText(pagePath),
+    step.adapterPattern,
+    `${step.pathname} App Router adapter targets expected page`,
+  );
 }
 
 function assertImplementation(step) {
@@ -471,7 +690,11 @@ test('selected browser path product journey gate', () => {
   const routes = flattenAppPluginRoutes(studioApp);
 
   for (const step of SELECTED_BROWSER_PATHS) {
-    assert.equal(resolvePluginRoute(routes, step.pathname)?.id, step.routeId, `${step.pathname} resolves to ${step.routeId}`);
+    assert.equal(
+      resolvePluginRoute(routes, step.pathname)?.id,
+      step.routeId,
+      `${step.pathname} resolves to ${step.routeId}`,
+    );
     assertAdapter(step);
     assertImplementation(step);
   }
@@ -480,7 +703,7 @@ test('selected browser path product journey gate', () => {
     assert.match(
       readText(pagePath),
       /PluginRouteHost|AuthGate[\s\S]*routeId="production\.security-audit"/,
-      `${pagePath} is hosted through a plugin-aware page adapter`
+      `${pagePath} is hosted through a plugin-aware page adapter`,
     );
   }
 });

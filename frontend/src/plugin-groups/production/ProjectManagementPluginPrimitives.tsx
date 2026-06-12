@@ -55,19 +55,40 @@ export const WORKFLOW_STEPS = [
 
 export const ENTERPRISE_CONTROLS = [
   ['Roles', 'Project roles, issue permissions, vendor access, and client visibility policies.'],
-  ['Notifications', 'Assignment, mention, due-date, review, delivery, and automation result preferences.'],
-  ['Import Export', 'CSV/Jira import, JSON export, template project, and migration validation jobs.'],
-  ['Webhooks', 'Outbound delivery, approval, issue transition, automation, and audit event webhooks.'],
+  [
+    'Notifications',
+    'Assignment, mention, due-date, review, delivery, and automation result preferences.',
+  ],
+  [
+    'Import Export',
+    'CSV/Jira import, JSON export, template project, and migration validation jobs.',
+  ],
+  [
+    'Webhooks',
+    'Outbound delivery, approval, issue transition, automation, and audit event webhooks.',
+  ],
   ['CI Gates', 'Unit, integration, smoke, type-check, migration, and selected browser-path gates.'],
 ] as const;
 
-export function usePlanIssues(): { plan?: ProjectManagementPlan; issues: IssueSummary[]; loading: boolean } {
+export function usePlanIssues(): {
+  plan?: ProjectManagementPlan;
+  issues: IssueSummary[];
+  loading: boolean;
+} {
   const { data: plan, isLoading } = useProjectManagementPlan(DEFAULT_PROJECT_ID);
   const issues = [...(plan?.active_sprint ?? []), ...(plan?.backlog ?? [])];
   return { plan, issues, loading: isLoading };
 }
 
-export function PageShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+export function PageShell({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+}) {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="shrink-0 border-b border-surface-border bg-[linear-gradient(180deg,rgba(243,234,216,0.05),rgba(17,24,33,0.18))] px-6 py-4">
@@ -99,7 +120,15 @@ export function Metric({
   );
 }
 
-export function Panel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
+export function Panel({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section className="rounded-lg border border-surface-border bg-surface-secondary/90 shadow-[0_14px_34px_rgba(0,0,0,0.16)]">
       <div className="flex items-center gap-2 border-b border-surface-border px-4 py-3 text-sm font-semibold text-slate-100">
@@ -119,7 +148,11 @@ export function IssueRows({ issues, empty }: { issues: IssueSummary[]; empty: st
   return (
     <div className="divide-y divide-surface-border">
       {issues.map((issue) => (
-        <Link key={issue.id} href={`/issues/${issue.id}`} className="block py-3 transition hover:bg-slate-800/40">
+        <Link
+          key={issue.id}
+          href={`/issues/${issue.id}`}
+          className="block py-3 transition hover:bg-slate-800/40"
+        >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="text-xs font-medium text-brand-300">{issue.issue_key}</div>

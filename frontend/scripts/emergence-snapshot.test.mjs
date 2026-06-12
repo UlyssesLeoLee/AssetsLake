@@ -21,9 +21,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const API_BASE =
-  process.env.ASSETSLAKE_API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  'http://127.0.0.1:18080';
+  process.env.ASSETSLAKE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18080';
 
 async function jsonRequest(path) {
   const response = await fetch(`${API_BASE}${path}`);
@@ -36,7 +34,7 @@ function expectStatus(result, status, label) {
   assert.equal(
     result.response.status,
     status,
-    `${label} expected HTTP ${status}, got HTTP ${result.response.status}: ${JSON.stringify(result.body)}`
+    `${label} expected HTTP ${status}, got HTTP ${result.response.status}: ${JSON.stringify(result.body)}`,
   );
 }
 

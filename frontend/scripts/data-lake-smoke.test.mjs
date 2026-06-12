@@ -63,7 +63,9 @@ CREATE
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const API_BASE_URLS = (process.env.SMOKE_API_BASE_URL ?? 'http://127.0.0.1:8080,http://127.0.0.1:18080')
+const API_BASE_URLS = (
+  process.env.SMOKE_API_BASE_URL ?? 'http://127.0.0.1:8080,http://127.0.0.1:18080'
+)
   .split(',')
   .map((item) => item.trim())
   .filter(Boolean);
@@ -106,7 +108,7 @@ function expectStatus(response, expected, label) {
   const statuses = Array.isArray(expected) ? expected : [expected];
   assert.ok(
     statuses.includes(response.status),
-    `${label} expected HTTP ${statuses.join(' or ')}, got ${response.status}`
+    `${label} expected HTTP ${statuses.join(' or ')}, got ${response.status}`,
   );
 }
 
@@ -155,7 +157,11 @@ async function uploadSmokeAsset(marker) {
   assert.ok(body.data.object_key, 'asset upload returns object key');
   assert.ok(body.data.file_url, 'asset upload returns public file URL');
   assert.equal(body.data.name, marker, 'asset upload stores name');
-  assert.equal(body.data.original_filename, `${marker}.txt`, 'asset upload stores original filename');
+  assert.equal(
+    body.data.original_filename,
+    `${marker}.txt`,
+    'asset upload stores original filename',
+  );
   assert.equal(body.data.file_size, content.length, 'asset upload stores expected byte size');
 
   return { ...body.data, content };
@@ -181,7 +187,7 @@ test('AssetsLake data lake smoke test', async () => {
       assert.equal(intelligence.success, true, 'management intelligence returns ApiResponse');
       assert.ok(
         intelligence.data.langgraph_nodes.length > 0,
-        'management intelligence exposes LangGraph nodes'
+        'management intelligence exposes LangGraph nodes',
       );
     }
 
@@ -194,25 +200,29 @@ test('AssetsLake data lake smoke test', async () => {
     const detail = await getJson(`/api/assets/${assetId}`, 'asset detail read');
     assert.equal(detail.success, true, 'asset detail returns ApiResponse');
     assert.equal(detail.data.id, assetId, 'asset detail reads uploaded id');
-    assert.equal(detail.data.object_key, upload.object_key, 'asset detail reads uploaded object key');
+    assert.equal(
+      detail.data.object_key,
+      upload.object_key,
+      'asset detail reads uploaded object key',
+    );
     assert.equal(detail.data.checksum_sha256.length, 64, 'asset detail stores SHA-256 checksum');
 
     const listed = await getJson(
       `/api/assets?q=${encodeURIComponent(marker)}&page_size=5`,
-      'asset list read'
+      'asset list read',
     );
     assert.ok(
       listed.data.some((asset) => asset.id === assetId),
-      'asset list can read uploaded smoke asset'
+      'asset list can read uploaded smoke asset',
     );
 
     const searched = await getJson(
       `/api/assets/search?q=${encodeURIComponent(marker)}&page_size=5`,
-      'asset search read'
+      'asset search read',
     );
     assert.ok(
       searched.data.some((asset) => asset.id === assetId),
-      'asset search can read uploaded smoke asset'
+      'asset search can read uploaded smoke asset',
     );
 
     const objectResponse = await fetchWithTimeout(upload.file_url);

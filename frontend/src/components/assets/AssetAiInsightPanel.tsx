@@ -41,7 +41,7 @@ export function AssetAiInsightPanel({ assetId }: { assetId: string }) {
     try {
       const response = await analyzeMutation.mutateAsync(assetId);
       toast.success(
-        response.rag_stored ? 'AI insight indexed into RAG memory' : 'AI insight saved'
+        response.rag_stored ? 'AI insight indexed into RAG memory' : 'AI insight saved',
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Asset analysis failed');
@@ -125,7 +125,8 @@ export function AssetAiInsightPanel({ assetId }: { assetId: string }) {
           </>
         ) : (
           <div className="rounded-lg border border-surface-border bg-surface p-4 text-sm text-slate-400">
-            Run analysis to identify image content, readable document/code text, quality risks, reuse tags, and RAG-ready context.
+            Run analysis to identify image content, readable document/code text, quality risks,
+            reuse tags, and RAG-ready context.
           </div>
         )}
       </div>
@@ -141,7 +142,10 @@ function InsightPills({ items, empty }: { items: string[]; empty: string }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((item) => (
-        <span key={item} className="rounded-full border border-surface-border bg-surface px-2 py-1 text-xs text-slate-300">
+        <span
+          key={item}
+          className="rounded-full border border-surface-border bg-surface px-2 py-1 text-xs text-slate-300"
+        >
           {item}
         </span>
       ))}

@@ -54,8 +54,20 @@ test('issue asset attach contract keeps API, hook, page, and E2E aligned', () =>
   const playwrightMocks = readText(FILES.playwrightMocks);
 
   assert.match(productionApi, /attachAsset[\s\S]*\/api\/issues\/\$\{id\}\/attach-asset/);
-  assert.match(productionHooks, /export function useAttachIssueAsset\(\)[\s\S]*productionApi\.issues\.attachAsset[\s\S]*invalidateIssueCollections\(queryClient, variables\.id\)/);
-  assert.match(issueDetailPage, /useAttachIssueAsset[\s\S]*Data Lake Asset ID[\s\S]*Attach Evidence[\s\S]*Evidence linked/);
-  assert.match(playwrightSpec, /getByPlaceholder\('asset id'\)[\s\S]*getByRole\('button', \{ name: \/Attach Evidence\/ \}\)/);
-  assert.match(playwrightMocks, /\['transition', 'review', 'approve', 'request-revision', 'attach-asset'\]/);
+  assert.match(
+    productionHooks,
+    /export function useAttachIssueAsset\(\)[\s\S]*productionApi\.issues\.attachAsset[\s\S]*invalidateIssueCollections\(queryClient, variables\.id\)/,
+  );
+  assert.match(
+    issueDetailPage,
+    /useAttachIssueAsset[\s\S]*Data Lake Asset ID[\s\S]*Attach Evidence[\s\S]*Evidence linked/,
+  );
+  assert.match(
+    playwrightSpec,
+    /getByPlaceholder\('asset id'\)[\s\S]*getByRole\('button', \{ name: \/Attach Evidence\/ \}\)/,
+  );
+  assert.match(
+    playwrightMocks,
+    /\['transition', 'review', 'approve', 'request-revision', 'attach-asset'\]/,
+  );
 });

@@ -19,7 +19,7 @@ export function UploadZone({ onFile }: UploadZoneProps) {
         onFile(accepted[0]);
       }
     },
-    [onFile]
+    [onFile],
   );
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
@@ -38,8 +38,8 @@ export function UploadZone({ onFile }: UploadZoneProps) {
           isDragActive && !isDragReject
             ? 'border-brand-500 bg-brand-500/5'
             : isDragReject
-            ? 'border-red-500 bg-red-500/5'
-            : 'border-surface-border hover:border-brand-500/50 hover:bg-brand-500/3 bg-surface-secondary'
+              ? 'border-red-500 bg-red-500/5'
+              : 'border-surface-border hover:border-brand-500/50 hover:bg-brand-500/3 bg-surface-secondary',
         )}
       >
         <input {...getInputProps()} />
@@ -47,9 +47,7 @@ export function UploadZone({ onFile }: UploadZoneProps) {
         <div
           className={cn(
             'w-16 h-16 rounded-2xl flex items-center justify-center transition-colors',
-            isDragActive && !isDragReject
-              ? 'bg-brand-500/20'
-              : 'bg-surface-elevated'
+            isDragActive && !isDragReject ? 'bg-brand-500/20' : 'bg-surface-elevated',
           )}
         >
           {isDragActive ? (
@@ -64,12 +62,11 @@ export function UploadZone({ onFile }: UploadZoneProps) {
             {isDragActive && !isDragReject
               ? 'Drop to upload'
               : isDragReject
-              ? 'File type not supported'
-              : 'Drag & drop your asset'}
+                ? 'File type not supported'
+                : 'Drag & drop your asset'}
           </p>
           <p className="text-slate-500 text-sm mt-1">
-            or{' '}
-            <span className="text-brand-400 hover:text-brand-300">browse files</span>
+            or <span className="text-brand-400 hover:text-brand-300">browse files</span>
           </p>
           <p className="text-slate-600 text-xs mt-3">Max file size: 500 MB</p>
         </div>

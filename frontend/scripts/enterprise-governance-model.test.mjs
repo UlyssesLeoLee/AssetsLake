@@ -41,7 +41,13 @@ const ts = require('typescript');
 
 const FRONTEND_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = {
-  enterpriseGovernanceModel: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'enterpriseGovernanceModel.ts'),
+  enterpriseGovernanceModel: join(
+    FRONTEND_ROOT,
+    'src',
+    'plugin-groups',
+    'production',
+    'enterpriseGovernanceModel.ts',
+  ),
 };
 
 function readText(filePath) {
@@ -66,7 +72,10 @@ function loadEnterpriseGovernanceModel() {
     },
   };
 
-  vm.runInNewContext(compiled.outputText, sandbox, { filename: FILES.enterpriseGovernanceModel, timeout: 1000 });
+  vm.runInNewContext(compiled.outputText, sandbox, {
+    filename: FILES.enterpriseGovernanceModel,
+    timeout: 1000,
+  });
   return module.exports;
 }
 
@@ -75,19 +84,46 @@ test('enterprise governance model scores permissions, gates, webhooks, and audit
   const controls = {
     project_id: 'project-a',
     roles: [
-      { role: 'admin', scope: 'workspace', member_count: 1, permissions: ['project:admin', 'workflow:edit'] },
-      { role: 'producer', scope: 'project', member_count: 2, permissions: ['issue:write', 'workflow:edit'] },
+      {
+        role: 'admin',
+        scope: 'workspace',
+        member_count: 1,
+        permissions: ['project:admin', 'workflow:edit'],
+      },
+      {
+        role: 'producer',
+        scope: 'project',
+        member_count: 2,
+        permissions: ['issue:write', 'workflow:edit'],
+      },
     ],
     notifications: [
       { event: 'assignments', channels: ['email'], delivery_policy: 'immediate', enabled: true },
       { event: 'automation', channels: ['webhook'], delivery_policy: 'guarded', enabled: false },
     ],
     import_export: [
-      { job_type: 'csv_import', direction: 'import', format: 'csv', status: 'ready', description: 'Import.' },
-      { job_type: 'json_export', direction: 'export', format: 'json', status: 'ready', description: 'Export.' },
+      {
+        job_type: 'csv_import',
+        direction: 'import',
+        format: 'csv',
+        status: 'ready',
+        description: 'Import.',
+      },
+      {
+        job_type: 'json_export',
+        direction: 'export',
+        format: 'json',
+        status: 'ready',
+        description: 'Export.',
+      },
     ],
     webhooks: [
-      { event: 'issue_transition', status: 'active', target: 'target-a', retry_policy: '3_attempts' },
+      {
+        event: 'issue_transition',
+        status: 'active',
+        target: 'target-a',
+        retry_policy: '3_attempts',
+      },
       { event: 'automation', status: 'guarded', target: 'target-b', retry_policy: 'manual_review' },
     ],
     templates: [],
@@ -95,10 +131,18 @@ test('enterprise governance model scores permissions, gates, webhooks, and audit
       { name: 'unit', command: 'pnpm test', required: true, status: 'passing' },
       { name: 'smoke', command: 'pnpm smoke', required: true, status: 'failed' },
     ],
-    audit: { policy: 'append_only', retention_days: 180, drilldowns: ['issue_history'], export_formats: ['json'] },
+    audit: {
+      policy: 'append_only',
+      retention_days: 180,
+      drilldowns: ['issue_history'],
+      export_formats: ['json'],
+    },
   };
 
-  assert.equal(JSON.stringify(model.buildPermissionCoverage(controls)), '["issue:write","project:admin","workflow:edit"]');
+  assert.equal(
+    JSON.stringify(model.buildPermissionCoverage(controls)),
+    '["issue:write","project:admin","workflow:edit"]',
+  );
   assert.equal(model.buildGovernanceRisks(controls).length, 4);
 
   const governance = model.buildEnterpriseGovernanceModel(controls);

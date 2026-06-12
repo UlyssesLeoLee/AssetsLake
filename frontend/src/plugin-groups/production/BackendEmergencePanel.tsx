@@ -73,12 +73,18 @@ export function BackendEmergencePanel() {
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <SignalBadge tone="healthy" label={postureLabel(snapshot.posture)} />
-            <SignalBadge tone={snapshot.risk_count > 0 ? 'watch' : 'healthy'} label={`${snapshot.risk_count} risks`} />
+            <SignalBadge
+              tone={snapshot.risk_count > 0 ? 'watch' : 'healthy'}
+              label={`${snapshot.risk_count} risks`}
+            />
             <SignalBadge tone="healthy" label={`${snapshot.metrics.active_sessions} sessions`} />
           </div>
           <div className="mt-5 grid gap-2">
             {snapshot.loop_stages.map((stage) => (
-              <div key={stage.mode} className="rounded-lg border border-surface-border bg-surface/55 p-3">
+              <div
+                key={stage.mode}
+                className="rounded-lg border border-surface-border bg-surface/55 p-3"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium text-slate-100">{stage.label}</span>
                   <span className="font-mono text-xs text-brand-200">{stage.value}</span>
@@ -125,7 +131,10 @@ export function BackendEmergencePanel() {
               </div>
               <div className="mt-3 space-y-2">
                 {snapshot.signals.map((signal) => (
-                  <div key={signal.id} className="rounded-md border border-surface-border bg-surface p-2">
+                  <div
+                    key={signal.id}
+                    className="rounded-md border border-surface-border bg-surface p-2"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm text-slate-100">{signal.label}</span>
                       <SignalBadge tone={signal.tone} label={signal.value} />
@@ -143,15 +152,23 @@ export function BackendEmergencePanel() {
               </div>
               <div className="mt-3 space-y-2">
                 {snapshot.recommendations.map((recommendation) => (
-                  <div key={recommendation.id} className="rounded-md border border-surface-border bg-surface p-2">
+                  <div
+                    key={recommendation.id}
+                    className="rounded-md border border-surface-border bg-surface p-2"
+                  >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium text-slate-100">{recommendation.title}</span>
+                      <span className="text-sm font-medium text-slate-100">
+                        {recommendation.title}
+                      </span>
                       <SignalBadge tone={recommendation.tone} label={recommendation.mode} />
                     </div>
-                    <div className="mt-1 text-xs leading-relaxed text-slate-400">{recommendation.action}</div>
+                    <div className="mt-1 text-xs leading-relaxed text-slate-400">
+                      {recommendation.action}
+                    </div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
                       <Activity className="h-3.5 w-3.5 text-brand-300" />
-                      {recommendation.app} / {recommendation.control_id} / {Math.round(recommendation.confidence * 100)}%
+                      {recommendation.app} / {recommendation.control_id} /{' '}
+                      {Math.round(recommendation.confidence * 100)}%
                     </div>
                   </div>
                 ))}

@@ -105,7 +105,12 @@ export default function AssetDetailPage() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="btn-secondary">
+          <a
+            href={asset.file_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-secondary"
+          >
             <Download className="h-4 w-4" />
             Download
           </a>
@@ -152,7 +157,12 @@ export default function AssetDetailPage() {
             <code className="flex-1 truncate rounded border border-surface-border bg-surface p-2 font-mono text-xs text-slate-300">
               {asset.file_url}
             </code>
-            <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="btn-ghost shrink-0">
+            <a
+              href={asset.file_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-ghost shrink-0"
+            >
               <ExternalLink className="h-4 w-4" />
             </a>
           </div>

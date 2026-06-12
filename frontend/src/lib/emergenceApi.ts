@@ -18,7 +18,7 @@ import type { EmergenceSnapshot } from '@/types/emergence';
 export const emergenceApi = {
   snapshot: async (): Promise<EmergenceSnapshot> => {
     const { data } = await apiClient.get<ApiResponse<EmergenceSnapshot>>(
-      '/api/management/emergence'
+      '/api/management/emergence',
     );
     return data.data;
   },

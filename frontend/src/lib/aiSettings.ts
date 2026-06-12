@@ -99,7 +99,12 @@ export function clearAiSettings(): void {
 }
 
 export function isAiConfigured(settings = loadAiSettings()): boolean {
-  return settings.enabled && settings.apiKey.trim().length > 0 && settings.baseUrl.length > 0 && settings.model.length > 0;
+  return (
+    settings.enabled &&
+    settings.apiKey.trim().length > 0 &&
+    settings.baseUrl.length > 0 &&
+    settings.model.length > 0
+  );
 }
 
 export function getAiRequestHeaders(settings = loadAiSettings()): Record<string, string> {

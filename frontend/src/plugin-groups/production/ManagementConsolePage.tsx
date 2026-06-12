@@ -94,32 +94,93 @@ const MANAGEMENT_CAPABILITIES = [
   { label: 'Sprint', detail: 'Status flow, WIP, blocked work, QA gates', state: 'Live' },
   { label: 'Roadmap', detail: 'Milestones, delivery packages, vendor scope', state: 'Live' },
   { label: 'Reports', detail: 'Throughput, overdue, revisions, review load', state: 'Live' },
-  { label: 'Automation', detail: 'SLA routing, revision loops, delivery readiness', state: 'AI ready' },
-  { label: 'Governance', detail: 'Audit trail, review history, client/internal scope', state: 'Live' },
-  { label: 'LangGraph', detail: 'Multi-step issue planning and AI worker routing', state: 'Contracted' },
-  { label: 'Data Lake', detail: 'Issues, assets, events, reviews, embeddings lineage', state: 'Contracted' },
+  {
+    label: 'Automation',
+    detail: 'SLA routing, revision loops, delivery readiness',
+    state: 'AI ready',
+  },
+  {
+    label: 'Governance',
+    detail: 'Audit trail, review history, client/internal scope',
+    state: 'Live',
+  },
+  {
+    label: 'LangGraph',
+    detail: 'Multi-step issue planning and AI worker routing',
+    state: 'Contracted',
+  },
+  {
+    label: 'Data Lake',
+    detail: 'Issues, assets, events, reviews, embeddings lineage',
+    state: 'Contracted',
+  },
 ];
 
 const LANGGRAPH_STEPS = [
-  { name: 'Intake Classifier', state: 'ready', detail: 'Normalizes briefs, bugs, review notes, and uploaded evidence.' },
-  { name: 'Priority Planner', state: 'ready', detail: 'Ranks work by due date, revision count, QA status, and delivery risk.' },
-  { name: 'Assignee Router', state: 'ready', detail: 'Routes work to internal artists, vendor managers, or approval queues.' },
-  { name: 'Evidence Retriever', state: 'ready', detail: 'Reads asset metadata, previews, issue history, and lake search results.' },
-  { name: 'Automation Executor', state: 'guarded', detail: 'Proposes transitions, comments, revision requests, and delivery actions.' },
+  {
+    name: 'Intake Classifier',
+    state: 'ready',
+    detail: 'Normalizes briefs, bugs, review notes, and uploaded evidence.',
+  },
+  {
+    name: 'Priority Planner',
+    state: 'ready',
+    detail: 'Ranks work by due date, revision count, QA status, and delivery risk.',
+  },
+  {
+    name: 'Assignee Router',
+    state: 'ready',
+    detail: 'Routes work to internal artists, vendor managers, or approval queues.',
+  },
+  {
+    name: 'Evidence Retriever',
+    state: 'ready',
+    detail: 'Reads asset metadata, previews, issue history, and lake search results.',
+  },
+  {
+    name: 'Automation Executor',
+    state: 'guarded',
+    detail: 'Proposes transitions, comments, revision requests, and delivery actions.',
+  },
 ];
 
 const DATA_LAKE_FEEDS = [
   { name: 'Issue Event Stream', detail: 'status, priority, assignee, comments, review rounds' },
-  { name: 'Asset Evidence Lake', detail: 'object keys, previews, checksums, tags, versions, delivery packages' },
-  { name: 'Vector and Search Indexes', detail: 'Qdrant image similarity and OpenSearch metadata retrieval' },
-  { name: 'Graph Lineage', detail: 'Neo4j-style links between issues, assets, milestones, vendors, and packages' },
+  {
+    name: 'Asset Evidence Lake',
+    detail: 'object keys, previews, checksums, tags, versions, delivery packages',
+  },
+  {
+    name: 'Vector and Search Indexes',
+    detail: 'Qdrant image similarity and OpenSearch metadata retrieval',
+  },
+  {
+    name: 'Graph Lineage',
+    detail: 'Neo4j-style links between issues, assets, milestones, vendors, and packages',
+  },
 ];
 
 const AUTOMATION_RULES = [
-  { name: 'Overdue Escalation', detail: 'Moves late active issues into producer attention with AI summary.', guardrail: 'human_review_required' },
-  { name: 'Review Gate', detail: 'Detects submitted work and prepares internal/client review checklists.', guardrail: 'human_review_required' },
-  { name: 'Revision Loop', detail: 'Clusters repeated revision reasons and suggests root-cause fixes.', guardrail: 'human_review_required' },
-  { name: 'Delivery Readiness', detail: 'Checks approved issues against selected assets and package evidence.', guardrail: 'human_review_required' },
+  {
+    name: 'Overdue Escalation',
+    detail: 'Moves late active issues into producer attention with AI summary.',
+    guardrail: 'human_review_required',
+  },
+  {
+    name: 'Review Gate',
+    detail: 'Detects submitted work and prepares internal/client review checklists.',
+    guardrail: 'human_review_required',
+  },
+  {
+    name: 'Revision Loop',
+    detail: 'Clusters repeated revision reasons and suggests root-cause fixes.',
+    guardrail: 'human_review_required',
+  },
+  {
+    name: 'Delivery Readiness',
+    detail: 'Checks approved issues against selected assets and package evidence.',
+    guardrail: 'human_review_required',
+  },
 ];
 
 type ManagementModel = {
@@ -147,7 +208,7 @@ export function ManagementConsolePage() {
   const issues = issueData?.data ?? [];
   const model = useMemo(
     () => deriveManagementModel(issues, assetsData?.total ?? 0, milestones.length),
-    [assetsData?.total, issues, milestones.length]
+    [assetsData?.total, issues, milestones.length],
   );
   const emergentModel = useMemo(
     () =>
@@ -157,7 +218,7 @@ export function ManagementConsolePage() {
         milestoneTotal: milestones.length,
         intelligence,
       }),
-    [assetsData?.total, intelligence, issues, milestones.length]
+    [assetsData?.total, intelligence, issues, milestones.length],
   );
 
   return (
@@ -168,9 +229,12 @@ export function ManagementConsolePage() {
             <Boxes className="h-3.5 w-3.5" />
             Product Management Console
           </div>
-          <h1 className="mt-1 truncate text-xl font-bold text-white">Emergent Asset Lake Operating System</h1>
+          <h1 className="mt-1 truncate text-xl font-bold text-white">
+            Emergent Asset Lake Operating System
+          </h1>
           <p className="mt-0.5 text-sm text-slate-400">
-            One workspace for project flow, data-lake evidence, AI decisions, and guarded automation.
+            One workspace for project flow, data-lake evidence, AI decisions, and guarded
+            automation.
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -187,10 +251,29 @@ export function ManagementConsolePage() {
 
       <div className="flex-1 overflow-y-auto p-5">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Metric label="Open Work" value={model.openIssues} detail={`${model.totalIssues} total issues`} />
-          <Metric label="Review Load" value={model.reviewIssues} detail={`${model.revisionIssues} revision loops`} tone="text-cyan-300" />
-          <Metric label="Overdue Risk" value={model.overdueIssues} detail={`${model.qaRiskIssues} AI QA risks`} tone="text-amber-300" />
-          <Metric label="Data Lake Evidence" value={model.assetTotal} detail={`${model.milestoneTotal} milestones linked`} tone="text-emerald-300" />
+          <Metric
+            label="Open Work"
+            value={model.openIssues}
+            detail={`${model.totalIssues} total issues`}
+          />
+          <Metric
+            label="Review Load"
+            value={model.reviewIssues}
+            detail={`${model.revisionIssues} revision loops`}
+            tone="text-cyan-300"
+          />
+          <Metric
+            label="Overdue Risk"
+            value={model.overdueIssues}
+            detail={`${model.qaRiskIssues} AI QA risks`}
+            tone="text-amber-300"
+          />
+          <Metric
+            label="Data Lake Evidence"
+            value={model.assetTotal}
+            detail={`${model.milestoneTotal} milestones linked`}
+            tone="text-emerald-300"
+          />
         </div>
 
         {issuesLoading && (
@@ -206,7 +289,11 @@ export function ManagementConsolePage() {
           <WorkstreamColumn title="Backlog" issues={model.backlog} empty="No backlog items" />
           <WorkstreamColumn title="Sprint" issues={model.sprint} empty="No active sprint work" />
           <WorkstreamColumn title="Review" issues={model.review} empty="No review items" />
-          <WorkstreamColumn title="Delivery" issues={model.delivery} empty="No delivery candidates" />
+          <WorkstreamColumn
+            title="Delivery"
+            issues={model.delivery}
+            empty="No delivery candidates"
+          />
         </section>
 
         <section className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_1fr]">
@@ -253,10 +340,16 @@ function CapabilityMatrix() {
       />
       <div className="mt-4 grid gap-2 md:grid-cols-2">
         {MANAGEMENT_CAPABILITIES.map((item) => (
-          <div key={item.label} className="rounded-lg border border-surface-border bg-surface-elevated p-3">
+          <div
+            key={item.label}
+            className="rounded-lg border border-surface-border bg-surface-elevated p-3"
+          >
             <div className="flex items-center justify-between gap-2">
               <div className="truncate text-sm font-medium text-slate-100">{item.label}</div>
-              <StatusChip label={item.state} tone={item.state === 'Live' ? 'text-emerald-300' : 'text-brand-300'} />
+              <StatusChip
+                label={item.state}
+                tone={item.state === 'Live' ? 'text-emerald-300' : 'text-brand-300'}
+              />
             </div>
             <div className="mt-1 text-xs leading-relaxed text-slate-500">{item.detail}</div>
           </div>
@@ -266,12 +359,22 @@ function CapabilityMatrix() {
   );
 }
 
-function WorkstreamColumn({ title, issues, empty }: { title: string; issues: IssueSummary[]; empty: string }) {
+function WorkstreamColumn({
+  title,
+  issues,
+  empty,
+}: {
+  title: string;
+  issues: IssueSummary[];
+  empty: string;
+}) {
   return (
     <section className="rounded-lg border border-surface-border bg-surface-secondary">
       <div className="flex items-center justify-between border-b border-surface-border px-3 py-2.5">
         <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-        <span className="rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-slate-400">{issues.length}</span>
+        <span className="rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-slate-400">
+          {issues.length}
+        </span>
       </div>
       <div className="space-y-2 p-3">
         {issues.slice(0, 5).map((issue) => (
@@ -284,19 +387,29 @@ function WorkstreamColumn({ title, issues, empty }: { title: string; issues: Iss
               <span className="font-mono text-xs text-brand-300">{issue.issue_key}</span>
               <span className="text-xs text-slate-500">{formatDate(issue.due_date)}</span>
             </div>
-            <div className="mt-1 line-clamp-2 text-sm font-medium text-slate-100">{issue.title}</div>
+            <div className="mt-1 line-clamp-2 text-sm font-medium text-slate-100">
+              {issue.title}
+            </div>
             <div className="mt-2 text-xs text-slate-500">
               {ISSUE_STATUS_LABELS[issue.status]} / {issue.priority} / {issue.qa_status}
             </div>
           </Link>
         ))}
-        {issues.length === 0 && <div className="p-4 text-center text-sm text-slate-500">{empty}</div>}
+        {issues.length === 0 && (
+          <div className="p-4 text-center text-sm text-slate-500">{empty}</div>
+        )}
       </div>
     </section>
   );
 }
 
-function LangGraphPanel({ model, intelligence }: { model: ManagementModel; intelligence?: ManagementIntelligence }) {
+function LangGraphPanel({
+  model,
+  intelligence,
+}: {
+  model: ManagementModel;
+  intelligence?: ManagementIntelligence;
+}) {
   const steps = intelligence?.langgraph_nodes ?? LANGGRAPH_STEPS;
 
   return (
@@ -308,14 +421,20 @@ function LangGraphPanel({ model, intelligence }: { model: ManagementModel; intel
       />
       <div className="mt-4 space-y-2">
         {steps.map((step, index) => (
-          <div key={step.name} className="flex gap-3 rounded-lg border border-surface-border bg-surface-elevated p-3">
+          <div
+            key={step.name}
+            className="flex gap-3 rounded-lg border border-surface-border bg-surface-elevated p-3"
+          >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-500/10 text-xs font-semibold text-brand-300">
               {index + 1}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
                 <div className="truncate text-sm font-medium text-slate-100">{step.name}</div>
-                <StatusChip label={step.state} tone={step.state === 'ready' ? 'text-emerald-300' : 'text-amber-300'} />
+                <StatusChip
+                  label={step.state}
+                  tone={step.state === 'ready' ? 'text-emerald-300' : 'text-amber-300'}
+                />
               </div>
               <div className="mt-1 text-xs leading-relaxed text-slate-500">{step.detail}</div>
             </div>
@@ -323,15 +442,36 @@ function LangGraphPanel({ model, intelligence }: { model: ManagementModel; intel
         ))}
       </div>
       <div className="mt-4 grid gap-2 md:grid-cols-3">
-        <Metric label="AI Queue" value={model.openIssues} detail="candidate issue contexts" tone="text-brand-300" />
-        <Metric label="Risk Inputs" value={model.overdueIssues + model.qaRiskIssues} detail="late or QA-warning issues" tone="text-amber-300" />
-        <Metric label="Actions" value={model.reviewIssues + model.approvedIssues} detail="review and delivery proposals" tone="text-emerald-300" />
+        <Metric
+          label="AI Queue"
+          value={model.openIssues}
+          detail="candidate issue contexts"
+          tone="text-brand-300"
+        />
+        <Metric
+          label="Risk Inputs"
+          value={model.overdueIssues + model.qaRiskIssues}
+          detail="late or QA-warning issues"
+          tone="text-amber-300"
+        />
+        <Metric
+          label="Actions"
+          value={model.reviewIssues + model.approvedIssues}
+          detail="review and delivery proposals"
+          tone="text-emerald-300"
+        />
       </div>
     </section>
   );
 }
 
-function DataLakePanel({ model, intelligence }: { model: ManagementModel; intelligence?: ManagementIntelligence }) {
+function DataLakePanel({
+  model,
+  intelligence,
+}: {
+  model: ManagementModel;
+  intelligence?: ManagementIntelligence;
+}) {
   const feeds = intelligence?.data_lake_feeds ?? DATA_LAKE_FEEDS;
 
   return (
@@ -343,7 +483,10 @@ function DataLakePanel({ model, intelligence }: { model: ManagementModel; intell
       />
       <div className="mt-4 space-y-2">
         {feeds.map((feed) => (
-          <div key={feed.name} className="rounded-lg border border-surface-border bg-surface-elevated p-3">
+          <div
+            key={feed.name}
+            className="rounded-lg border border-surface-border bg-surface-elevated p-3"
+          >
             <div className="flex items-center justify-between gap-2">
               <div className="truncate text-sm font-medium text-slate-100">{feed.name}</div>
               <StatusChip label="synced" tone="text-emerald-300" />
@@ -353,15 +496,31 @@ function DataLakePanel({ model, intelligence }: { model: ManagementModel; intell
         ))}
       </div>
       <div className="mt-4 grid gap-2 md:grid-cols-3">
-        <Metric label="Assets" value={model.assetTotal} detail="active evidence objects" tone="text-emerald-300" />
+        <Metric
+          label="Assets"
+          value={model.assetTotal}
+          detail="active evidence objects"
+          tone="text-emerald-300"
+        />
         <Metric label="Issues" value={model.totalIssues} detail="management records" />
-        <Metric label="Milestones" value={model.milestoneTotal} detail="roadmap anchors" tone="text-cyan-300" />
+        <Metric
+          label="Milestones"
+          value={model.milestoneTotal}
+          detail="roadmap anchors"
+          tone="text-cyan-300"
+        />
       </div>
     </section>
   );
 }
 
-function AutomationPanel({ model, intelligence }: { model: ManagementModel; intelligence?: ManagementIntelligence }) {
+function AutomationPanel({
+  model,
+  intelligence,
+}: {
+  model: ManagementModel;
+  intelligence?: ManagementIntelligence;
+}) {
   const rules = intelligence?.automation_rules ?? AUTOMATION_RULES;
 
   return (
@@ -373,10 +532,16 @@ function AutomationPanel({ model, intelligence }: { model: ManagementModel; inte
       />
       <div className="mt-4 space-y-2">
         {rules.map((rule) => (
-          <div key={rule.name} className="rounded-lg border border-surface-border bg-surface-elevated p-3">
+          <div
+            key={rule.name}
+            className="rounded-lg border border-surface-border bg-surface-elevated p-3"
+          >
             <div className="flex items-center justify-between gap-2">
               <div className="truncate text-sm font-medium text-slate-100">{rule.name}</div>
-              <StatusChip label={rule.guardrail === 'human_review_required' ? 'guarded' : rule.guardrail} tone="text-brand-300" />
+              <StatusChip
+                label={rule.guardrail === 'human_review_required' ? 'guarded' : rule.guardrail}
+                tone="text-brand-300"
+              />
             </div>
             <div className="mt-1 text-xs leading-relaxed text-slate-500">{rule.detail}</div>
           </div>
@@ -385,14 +550,25 @@ function AutomationPanel({ model, intelligence }: { model: ManagementModel; inte
       <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
         <div className="flex items-start gap-2 text-sm text-amber-200">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{model.overdueIssues} overdue issues and {model.revisionIssues} revision loops require producer review.</span>
+          <span>
+            {model.overdueIssues} overdue issues and {model.revisionIssues} revision loops require
+            producer review.
+          </span>
         </div>
       </div>
     </section>
   );
 }
 
-function SectionHeader({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: string }) {
+function SectionHeader({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+}) {
   return (
     <div>
       <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
@@ -406,7 +582,9 @@ function SectionHeader({ icon, title, subtitle }: { icon: ReactNode; title: stri
 
 function StatusChip({ label, tone = 'text-slate-300' }: { label: string; tone?: string }) {
   return (
-    <span className={cn('rounded-md border border-surface-border bg-surface px-2 py-0.5 text-xs', tone)}>
+    <span
+      className={cn('rounded-md border border-surface-border bg-surface px-2 py-0.5 text-xs', tone)}
+    >
       {label}
     </span>
   );
@@ -417,7 +595,11 @@ function formatDate(value?: string): string {
   return new Intl.DateTimeFormat('en', { month: 'short', day: '2-digit' }).format(new Date(value));
 }
 
-function deriveManagementModel(issues: IssueSummary[], assetTotal: number, milestoneTotal: number): ManagementModel {
+function deriveManagementModel(
+  issues: IssueSummary[],
+  assetTotal: number,
+  milestoneTotal: number,
+): ManagementModel {
   const openStatuses: IssueStatus[] = [
     'backlog',
     'brief_ready',
@@ -434,8 +616,12 @@ function deriveManagementModel(issues: IssueSummary[], assetTotal: number, miles
   return {
     totalIssues: issues.length,
     openIssues: activeIssues.length,
-    overdueIssues: activeIssues.filter((issue) => issue.due_date && new Date(issue.due_date) < today).length,
-    reviewIssues: issues.filter((issue) => ['submitted', 'internal_review', 'client_review'].includes(issue.status)).length,
+    overdueIssues: activeIssues.filter(
+      (issue) => issue.due_date && new Date(issue.due_date) < today,
+    ).length,
+    reviewIssues: issues.filter((issue) =>
+      ['submitted', 'internal_review', 'client_review'].includes(issue.status),
+    ).length,
     revisionIssues: issues.filter((issue) => issue.status === 'revision_required').length,
     approvedIssues: issues.filter((issue) => issue.status === 'approved').length,
     qaRiskIssues: issues.filter((issue) => ['warning', 'failed'].includes(issue.qa_status)).length,
@@ -443,7 +629,9 @@ function deriveManagementModel(issues: IssueSummary[], assetTotal: number, miles
     milestoneTotal,
     backlog: issues.filter((issue) => ['backlog', 'brief_ready'].includes(issue.status)),
     sprint: issues.filter((issue) => ['assigned', 'in_progress'].includes(issue.status)),
-    review: issues.filter((issue) => ['submitted', 'internal_review', 'client_review', 'revision_required'].includes(issue.status)),
+    review: issues.filter((issue) =>
+      ['submitted', 'internal_review', 'client_review', 'revision_required'].includes(issue.status),
+    ),
     delivery: issues.filter((issue) => ['approved', 'delivered'].includes(issue.status)),
   };
 }

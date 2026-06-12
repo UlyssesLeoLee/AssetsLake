@@ -17,7 +17,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
           'p-1.5 rounded-md transition-colors duration-100',
           value === 'grid'
             ? 'bg-brand-500/20 text-brand-300'
-            : 'text-slate-500 hover:text-slate-300'
+            : 'text-slate-500 hover:text-slate-300',
         )}
         title="Grid view"
       >
@@ -29,7 +29,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
           'p-1.5 rounded-md transition-colors duration-100',
           value === 'table'
             ? 'bg-brand-500/20 text-brand-300'
-            : 'text-slate-500 hover:text-slate-300'
+            : 'text-slate-500 hover:text-slate-300',
         )}
         title="Table view"
       >

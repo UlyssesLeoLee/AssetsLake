@@ -46,9 +46,21 @@ CREATE
 ```
 */
 
-import type { Issue, IssueAssetSummary, IssueComment, IssueStatusHistory } from '@/types/production';
+import type {
+  Issue,
+  IssueAssetSummary,
+  IssueComment,
+  IssueStatusHistory,
+} from '@/types/production';
 
-const REVIEW_STATUSES = ['submitted', 'internal_review', 'client_review', 'revision_required', 'approved', 'delivered'];
+const REVIEW_STATUSES = [
+  'submitted',
+  'internal_review',
+  'client_review',
+  'revision_required',
+  'approved',
+  'delivered',
+];
 const DELIVERY_STATUSES = ['approved', 'delivered'];
 
 export interface EvidenceChecklistItem {
@@ -83,7 +95,10 @@ export interface IssueEvidenceModel {
   approvalRequired: boolean;
 }
 
-export function deriveEvidenceRisk(issue: Issue, assets: IssueAssetSummary[]): IssueEvidenceModel['risk'] {
+export function deriveEvidenceRisk(
+  issue: Issue,
+  assets: IssueAssetSummary[],
+): IssueEvidenceModel['risk'] {
   if (assets.length === 0 && REVIEW_STATUSES.includes(issue.status)) return 'blocked';
   if (issue.qa_status === 'failed') return 'blocked';
   if (issue.qa_status === 'warning' || issue.revision_count > 0) return 'watch';
@@ -93,14 +108,17 @@ export function deriveEvidenceRisk(issue: Issue, assets: IssueAssetSummary[]): I
 export function buildEvidenceChecklist(
   issue: Issue,
   assets: IssueAssetSummary[],
-  comments: IssueComment[]
+  comments: IssueComment[],
 ): EvidenceChecklistItem[] {
   return [
     {
       id: 'asset_lineage',
       label: 'Asset lineage',
       passed: assets.length > 0,
-      detail: assets.length > 0 ? `${assets.length} linked evidence objects` : 'No linked data lake assets',
+      detail:
+        assets.length > 0
+          ? `${assets.length} linked evidence objects`
+          : 'No linked data lake assets',
     },
     {
       id: 'qa_gate',
@@ -112,13 +130,20 @@ export function buildEvidenceChecklist(
       id: 'review_context',
       label: 'Review context',
       passed: comments.length > 0 || !REVIEW_STATUSES.includes(issue.status),
-      detail: comments.length > 0 ? `${comments.length} review/comment records` : 'Review issue needs written context',
+      detail:
+        comments.length > 0
+          ? `${comments.length} review/comment records`
+          : 'Review issue needs written context',
     },
     {
       id: 'delivery_evidence',
       label: 'Delivery evidence',
-      passed: !DELIVERY_STATUSES.includes(issue.status) || assets.some((asset) => asset.status === 'active'),
-      detail: DELIVERY_STATUSES.includes(issue.status) ? 'Approved work needs active asset evidence' : 'Not in delivery gate',
+      passed:
+        !DELIVERY_STATUSES.includes(issue.status) ||
+        assets.some((asset) => asset.status === 'active'),
+      detail: DELIVERY_STATUSES.includes(issue.status)
+        ? 'Approved work needs active asset evidence'
+        : 'Not in delivery gate',
     },
   ];
 }
@@ -145,7 +170,7 @@ export function buildDataLakeEvidenceLinks(assets: IssueAssetSummary[]): DataLak
 export function buildLangGraphSuggestions(
   issue: Issue,
   assets: IssueAssetSummary[],
-  history: IssueStatusHistory[]
+  history: IssueStatusHistory[],
 ): LangGraphSuggestion[] {
   const suggestions: LangGraphSuggestion[] = [
     {
@@ -168,7 +193,9 @@ export function buildLangGraphSuggestions(
   if (history.length > 0 || REVIEW_STATUSES.includes(issue.status)) {
     suggestions.push({
       node: 'action_proposer',
-      action: REVIEW_STATUSES.includes(issue.status) ? 'draft_review_next_action' : 'summarize_recent_status_changes',
+      action: REVIEW_STATUSES.includes(issue.status)
+        ? 'draft_review_next_action'
+        : 'summarize_recent_status_changes',
       confidence: 0.78,
       approvalRequired: true,
     });
@@ -181,7 +208,7 @@ export function buildIssueEvidenceModel(
   issue: Issue,
   assets: IssueAssetSummary[],
   history: IssueStatusHistory[],
-  comments: IssueComment[]
+  comments: IssueComment[],
 ): IssueEvidenceModel {
   const checklist = buildEvidenceChecklist(issue, assets, comments);
   const passedCount = checklist.filter((item) => item.passed).length;

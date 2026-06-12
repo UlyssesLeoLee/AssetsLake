@@ -53,7 +53,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `pnpm exec next dev --hostname 127.0.0.1 --port ${PORT}`,
-    url: BASE_URL,
+    url: `${BASE_URL}/wiki`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },

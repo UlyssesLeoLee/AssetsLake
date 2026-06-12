@@ -41,7 +41,13 @@ const ts = require('typescript');
 
 const FRONTEND_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = {
-  reportAnalyticsModel: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'reportAnalyticsModel.ts'),
+  reportAnalyticsModel: join(
+    FRONTEND_ROOT,
+    'src',
+    'plugin-groups',
+    'production',
+    'reportAnalyticsModel.ts',
+  ),
 };
 
 function readText(filePath) {
@@ -66,7 +72,10 @@ function loadReportAnalyticsModel() {
     },
   };
 
-  vm.runInNewContext(compiled.outputText, sandbox, { filename: FILES.reportAnalyticsModel, timeout: 1000 });
+  vm.runInNewContext(compiled.outputText, sandbox, {
+    filename: FILES.reportAnalyticsModel,
+    timeout: 1000,
+  });
   return module.exports;
 }
 
@@ -105,7 +114,9 @@ test('report analytics model builds dashboard KPIs, flow, SLA, and readiness', (
     },
     sla: {
       overall_compliance_percent: 72,
-      metrics: [{ name: 'Review SLA', target_hours: 24, breached: 1, total: 4, compliance_percent: 75 }],
+      metrics: [
+        { name: 'Review SLA', target_hours: 24, breached: 1, total: 4, compliance_percent: 75 },
+      ],
     },
     delivery_readiness: {
       dependency_count: 3,
@@ -119,7 +130,10 @@ test('report analytics model builds dashboard KPIs, flow, SLA, and readiness', (
   const dashboard = model.buildReportsDashboardModel(reports);
   assert.equal(dashboard.kpis[1].detail, '40% complete');
   assert.equal(dashboard.burndownPoints.length, 2);
-  assert.equal(JSON.stringify(dashboard.flowSegments.map((segment) => segment.percent)), '[20,30,10,40]');
+  assert.equal(
+    JSON.stringify(dashboard.flowSegments.map((segment) => segment.percent)),
+    '[20,30,10,40]',
+  );
   assert.equal(dashboard.velocityAverage, 7);
   assert.equal(dashboard.velocityPredictability, '88%');
   assert.equal(dashboard.cycleMetrics[0].p85_hours, 36);

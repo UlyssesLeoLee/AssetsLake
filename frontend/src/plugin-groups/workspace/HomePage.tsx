@@ -80,7 +80,9 @@ export default function HomePage() {
                 <Boxes className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white">{product.label} Product Architecture</h1>
+                <h1 className="text-2xl font-bold text-white">
+                  {product.label} Product Architecture
+                </h1>
                 <p className="mt-1 text-sm text-slate-400">{product.description}</p>
               </div>
             </div>
@@ -145,7 +147,9 @@ function PluginGroupPanel({ group }: { group: ResolvedPluginGroup }) {
         <div className="min-w-0">
           <h2 className="truncate text-base font-semibold text-slate-100">{group.label}</h2>
           <p className="mt-1 text-sm leading-relaxed text-slate-500">{group.description}</p>
-          <div className="mt-2 text-xs text-slate-600">{group.plugins.length} plugins / {group.routes.length} pages</div>
+          <div className="mt-2 text-xs text-slate-600">
+            {group.plugins.length} plugins / {group.routes.length} pages
+          </div>
         </div>
       </div>
       <div className="mt-4 space-y-2">
@@ -183,9 +187,13 @@ function RouteShortcut({ route }: { route: PluginRoute }) {
       <span className="flex min-w-0 items-center gap-2">
         <Icon className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-brand-300" />
         <span className="min-w-0">
-          <span className="block truncate text-sm font-medium text-slate-200">{route.pluginLabel ?? route.label}</span>
+          <span className="block truncate text-sm font-medium text-slate-200">
+            {route.pluginLabel ?? route.label}
+          </span>
           {route.description && (
-            <span className="mt-0.5 block truncate text-xs text-slate-500">{route.description}</span>
+            <span className="mt-0.5 block truncate text-xs text-slate-500">
+              {route.description}
+            </span>
           )}
         </span>
       </span>

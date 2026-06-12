@@ -102,8 +102,11 @@ CREATE
 ```
 */
 
+use std::time::Instant;
+
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
+use tokio::time::{timeout, Duration as TokioDuration};
 
 use crate::{
     errors::{ApiResponse, AppError},
@@ -132,6 +135,12 @@ Answer as a concise product-control assistant. Use the provided context to help 
 Coordinate data lake evidence, GitHub-style asset version control, and Jira-style issue flow.
 AI may only record replica shadow actions and must not claim primary data was changed.
 Do not claim that you executed primary writes. Prefer short operational guidance."#;
+const AI_TEST_SYSTEM_PROMPT: &str =
+    "Connectivity probe. Reply with exactly this text and no extra words: API OK.";
+const AI_TEST_USER_PROMPT: &str = "API connectivity check.";
+const AI_TEST_MAX_TOKENS: u16 = 16;
+const AI_TEST_CHAT_TIMEOUT_SECONDS: u64 = 12;
+const AI_AUTOPILOT_JSON_MAX_TOKENS: u16 = 1_200;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ManagementIntelligencePayload {
@@ -154,6 +163,37 @@ struct ManagementIntelligenceResponse {
 pub struct AiChatRequest {
     message: String,
     context: Option<String>,
+    #[serde(default)]
+    max_tokens: Option<u16>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AiAutopilotPlanRequest {
+    goal: String,
+    context: serde_json::Value,
+    #[serde(default)]
+    actions: Vec<AiAutopilotActionSnapshot>,
+    #[serde(default)]
+    signals: Vec<AiAutopilotSignalSnapshot>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AiAutopilotActionSnapshot {
+    id: String,
+    title: String,
+    app: String,
+    target_label: String,
+    #[serde(default)]
+    writes: Vec<String>,
+    #[serde(default)]
+    disabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AiAutopilotSignalSnapshot {
+    id: String,
+    source: String,
+    strength: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -161,6 +201,93 @@ struct AiChatResponse {
     message: String,
     actions: Vec<AiChatAction>,
     ai_status: AiCallStatus,
+}
+
+#[derive(Debug, Serialize)]
+struct AiProviderTestResponse {
+    ok: bool,
+    message: String,
+    latency_ms: u128,
+    chat_ok: bool,
+    embedding_ok: bool,
+    embedding_latency_ms: Option<u128>,
+    embedding_dimensions: Option<usize>,
+    ai_status: AiCallStatus,
+}
+
+#[derive(Debug, Serialize)]
+struct AiAutopilotPlanResponse {
+    id: String,
+    goal: String,
+    mode: String,
+    confidence: f32,
+    summary: String,
+    commands: Vec<AiAutopilotCommand>,
+    decision_review: AiAutopilotDecisionReview,
+    audit_trail: Vec<String>,
+    langgraph_nodes: Vec<LangGraphNode>,
+    ai_status: AiCallStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AiAutopilotPlanPayload {
+    id: String,
+    goal: String,
+    mode: String,
+    confidence: f32,
+    summary: String,
+    commands: Vec<AiAutopilotCommand>,
+    #[serde(default)]
+    decision_review: AiAutopilotDecisionReview,
+    audit_trail: Vec<String>,
+    #[serde(default)]
+    langgraph_nodes: Vec<LangGraphNode>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AiAutopilotCommand {
+    id: String,
+    action_id: Option<String>,
+    title: String,
+    app: String,
+    target_label: String,
+    intent: String,
+    #[serde(default)]
+    writes: Vec<String>,
+    #[serde(default)]
+    impact_preview: Vec<String>,
+    risk: String,
+    approval_required: bool,
+    status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct AiAutopilotDecisionReview {
+    #[serde(default)]
+    evidence: Vec<AiAutopilotEvidence>,
+    #[serde(default)]
+    risk_assessment: Vec<AiAutopilotRiskAssessment>,
+    #[serde(default)]
+    approval_gates: Vec<String>,
+    #[serde(default)]
+    outcome_checks: Vec<String>,
+    #[serde(default)]
+    governance_notes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AiAutopilotEvidence {
+    label: String,
+    value: String,
+    source: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct AiAutopilotRiskAssessment {
+    command_id: String,
+    risk: String,
+    reason: String,
+    guardrail: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -267,6 +394,133 @@ pub async fn management_chat(
     HttpResponse::Ok().json(ApiResponse::ok(response))
 }
 
+/// POST /api/management/ai/test
+#[post("/api/management/ai/test")]
+pub async fn management_ai_test(req: HttpRequest) -> HttpResponse {
+    let Some(config) = AiProviderConfig::from_headers(req.headers()) else {
+        let response = AiProviderTestResponse {
+            ok: false,
+            message: "AI API is not configured".to_string(),
+            latency_ms: 0,
+            chat_ok: false,
+            embedding_ok: false,
+            embedding_latency_ms: None,
+            embedding_dimensions: None,
+            ai_status: AiCallStatus::not_configured(),
+        };
+        return HttpResponse::Ok().json(ApiResponse::ok(response));
+    };
+
+    let service = AiProviderService::new();
+    let started = Instant::now();
+    let embedding_started = Instant::now();
+    let (embedding_ok, embedding_latency_ms, embedding_dimensions, embedding_message) =
+        match service.embed_text(&config, "AssetsLake API test").await {
+            Ok(vector) => {
+                let latency = embedding_started.elapsed().as_millis();
+                (
+                    true,
+                    Some(latency),
+                    Some(vector.len()),
+                    format!(
+                        "Embedding probe passed in {}ms with {} dimensions.",
+                        latency,
+                        vector.len()
+                    ),
+                )
+            }
+            Err(error) => (
+                false,
+                Some(embedding_started.elapsed().as_millis()),
+                None,
+                format!("Embedding probe failed: {}.", error),
+            ),
+        };
+
+    let chat_future = service.chat_text_with_max_tokens(
+        &config,
+        AI_TEST_SYSTEM_PROMPT,
+        AI_TEST_USER_PROMPT,
+        AI_TEST_MAX_TOKENS,
+    );
+    let result = timeout(
+        TokioDuration::from_secs(AI_TEST_CHAT_TIMEOUT_SECONDS),
+        chat_future,
+    )
+    .await;
+
+    let response = match result {
+        Ok(Ok(message)) => AiProviderTestResponse {
+            ok: true,
+            message: format!(
+                "Chat probe passed: {} {}",
+                message.trim(),
+                embedding_message
+            ),
+            latency_ms: started.elapsed().as_millis(),
+            chat_ok: true,
+            embedding_ok,
+            embedding_latency_ms,
+            embedding_dimensions,
+            ai_status: AiCallStatus::used(&config),
+        },
+        Ok(Err(error)) => {
+            let chat_error = error.to_string();
+
+            AiProviderTestResponse {
+                ok: false,
+                message: format!(
+                    "{} Chat completion probe failed: {}",
+                    embedding_message, chat_error
+                ),
+                latency_ms: started.elapsed().as_millis(),
+                chat_ok: false,
+                embedding_ok,
+                embedding_latency_ms,
+                embedding_dimensions,
+                ai_status: AiCallStatus::failed(&config, chat_error),
+            }
+        }
+        Err(_) => {
+            service.mark_chat_timeout(&config);
+            let chat_error = format!(
+                "AI chat completion probe timed out after {} seconds",
+                AI_TEST_CHAT_TIMEOUT_SECONDS
+            );
+
+            AiProviderTestResponse {
+                ok: false,
+                message: format!("{} {}", embedding_message, chat_error),
+                latency_ms: started.elapsed().as_millis(),
+                chat_ok: false,
+                embedding_ok,
+                embedding_latency_ms,
+                embedding_dimensions,
+                ai_status: AiCallStatus::failed(&config, chat_error),
+            }
+        }
+    };
+
+    HttpResponse::Ok().json(ApiResponse::ok(response))
+}
+
+/// POST /api/management/autopilot-plan
+#[post("/api/management/autopilot-plan")]
+pub async fn management_autopilot_plan(
+    req: HttpRequest,
+    body: web::Json<AiAutopilotPlanRequest>,
+) -> HttpResponse {
+    let plan_request = body.into_inner();
+    let response = match AiProviderConfig::from_headers(req.headers()) {
+        Some(config) => build_ai_autopilot_plan(config, &plan_request).await,
+        None => build_autopilot_response(
+            build_fallback_autopilot_plan(&plan_request),
+            AiCallStatus::not_configured(),
+        ),
+    };
+    HttpResponse::Ok().json(ApiResponse::ok(response))
+}
+
 /// POST /api/management/rag/search
 #[post("/api/management/rag/search")]
 pub async fn management_rag_search(
@@ -330,6 +584,32 @@ fn build_management_intelligence(ai_status: AiCallStatus) -> ManagementIntellige
     build_response(build_management_intelligence_payload(), ai_status)
 }
 
+async fn build_ai_autopilot_plan(
+    config: AiProviderConfig,
+    request: &AiAutopilotPlanRequest,
+) -> AiAutopilotPlanResponse {
+    let service = AiProviderService::new();
+    let prompt = build_autopilot_prompt(request);
+    match service
+        .chat_json_with_max_tokens::<AiAutopilotPlanPayload>(
+            &config,
+            AI_SYSTEM_PROMPT,
+            &prompt,
+            AI_AUTOPILOT_JSON_MAX_TOKENS,
+        )
+        .await
+    {
+        Ok(payload) => build_autopilot_response(
+            normalize_autopilot_plan(payload, request),
+            AiCallStatus::used(&config),
+        ),
+        Err(error) => build_autopilot_response(
+            build_fallback_autopilot_plan(request),
+            AiCallStatus::failed(&config, error.to_string()),
+        ),
+    }
+}
+
 async fn build_ai_chat_response(
     config: AiProviderConfig,
     request: &AiChatRequest,
@@ -337,10 +617,17 @@ async fn build_ai_chat_response(
 ) -> AiChatResponse {
     let service = AiProviderService::new();
     let prompt = build_chat_prompt(request, rag_context);
-    match service
-        .chat_text(&config, AI_CHAT_SYSTEM_PROMPT, &prompt)
-        .await
-    {
+    let max_tokens = request.max_tokens.unwrap_or(420).clamp(8, 420);
+    let result = if max_tokens == 420 {
+        service
+            .chat_text(&config, AI_CHAT_SYSTEM_PROMPT, &prompt)
+            .await
+    } else {
+        service
+            .chat_text_with_max_tokens(&config, AI_CHAT_SYSTEM_PROMPT, &prompt, max_tokens)
+            .await
+    };
+    match result {
         Ok(message) => AiChatResponse {
             message,
             actions: default_chat_actions(),
@@ -351,6 +638,675 @@ async fn build_ai_chat_response(
             AiCallStatus::failed(&config, error.to_string()),
             rag_context,
         ),
+    }
+}
+
+fn build_autopilot_prompt(request: &AiAutopilotPlanRequest) -> String {
+    format!(
+        r#"Create a guarded AssetsLake AI Autopilot plan.
+Return strict JSON only with this shape:
+{{
+  "id": "plan-short-id",
+  "goal": "string",
+  "mode": "advisor|operator|manager",
+  "confidence": 0.0,
+  "summary": "string",
+  "langgraph_nodes": [{{"name": "string", "state": "ready|guarded|planned", "detail": "string"}}],
+  "commands": [{{
+    "id": "cmd-1-action-id",
+    "action_id": "one supplied action id or null",
+    "title": "string",
+    "app": "string",
+    "target_label": "string",
+    "intent": "string",
+    "writes": ["replica writes only"],
+    "impact_preview": ["string"],
+    "risk": "low|medium|high",
+    "approval_required": true,
+    "status": "queued|requires_approval|blocked|done"
+  }}],
+  "decision_review": {{
+    "evidence": [{{"label": "string", "value": "string", "source": "string"}}],
+    "risk_assessment": [{{"command_id": "string", "risk": "low|medium|high", "reason": "string", "guardrail": "string"}}],
+    "approval_gates": ["string"],
+    "outcome_checks": ["string"],
+    "governance_notes": ["string"]
+  }},
+  "audit_trail": ["string"]
+}}
+Use only supplied action ids. Do not invent primary writes. High and medium risk commands require approval.
+Keep output compact: 2-4 langgraph_nodes, at most 3 commands, at most 4 evidence items, string fields under 100 characters.
+Decision review must cite supplied context and explain each command risk.
+
+Goal:
+{}
+
+Current product context:
+{}
+
+Available guarded actions:
+{}
+
+Emergent signals:
+{}"#,
+        request.goal.trim(),
+        request.context,
+        serde_json::to_string(&request.actions).unwrap_or_else(|_| "[]".to_string()),
+        serde_json::to_string(&request.signals).unwrap_or_else(|_| "[]".to_string())
+    )
+}
+
+fn normalize_autopilot_plan(
+    mut payload: AiAutopilotPlanPayload,
+    request: &AiAutopilotPlanRequest,
+) -> AiAutopilotPlanPayload {
+    if payload.id.trim().is_empty() {
+        payload.id = format!("ai-plan-{}", slug_goal(&request.goal));
+    }
+    if payload.goal.trim().is_empty() {
+        payload.goal = normalized_goal(request);
+    }
+    payload.mode = normalize_mode(&payload.mode, request);
+    payload.confidence = payload.confidence.clamp(0.0, 0.98);
+    if payload.summary.trim().is_empty() {
+        payload.summary = fallback_summary(request);
+    }
+    if payload.langgraph_nodes.is_empty() {
+        payload.langgraph_nodes = default_autopilot_nodes();
+    }
+
+    let commands: Vec<AiAutopilotCommand> = payload
+        .commands
+        .into_iter()
+        .take(6)
+        .enumerate()
+        .map(|(index, command)| normalize_command(index, command, request))
+        .collect();
+    payload.commands = if commands.is_empty() {
+        build_fallback_autopilot_plan(request).commands
+    } else {
+        commands
+    };
+    if payload.audit_trail.is_empty() {
+        payload.audit_trail = fallback_audit_trail(request);
+    }
+    payload.decision_review =
+        normalize_decision_review(payload.decision_review, request, &payload.commands);
+    payload
+}
+
+fn normalize_command(
+    index: usize,
+    mut command: AiAutopilotCommand,
+    request: &AiAutopilotPlanRequest,
+) -> AiAutopilotCommand {
+    let action = command
+        .action_id
+        .as_ref()
+        .and_then(|id| request.actions.iter().find(|candidate| candidate.id == *id));
+    let fallback_action = action.or_else(|| request.actions.get(index));
+
+    if command.id.trim().is_empty() {
+        command.id = format!(
+            "cmd-{}-{}",
+            index + 1,
+            fallback_action
+                .map(|item| item.id.as_str())
+                .unwrap_or("observe-context")
+        );
+    }
+    if command.title.trim().is_empty() {
+        command.title = fallback_action
+            .map(|item| item.title.clone())
+            .unwrap_or_else(|| "Observe Context".to_string());
+    }
+    if command.app.trim().is_empty() {
+        command.app = fallback_action
+            .map(|item| item.app.clone())
+            .unwrap_or_else(|| "AI Control".to_string());
+    }
+    if command.target_label.trim().is_empty() {
+        command.target_label = fallback_action
+            .map(|item| item.target_label.clone())
+            .unwrap_or_else(|| "No executable target".to_string());
+    }
+    if command.intent.trim().is_empty() {
+        command.intent = format!("Prepare a guarded replica proposal for {}.", command.title);
+    }
+    if command.writes.is_empty() {
+        command.writes = fallback_action
+            .map(|item| item.writes.clone())
+            .unwrap_or_default();
+    }
+    if command.impact_preview.is_empty() {
+        command.impact_preview = vec![
+            format!("Target: {}", command.target_label),
+            format!("App boundary: {}", command.app),
+            format!(
+                "Replica writes: {}",
+                if command.writes.is_empty() {
+                    "none".to_string()
+                } else {
+                    command.writes.join(", ")
+                }
+            ),
+        ];
+    }
+    command.risk = normalize_risk(&command.risk, command.action_id.as_deref());
+    command.approval_required = command.approval_required || command.risk != "low";
+    command.status = normalize_status(&command.status, command.approval_required, fallback_action);
+    command
+}
+
+fn build_fallback_autopilot_plan(request: &AiAutopilotPlanRequest) -> AiAutopilotPlanPayload {
+    let commands: Vec<AiAutopilotCommand> = autopilot_action_order()
+        .iter()
+        .filter_map(|action_id| {
+            request
+                .actions
+                .iter()
+                .find(|action| action.id == *action_id)
+        })
+        .take(6)
+        .enumerate()
+        .map(|(index, action)| fallback_command(index, action))
+        .collect();
+    let commands = if commands.is_empty() {
+        vec![AiAutopilotCommand {
+            id: "cmd-observe-context".to_string(),
+            action_id: None,
+            title: "Observe Context".to_string(),
+            app: "AI Control".to_string(),
+            target_label: "No executable target".to_string(),
+            intent: "Collect more lake, version, issue, and governance context before replica recording.".to_string(),
+            writes: vec![],
+            impact_preview: vec!["No product data will be modified.".to_string()],
+            risk: "low".to_string(),
+            approval_required: false,
+            status: "blocked".to_string(),
+        }]
+    } else {
+        commands
+    };
+
+    AiAutopilotPlanPayload {
+        id: format!("plan-{}", slug_goal(&request.goal)),
+        goal: normalized_goal(request),
+        mode: normalize_mode("", request),
+        confidence: fallback_confidence(request),
+        summary: fallback_summary(request),
+        decision_review: build_decision_review(request, &commands),
+        commands,
+        audit_trail: fallback_audit_trail(request),
+        langgraph_nodes: default_autopilot_nodes(),
+    }
+}
+
+fn build_autopilot_response(
+    payload: AiAutopilotPlanPayload,
+    ai_status: AiCallStatus,
+) -> AiAutopilotPlanResponse {
+    AiAutopilotPlanResponse {
+        id: payload.id,
+        goal: payload.goal,
+        mode: payload.mode,
+        confidence: payload.confidence,
+        summary: payload.summary,
+        commands: payload.commands,
+        decision_review: payload.decision_review,
+        audit_trail: payload.audit_trail,
+        langgraph_nodes: payload.langgraph_nodes,
+        ai_status,
+    }
+}
+
+fn normalize_decision_review(
+    mut review: AiAutopilotDecisionReview,
+    request: &AiAutopilotPlanRequest,
+    commands: &[AiAutopilotCommand],
+) -> AiAutopilotDecisionReview {
+    let fallback = build_decision_review(request, commands);
+
+    review.evidence = if review.evidence.is_empty() {
+        fallback.evidence
+    } else {
+        review
+            .evidence
+            .into_iter()
+            .take(6)
+            .enumerate()
+            .map(|(index, mut evidence)| {
+                if evidence.label.trim().is_empty() {
+                    evidence.label = format!("Evidence {}", index + 1);
+                }
+                if evidence.value.trim().is_empty() {
+                    evidence.value = "No value supplied".to_string();
+                }
+                if evidence.source.trim().is_empty() {
+                    evidence.source = "model.output".to_string();
+                }
+                evidence
+            })
+            .collect()
+    };
+
+    review.risk_assessment = if review.risk_assessment.is_empty() {
+        fallback.risk_assessment
+    } else {
+        let mut assessed: Vec<AiAutopilotRiskAssessment> = review
+            .risk_assessment
+            .into_iter()
+            .take(8)
+            .map(|mut item| {
+                if item.command_id.trim().is_empty() {
+                    item.command_id = "unmapped-command".to_string();
+                }
+                item.risk = normalize_risk(&item.risk, None);
+                if item.reason.trim().is_empty() {
+                    item.reason = "Risk was inferred from command scope.".to_string();
+                }
+                if item.guardrail.trim().is_empty() {
+                    item.guardrail = guardrail_for_risk(&item.risk).to_string();
+                }
+                item
+            })
+            .collect();
+        for fallback_item in fallback.risk_assessment {
+            if !assessed
+                .iter()
+                .any(|item| item.command_id == fallback_item.command_id)
+            {
+                assessed.push(fallback_item);
+            }
+        }
+        assessed
+    };
+
+    if review.approval_gates.is_empty() {
+        review.approval_gates = fallback.approval_gates;
+    }
+    if review.outcome_checks.is_empty() {
+        review.outcome_checks = fallback.outcome_checks;
+    }
+    if review.governance_notes.is_empty() {
+        review.governance_notes = fallback.governance_notes;
+    }
+    review
+}
+
+fn build_decision_review(
+    request: &AiAutopilotPlanRequest,
+    commands: &[AiAutopilotCommand],
+) -> AiAutopilotDecisionReview {
+    let ready_actions = request
+        .actions
+        .iter()
+        .filter(|action| !action.disabled)
+        .count();
+    let signal_summary = if request.signals.is_empty() {
+        "no emergent signals".to_string()
+    } else {
+        request
+            .signals
+            .iter()
+            .take(4)
+            .map(|signal| format!("{}:{}", signal.source, signal.strength))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+
+    let approval_gates: Vec<String> = commands
+        .iter()
+        .filter(|command| command.approval_required)
+        .map(|command| {
+            format!(
+                "{} requires human approval before {} replica recording.",
+                command.title, command.app
+            )
+        })
+        .collect();
+
+    AiAutopilotDecisionReview {
+        evidence: vec![
+            AiAutopilotEvidence {
+                label: "Goal".to_string(),
+                value: normalized_goal(request),
+                source: "request.goal".to_string(),
+            },
+            AiAutopilotEvidence {
+                label: "Product Context".to_string(),
+                value: format!(
+                    "issues={}, assets={}, readiness={}",
+                    context_value(&request.context, &["issues", "total_issues"])
+                        .unwrap_or_else(|| "unknown".to_string()),
+                    context_value(&request.context, &["active_assets", "assets"])
+                        .unwrap_or_else(|| "unknown".to_string()),
+                    context_value(
+                        &request.context,
+                        &["delivery_ready_percent", "readiness_percent"]
+                    )
+                    .unwrap_or_else(|| "unknown".to_string())
+                ),
+                source: "request.context".to_string(),
+            },
+            AiAutopilotEvidence {
+                label: "Action Surface".to_string(),
+                value: format!(
+                    "{} ready of {} supplied guarded actions",
+                    ready_actions,
+                    request.actions.len()
+                ),
+                source: "request.actions".to_string(),
+            },
+            AiAutopilotEvidence {
+                label: "Emergent Signals".to_string(),
+                value: signal_summary,
+                source: "request.signals".to_string(),
+            },
+        ],
+        risk_assessment: commands
+            .iter()
+            .map(|command| AiAutopilotRiskAssessment {
+                command_id: command.id.clone(),
+                risk: command.risk.clone(),
+                reason: risk_review_reason(command).to_string(),
+                guardrail: guardrail_for_risk(&command.risk).to_string(),
+            })
+            .collect(),
+        approval_gates: if approval_gates.is_empty() {
+            vec!["No approval gates required for the current low-risk replica queue.".to_string()]
+        } else {
+            approval_gates
+        },
+        outcome_checks: vec![
+            "Confirm every accepted command writes only a replica action record.".to_string(),
+            "Compare live board or asset state before promoting any primary workflow change."
+                .to_string(),
+            "Review AI memory matches and rejected commands before repeating automation."
+                .to_string(),
+        ],
+        governance_notes: vec![
+            "Server does not persist the user-supplied model API key.".to_string(),
+            "AI commands must reference supplied action ids or remain observation-only."
+                .to_string(),
+            "Primary data promotion remains a human or admin-governed operation.".to_string(),
+        ],
+    }
+}
+
+fn fallback_command(index: usize, action: &AiAutopilotActionSnapshot) -> AiAutopilotCommand {
+    let risk = risk_for_action(&action.id);
+    let approval_required = risk != "low";
+    AiAutopilotCommand {
+        id: format!("cmd-{}-{}", index + 1, action.id),
+        action_id: Some(action.id.clone()),
+        title: action.title.clone(),
+        app: action.app.clone(),
+        target_label: action.target_label.clone(),
+        intent: intent_for_action(&action.id, &action.title),
+        writes: action.writes.clone(),
+        impact_preview: vec![
+            format!("Target: {}", action.target_label),
+            format!("App boundary: {}", action.app),
+            format!(
+                "Replica writes: {}",
+                if action.writes.is_empty() {
+                    "none".to_string()
+                } else {
+                    action.writes.join(", ")
+                }
+            ),
+        ],
+        risk: risk.to_string(),
+        approval_required,
+        status: if action.disabled {
+            "blocked".to_string()
+        } else if approval_required {
+            "requires_approval".to_string()
+        } else {
+            "queued".to_string()
+        },
+    }
+}
+
+fn normalized_goal(request: &AiAutopilotPlanRequest) -> String {
+    let trimmed = request.goal.trim();
+    if trimmed.is_empty() {
+        "Drive the project toward delivery readiness".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn normalize_mode(mode: &str, request: &AiAutopilotPlanRequest) -> String {
+    let lowered = mode.to_ascii_lowercase();
+    if matches!(lowered.as_str(), "advisor" | "operator" | "manager") {
+        return lowered;
+    }
+    if request
+        .signals
+        .iter()
+        .all(|signal| signal.strength != "blocked")
+        && request.actions.iter().any(|action| !action.disabled)
+    {
+        "manager".to_string()
+    } else if request.actions.iter().any(|action| !action.disabled) {
+        "operator".to_string()
+    } else {
+        "advisor".to_string()
+    }
+}
+
+fn fallback_confidence(request: &AiAutopilotPlanRequest) -> f32 {
+    let ready_actions = request
+        .actions
+        .iter()
+        .filter(|action| !action.disabled)
+        .count();
+    let ready_signals = request
+        .signals
+        .iter()
+        .filter(|signal| signal.strength == "ready")
+        .count();
+    (0.42 + (ready_actions.min(4) as f32 * 0.08) + (ready_signals.min(3) as f32 * 0.06)).min(0.9)
+}
+
+fn fallback_summary(request: &AiAutopilotPlanRequest) -> String {
+    let ready_actions = request
+        .actions
+        .iter()
+        .filter(|action| !action.disabled)
+        .count();
+    format!(
+        "{} guarded commands available across {} signals; all writes remain replica-only.",
+        ready_actions,
+        request.signals.len()
+    )
+}
+
+fn fallback_audit_trail(request: &AiAutopilotPlanRequest) -> Vec<String> {
+    vec![
+        format!("Goal captured: {}", normalized_goal(request)),
+        format!(
+            "Observed {} guarded actions and {} emergent signals.",
+            request.actions.len(),
+            request.signals.len()
+        ),
+        "Guardrails: medium and high risk commands require human approval before replica recording."
+            .to_string(),
+    ]
+}
+
+fn default_autopilot_nodes() -> Vec<LangGraphNode> {
+    vec![
+        LangGraphNode {
+            name: "context_hydrator".to_string(),
+            state: "ready".to_string(),
+            detail: "Loads issue, asset, version, governance, and readiness state.".to_string(),
+        },
+        LangGraphNode {
+            name: "evidence_retriever".to_string(),
+            state: "ready".to_string(),
+            detail: "Links supplied context, emergent signals, and operation memory candidates."
+                .to_string(),
+        },
+        LangGraphNode {
+            name: "risk_scorer".to_string(),
+            state: "guarded".to_string(),
+            detail: "Scores command risk from app boundary, write scope, and delivery impact."
+                .to_string(),
+        },
+        LangGraphNode {
+            name: "action_planner".to_string(),
+            state: "ready".to_string(),
+            detail: "Ranks guarded commands by delivery impact, evidence coverage, and risk."
+                .to_string(),
+        },
+        LangGraphNode {
+            name: "policy_guard".to_string(),
+            state: "guarded".to_string(),
+            detail: "Blocks invented primary writes and requires approval for medium or high risk."
+                .to_string(),
+        },
+        LangGraphNode {
+            name: "replica_executor".to_string(),
+            state: "planned".to_string(),
+            detail: "Records accepted commands only through the replica action channel."
+                .to_string(),
+        },
+        LangGraphNode {
+            name: "outcome_evaluator".to_string(),
+            state: "planned".to_string(),
+            detail: "Checks memory, board consistency, and rejected-command patterns after action."
+                .to_string(),
+        },
+        LangGraphNode {
+            name: "approval_gate".to_string(),
+            state: "guarded".to_string(),
+            detail: "Keeps the existing approval contract visible for compatibility.".to_string(),
+        },
+    ]
+}
+
+fn risk_for_action(action_id: &str) -> &'static str {
+    match action_id {
+        "create-issue-from-asset" | "transition-review" => "high",
+        "version-gate"
+        | "attach-asset-evidence"
+        | "comment-risk"
+        | "rebalance-kanban-wip"
+        | "prioritize-board-risk" => "medium",
+        _ => "low",
+    }
+}
+
+fn risk_review_reason(command: &AiAutopilotCommand) -> &'static str {
+    match command.risk.as_str() {
+        "high" => "Command can create or move workflow records from AI-selected context.",
+        "medium" => {
+            "Command touches delivery evidence, board priorities, version gates, or review notes."
+        }
+        _ => "Command is limited to low-risk replica observation or indexing.",
+    }
+}
+
+fn guardrail_for_risk(risk: &str) -> &'static str {
+    match risk {
+        "high" => "human_approval_required_and_replica_only",
+        "medium" => "human_approval_required_before_replica_recording",
+        _ => "replica_only_no_primary_write",
+    }
+}
+
+fn context_value(context: &serde_json::Value, keys: &[&str]) -> Option<String> {
+    keys.iter()
+        .find_map(|key| context.get(*key).map(format_context_value))
+}
+
+fn format_context_value(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Null => "null".to_string(),
+        serde_json::Value::Bool(value) => value.to_string(),
+        serde_json::Value::Number(value) => value.to_string(),
+        serde_json::Value::String(value) => value.clone(),
+        serde_json::Value::Array(value) => format!("{} items", value.len()),
+        serde_json::Value::Object(value) => format!("{} fields", value.len()),
+    }
+}
+
+fn normalize_risk(risk: &str, action_id: Option<&str>) -> String {
+    let lowered = risk.to_ascii_lowercase();
+    if matches!(lowered.as_str(), "low" | "medium" | "high") {
+        lowered
+    } else {
+        action_id.map(risk_for_action).unwrap_or("low").to_string()
+    }
+}
+
+fn normalize_status(
+    status: &str,
+    approval_required: bool,
+    action: Option<&AiAutopilotActionSnapshot>,
+) -> String {
+    if action.map(|item| item.disabled).unwrap_or(false) {
+        return "blocked".to_string();
+    }
+    let lowered = status.to_ascii_lowercase();
+    if matches!(
+        lowered.as_str(),
+        "queued" | "requires_approval" | "blocked" | "done"
+    ) {
+        return lowered;
+    }
+    if approval_required {
+        "requires_approval".to_string()
+    } else {
+        "queued".to_string()
+    }
+}
+
+fn intent_for_action(action_id: &str, title: &str) -> String {
+    match action_id {
+        "index-data-lake" => "Record a replica proposal to promote useful lake records into AI-readable retrieval context.".to_string(),
+        "version-gate" => "Record a replica branch-style gate proposal for the most relevant asset version.".to_string(),
+        "attach-asset-evidence" => "Record a replica evidence-link proposal for the strongest Jira-style work item.".to_string(),
+        "create-issue-from-asset" => "Record a replica follow-up issue proposal from selected lake evidence.".to_string(),
+        "transition-review" => "Record a replica review-lane transition proposal after evidence is prepared.".to_string(),
+        "comment-risk" => "Record a replica risk-note proposal for the strongest issue target.".to_string(),
+        _ => format!("Record {} through the replica-only control bus.", title),
+    }
+}
+
+fn autopilot_action_order() -> [&'static str; 8] {
+    [
+        "index-data-lake",
+        "version-gate",
+        "attach-asset-evidence",
+        "create-issue-from-asset",
+        "transition-review",
+        "comment-risk",
+        "log-ai-work",
+        "update-asset-evidence",
+    ]
+}
+
+fn slug_goal(goal: &str) -> String {
+    let mut output = String::new();
+    let mut last_dash = false;
+    for ch in goal.to_ascii_lowercase().chars() {
+        if ch.is_ascii_alphanumeric() {
+            output.push(ch);
+            last_dash = false;
+        } else if !last_dash {
+            output.push('-');
+            last_dash = true;
+        }
+    }
+    let trimmed = output.trim_matches('-');
+    if trimmed.is_empty() {
+        "delivery-readiness".to_string()
+    } else {
+        trimmed.to_string()
     }
 }
 
@@ -593,7 +1549,7 @@ mod tests {
     use actix_web::{http::StatusCode, test, App};
     use serde_json::Value;
 
-    use super::management_intelligence;
+    use super::{management_ai_test, management_autopilot_plan, management_intelligence};
 
     const ENDPOINT: &str = "/api/management/intelligence";
 
@@ -637,5 +1593,83 @@ mod tests {
         assert!(automation_rules
             .iter()
             .all(|rule| rule["guardrail"] == "human_review_required"));
+    }
+
+    #[actix_web::test]
+    async fn management_autopilot_plan_returns_guarded_contract() {
+        let app = test::init_service(App::new().service(management_autopilot_plan)).await;
+        let request = test::TestRequest::post()
+            .uri("/api/management/autopilot-plan")
+            .set_json(serde_json::json!({
+                "goal": "Drive delivery readiness",
+                "context": {"issues": 3, "assets": 2},
+                "actions": [{
+                    "id": "version-gate",
+                    "title": "Version Gate",
+                    "app": "Version Graph",
+                    "target_label": "asset.png / v2",
+                    "writes": ["replica version gate proposal"],
+                    "disabled": false
+                }],
+                "signals": [{
+                    "id": "version-drift",
+                    "source": "Version Graph",
+                    "strength": "watch"
+                }]
+            }))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body: Value = test::read_body_json(response).await;
+        assert_eq!(body["success"], true);
+        assert_eq!(body["data"]["ai_status"]["configured"], false);
+        assert_eq!(body["data"]["commands"][0]["action_id"], "version-gate");
+        assert_eq!(body["data"]["commands"][0]["status"], "requires_approval");
+        assert!(body["data"]["decision_review"]["evidence"]
+            .as_array()
+            .expect("decision review evidence is array")
+            .iter()
+            .any(|item| item["label"] == "Product Context"));
+        assert!(body["data"]["decision_review"]["risk_assessment"]
+            .as_array()
+            .expect("decision review risk assessment is array")
+            .iter()
+            .any(|item| item["command_id"] == "cmd-1-version-gate"));
+        assert!(body["data"]["decision_review"]["governance_notes"]
+            .as_array()
+            .expect("decision review governance notes is array")
+            .iter()
+            .any(|item| item
+                .as_str()
+                .unwrap_or_default()
+                .contains("does not persist")));
+        assert!(body["data"]["langgraph_nodes"]
+            .as_array()
+            .expect("langgraph_nodes is array")
+            .iter()
+            .any(|node| node["name"] == "approval_gate"));
+    }
+
+    #[actix_web::test]
+    async fn management_ai_test_without_config_returns_contract() {
+        let app = test::init_service(App::new().service(management_ai_test)).await;
+        let request = test::TestRequest::post()
+            .uri("/api/management/ai/test")
+            .to_request();
+        let response = test::call_service(&app, request).await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body: Value = test::read_body_json(response).await;
+        assert_eq!(body["success"], true);
+        assert_eq!(body["data"]["ok"], false);
+        assert_eq!(body["data"]["message"], "AI API is not configured");
+        assert_eq!(body["data"]["latency_ms"], 0);
+        assert_eq!(body["data"]["chat_ok"], false);
+        assert_eq!(body["data"]["embedding_ok"], false);
+        assert_eq!(body["data"]["ai_status"]["configured"], false);
+        assert_eq!(body["data"]["ai_status"]["used"], false);
     }
 }

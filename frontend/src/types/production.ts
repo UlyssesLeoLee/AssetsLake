@@ -12,34 +12,39 @@ CREATE
   (c7:Class {name: "IssueSummary", type: "class", language: "typescript"}),
   (c8:Class {name: "IssueComment", type: "class", language: "typescript"}),
   (c9:Class {name: "IssueStatusHistory", type: "class", language: "typescript"}),
-  (c10:Class {name: "IssueAssetSummary", type: "class", language: "typescript"}),
-  (c11:Class {name: "IssueWorkLog", type: "class", language: "typescript"}),
-  (c12:Class {name: "ReviewRound", type: "class", language: "typescript"}),
-  (c13:Class {name: "Milestone", type: "class", language: "typescript"}),
-  (c14:Class {name: "DeliveryPackage", type: "class", language: "typescript"}),
-  (c15:Class {name: "IssueFilters", type: "class", language: "typescript"}),
-  (c16:Class {name: "CreateIssueRequest", type: "class", language: "typescript"}),
-  (c17:Class {name: "UpdateIssueRequest", type: "class", language: "typescript"}),
-  (c18:Class {name: "TransitionIssueRequest", type: "class", language: "typescript"}),
-  (c19:Class {name: "CreateIssueCommentRequest", type: "class", language: "typescript"}),
-  (c20:Class {name: "CreateIssueWorkLogRequest", type: "class", language: "typescript"}),
-  (c21:Class {name: "AttachIssueAssetRequest", type: "class", language: "typescript"}),
-  (c22:Class {name: "CreateReviewRequest", type: "class", language: "typescript"}),
-  (c23:Class {name: "ApproveIssueRequest", type: "class", language: "typescript"}),
-  (c24:Class {name: "RequestRevisionRequest", type: "class", language: "typescript"}),
-  (c25:Class {name: "CreateDeliveryPackageRequest", type: "class", language: "typescript"}),
-  (c26:Class {name: "LangGraphNode", type: "class", language: "typescript"}),
-  (c27:Class {name: "DataLakeFeed", type: "class", language: "typescript"}),
-  (c28:Class {name: "AiAutomationRule", type: "class", language: "typescript"}),
-  (c29:Class {name: "ManagementIntelligence", type: "class", language: "typescript"}),
-  (c30:Class {name: "AiCallStatus", type: "class", language: "typescript", signature: "interface AiCallStatus"}),
-  (c31:Class {name: "AiControlChatRequest", type: "class", language: "typescript", signature: "interface AiControlChatRequest"}),
-  (c32:Class {name: "AiControlChatResponse", type: "class", language: "typescript", signature: "interface AiControlChatResponse"}),
-  (c33:Class {name: "ReplicaActionRequest", type: "class", language: "typescript", signature: "interface ReplicaActionRequest"}),
-  (c34:Class {name: "ReplicaActionRecord", type: "class", language: "typescript", signature: "interface ReplicaActionRecord"}),
-  (c35:Class {name: "ReplicaActionResponse", type: "class", language: "typescript", signature: "interface ReplicaActionResponse"}),
-  (c36:Class {name: "RagSearchRequest", type: "class", language: "typescript", signature: "interface RagSearchRequest"}),
-  (c37:Class {name: "RagSearchResponse", type: "class", language: "typescript", signature: "interface RagSearchResponse"}),
+  (c10:Class {name: "IssueBoardSyncActivity", type: "class", language: "typescript", signature: "interface IssueBoardSyncActivity"}),
+  (c11:Class {name: "IssueBoardSyncSnapshot", type: "class", language: "typescript", signature: "interface IssueBoardSyncSnapshot"}),
+  (c12:Class {name: "IssueAssetSummary", type: "class", language: "typescript"}),
+  (c13:Class {name: "IssueWorkLog", type: "class", language: "typescript"}),
+  (c14:Class {name: "ReviewRound", type: "class", language: "typescript"}),
+  (c15:Class {name: "Milestone", type: "class", language: "typescript"}),
+  (c16:Class {name: "DeliveryPackage", type: "class", language: "typescript"}),
+  (c17:Class {name: "IssueFilters", type: "class", language: "typescript"}),
+  (c18:Class {name: "CreateIssueRequest", type: "class", language: "typescript"}),
+  (c19:Class {name: "UpdateIssueRequest", type: "class", language: "typescript"}),
+  (c20:Class {name: "TransitionIssueRequest", type: "class", language: "typescript"}),
+  (c21:Class {name: "CreateIssueCommentRequest", type: "class", language: "typescript"}),
+  (c22:Class {name: "CreateIssueWorkLogRequest", type: "class", language: "typescript"}),
+  (c23:Class {name: "AttachIssueAssetRequest", type: "class", language: "typescript"}),
+  (c24:Class {name: "CreateReviewRequest", type: "class", language: "typescript"}),
+  (c25:Class {name: "ApproveIssueRequest", type: "class", language: "typescript"}),
+  (c26:Class {name: "RequestRevisionRequest", type: "class", language: "typescript"}),
+  (c27:Class {name: "CreateDeliveryPackageRequest", type: "class", language: "typescript"}),
+  (c28:Class {name: "LangGraphNode", type: "class", language: "typescript"}),
+  (c29:Class {name: "DataLakeFeed", type: "class", language: "typescript"}),
+  (c30:Class {name: "AiAutomationRule", type: "class", language: "typescript"}),
+  (c31:Class {name: "ManagementIntelligence", type: "class", language: "typescript"}),
+  (c32:Class {name: "AiCallStatus", type: "class", language: "typescript", signature: "interface AiCallStatus"}),
+  (c33:Class {name: "AiControlChatRequest", type: "class", language: "typescript", signature: "interface AiControlChatRequest"}),
+  (c34:Class {name: "AiControlChatResponse", type: "class", language: "typescript", signature: "interface AiControlChatResponse"}),
+  (c35:Class {name: "ReplicaActionRequest", type: "class", language: "typescript", signature: "interface ReplicaActionRequest"}),
+  (c36:Class {name: "ReplicaActionRecord", type: "class", language: "typescript", signature: "interface ReplicaActionRecord"}),
+  (c37:Class {name: "ReplicaActionResponse", type: "class", language: "typescript", signature: "interface ReplicaActionResponse"}),
+  (c38:Class {name: "RagSearchRequest", type: "class", language: "typescript", signature: "interface RagSearchRequest"}),
+  (c39:Class {name: "RagSearchResponse", type: "class", language: "typescript", signature: "interface RagSearchResponse"}),
+  (c40:Class {name: "AiAutopilotDecisionEvidence", type: "class", language: "typescript", signature: "interface AiAutopilotDecisionEvidence"}),
+  (c41:Class {name: "AiAutopilotRiskAssessment", type: "class", language: "typescript", signature: "interface AiAutopilotRiskAssessment"}),
+  (c42:Class {name: "AiAutopilotDecisionReview", type: "class", language: "typescript", signature: "interface AiAutopilotDecisionReview"}),
   (v1:Variable {name: "ISSUE_STATUSES", type: "variable"}),
   (v2:Variable {name: "ISSUE_STATUS_LABELS", type: "variable"}),
   (v3:Variable {name: "ISSUE_TYPE_LABELS", type: "variable"}),
@@ -82,6 +87,11 @@ CREATE
   (m)-[:CONTAINS]->(c35),
   (m)-[:CONTAINS]->(c36),
   (m)-[:CONTAINS]->(c37),
+  (m)-[:CONTAINS]->(c38),
+  (m)-[:CONTAINS]->(c39),
+  (m)-[:CONTAINS]->(c40),
+  (m)-[:CONTAINS]->(c41),
+  (m)-[:CONTAINS]->(c42),
   (m)-[:USES]->(v1),
   (m)-[:USES]->(v2),
   (m)-[:USES]->(v3),
@@ -220,6 +230,25 @@ export interface IssueStatusHistory {
   actor: string;
   reason?: string;
   created_at: string;
+}
+
+export interface IssueBoardSyncActivity {
+  id: string;
+  issue_id: string;
+  issue_key: string;
+  title: string;
+  from_status?: IssueStatus | null;
+  to_status: IssueStatus;
+  actor: string;
+  created_at: string;
+  issue_version: number;
+  issue_updated_at: string;
+}
+
+export interface IssueBoardSyncSnapshot {
+  cursor: string;
+  changed_count: number;
+  recent_activity: IssueBoardSyncActivity[];
 }
 
 export interface IssueAssetSummary {
@@ -460,6 +489,18 @@ export interface ManagementIntelligence {
 export interface AiControlChatRequest {
   message: string;
   context?: string;
+  max_tokens?: number;
+}
+
+export interface AiProviderTestResponse {
+  ok: boolean;
+  message: string;
+  latency_ms: number;
+  chat_ok: boolean;
+  embedding_ok: boolean;
+  embedding_latency_ms?: number;
+  embedding_dimensions?: number;
+  ai_status?: AiCallStatus;
 }
 
 export interface AiControlChatAction {
@@ -471,6 +512,80 @@ export interface AiControlChatAction {
 export interface AiControlChatResponse {
   message: string;
   actions: AiControlChatAction[];
+  ai_status?: AiCallStatus;
+}
+
+export type AiAutopilotMode = 'advisor' | 'operator' | 'manager' | string;
+export type AiAutopilotRisk = 'low' | 'medium' | 'high' | string;
+export type AiAutopilotCommandStatus = 'queued' | 'requires_approval' | 'blocked' | 'done' | string;
+
+export interface AiAutopilotActionSnapshot {
+  id: string;
+  title: string;
+  app: string;
+  target_label: string;
+  writes: string[];
+  disabled: boolean;
+}
+
+export interface AiAutopilotSignalSnapshot {
+  id: string;
+  source: string;
+  strength: 'ready' | 'watch' | 'blocked' | string;
+}
+
+export interface AiAutopilotPlanRequest {
+  goal: string;
+  context: Record<string, unknown>;
+  actions: AiAutopilotActionSnapshot[];
+  signals: AiAutopilotSignalSnapshot[];
+}
+
+export interface AiAutopilotCommand {
+  id: string;
+  action_id?: string | null;
+  title: string;
+  app: string;
+  target_label: string;
+  intent: string;
+  writes: string[];
+  impact_preview: string[];
+  risk: AiAutopilotRisk;
+  approval_required: boolean;
+  status: AiAutopilotCommandStatus;
+}
+
+export interface AiAutopilotDecisionEvidence {
+  label: string;
+  value: string;
+  source: string;
+}
+
+export interface AiAutopilotRiskAssessment {
+  command_id: string;
+  risk: AiAutopilotRisk;
+  reason: string;
+  guardrail: string;
+}
+
+export interface AiAutopilotDecisionReview {
+  evidence: AiAutopilotDecisionEvidence[];
+  risk_assessment: AiAutopilotRiskAssessment[];
+  approval_gates: string[];
+  outcome_checks: string[];
+  governance_notes: string[];
+}
+
+export interface AiAutopilotPlanResponse {
+  id: string;
+  goal: string;
+  mode: AiAutopilotMode;
+  confidence: number;
+  summary: string;
+  commands: AiAutopilotCommand[];
+  decision_review: AiAutopilotDecisionReview;
+  audit_trail: string[];
+  langgraph_nodes: LangGraphNode[];
   ai_status?: AiCallStatus;
 }
 

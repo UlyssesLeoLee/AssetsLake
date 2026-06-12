@@ -41,7 +41,13 @@ const ts = require('typescript');
 
 const FRONTEND_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = {
-  calendarWorkloadModel: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'calendarWorkloadModel.ts'),
+  calendarWorkloadModel: join(
+    FRONTEND_ROOT,
+    'src',
+    'plugin-groups',
+    'production',
+    'calendarWorkloadModel.ts',
+  ),
 };
 
 function readText(filePath) {
@@ -66,7 +72,10 @@ function loadCalendarWorkloadModel() {
     },
   };
 
-  vm.runInNewContext(compiled.outputText, sandbox, { filename: FILES.calendarWorkloadModel, timeout: 1000 });
+  vm.runInNewContext(compiled.outputText, sandbox, {
+    filename: FILES.calendarWorkloadModel,
+    timeout: 1000,
+  });
   return module.exports;
 }
 
@@ -110,9 +119,27 @@ test('calendar workload model sorts events and derives lane risk', () => {
       },
     ],
     lanes: [
-      { id: 'sprint', label: 'Sprint Plan', calendar_type: 'sprint', status: 'ready', event_count: 1 },
-      { id: 'review', label: 'Review Windows', calendar_type: 'review', status: 'ready', event_count: 1 },
-      { id: 'vendor', label: 'Vendor Delivery', calendar_type: 'vendor', status: 'ready', event_count: 1 },
+      {
+        id: 'sprint',
+        label: 'Sprint Plan',
+        calendar_type: 'sprint',
+        status: 'ready',
+        event_count: 1,
+      },
+      {
+        id: 'review',
+        label: 'Review Windows',
+        calendar_type: 'review',
+        status: 'ready',
+        event_count: 1,
+      },
+      {
+        id: 'vendor',
+        label: 'Vendor Delivery',
+        calendar_type: 'vendor',
+        status: 'ready',
+        event_count: 1,
+      },
     ],
     workload: [
       { date: '2026-05-21', total: 1, review: 0, vendor: 0, risk: 0 },
@@ -123,7 +150,10 @@ test('calendar workload model sorts events and derives lane risk', () => {
     vendor_delivery_calendar: 'ready',
   };
 
-  assert.equal(JSON.stringify(model.sortEventsByDate(calendar.events).map((event) => event.id)), '["sprint-a","review-a","vendor-a"]');
+  assert.equal(
+    JSON.stringify(model.sortEventsByDate(calendar.events).map((event) => event.id)),
+    '["sprint-a","review-a","vendor-a"]',
+  );
 
   const workloadModel = model.buildCalendarWorkloadModel(calendar, 4);
   assert.equal(workloadModel.eventCount, 3);

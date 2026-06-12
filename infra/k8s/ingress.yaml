@@ -100,6 +100,27 @@ spec:
                 name: assetslake-verification-email
                 port:
                   number: 8080
+          - path: /api/wiki
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-wiki-api
+                port:
+                  number: 8080
+          - path: /api/design-requirements
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-design-requirements-api
+                port:
+                  number: 8080
+          - path: /api/people
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-people-intelligence-api
+                port:
+                  number: 8080
           - path: /api/health
             pathType: Prefix
             backend:
@@ -161,6 +182,27 @@ spec:
             backend:
               service:
                 name: assetslake-observability-frontend
+                port:
+                  number: 3000
+          - path: /app/wiki
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-wiki-frontend
+                port:
+                  number: 3000
+          - path: /app/design-requirements
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-design-requirements-frontend
+                port:
+                  number: 3000
+          - path: /app/people-intelligence
+            pathType: Prefix
+            backend:
+              service:
+                name: assetslake-people-intelligence-frontend
                 port:
                   number: 3000
           - path: /

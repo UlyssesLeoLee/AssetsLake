@@ -79,10 +79,18 @@ CREATE
 ```
 */
 
-import type { IssueDependency, IssueDependencyType, ProjectGanttItem } from '@/types/projectManagement';
+import type {
+  IssueDependency,
+  IssueDependencyType,
+  ProjectGanttItem,
+} from '@/types/projectManagement';
 
 const DAY_MS = 86_400_000;
-const BLOCKING_DEPENDENCY_TYPES = new Set<IssueDependencyType>(['blocks', 'is_blocked_by', 'parent_child']);
+const BLOCKING_DEPENDENCY_TYPES = new Set<IssueDependencyType>([
+  'blocks',
+  'is_blocked_by',
+  'parent_child',
+]);
 
 export interface GanttBlockingEdge {
   id: string;
@@ -173,16 +181,20 @@ function clampPercent(value: number): number {
 
 export function normalizeBlockingEdge(
   dependency: IssueDependency,
-  itemIds: Set<string>
+  itemIds: Set<string>,
 ): GanttBlockingEdge | undefined {
   if (!BLOCKING_DEPENDENCY_TYPES.has(dependency.dependency_type)) {
     return undefined;
   }
 
   const fromIssueId =
-    dependency.dependency_type === 'is_blocked_by' ? dependency.target_issue_id : dependency.source_issue_id;
+    dependency.dependency_type === 'is_blocked_by'
+      ? dependency.target_issue_id
+      : dependency.source_issue_id;
   const toIssueId =
-    dependency.dependency_type === 'is_blocked_by' ? dependency.source_issue_id : dependency.target_issue_id;
+    dependency.dependency_type === 'is_blocked_by'
+      ? dependency.source_issue_id
+      : dependency.target_issue_id;
 
   if (!itemIds.has(fromIssueId) || !itemIds.has(toIssueId)) {
     return undefined;
@@ -197,7 +209,10 @@ export function normalizeBlockingEdge(
   };
 }
 
-export function buildBlockingEdges(dependencies: IssueDependency[], itemIds: Set<string>): GanttBlockingEdge[] {
+export function buildBlockingEdges(
+  dependencies: IssueDependency[],
+  itemIds: Set<string>,
+): GanttBlockingEdge[] {
   return dependencies.flatMap((dependency) => {
     const edge = normalizeBlockingEdge(dependency, itemIds);
     return edge ? [edge] : [];
@@ -218,7 +233,7 @@ function scoreCriticalPath(
   issueId: string,
   adjacency: Map<string, string[]>,
   durationById: Map<string, number>,
-  visiting: Set<string>
+  visiting: Set<string>,
 ): GanttCriticalPathSummary {
   if (visiting.has(issueId)) {
     return { issueIds: [], durationDays: 0 };
@@ -244,7 +259,7 @@ function scoreCriticalPath(
 
 export function findCriticalPath(
   rows: GanttTimelineRow[],
-  edges: GanttBlockingEdge[]
+  edges: GanttBlockingEdge[],
 ): GanttCriticalPathSummary {
   if (edges.length === 0) {
     return { issueIds: [], durationDays: 0 };
@@ -267,7 +282,8 @@ export function findCriticalPath(
 function buildTimelineMarkers(startDay: number, totalDays: number): GanttTimelineMarker[] {
   const markerCount = totalDays <= 1 ? 1 : Math.min(6, Math.max(2, totalDays));
   return Array.from({ length: markerCount }, (_, index) => {
-    const offset = markerCount === 1 ? 0 : Math.round(((totalDays - 1) * index) / (markerCount - 1));
+    const offset =
+      markerCount === 1 ? 0 : Math.round(((totalDays - 1) * index) / (markerCount - 1));
     return {
       label: toIsoDate(startDay + offset).slice(5),
       leftPercent: clampPercent((offset / Math.max(1, totalDays - 1)) * 100),
@@ -280,7 +296,12 @@ function getScheduleRisk(row: GanttTimelineRow, nowDay: number): GanttTimelineRo
   if (row.isUnscheduled) {
     return 'unscheduled';
   }
-  if (dueDay !== undefined && dueDay < nowDay && row.item.status !== 'delivered' && row.item.status !== 'archived') {
+  if (
+    dueDay !== undefined &&
+    dueDay < nowDay &&
+    row.item.status !== 'delivered' &&
+    row.item.status !== 'archived'
+  ) {
     return 'overdue';
   }
   if (row.blockedBy > 0 && row.item.status !== 'delivered' && row.item.status !== 'archived') {
@@ -295,9 +316,12 @@ function getScheduleRisk(row: GanttTimelineRow, nowDay: number): GanttTimelineRo
 export function buildGanttTimelineModel(
   items: ProjectGanttItem[],
   dependencies: IssueDependency[],
-  now: Date | string = new Date()
+  now: Date | string = new Date(),
 ): GanttTimelineModel {
-  const nowDay = typeof now === 'string' ? parseDateDay(now) ?? parseDateDay(new Date().toISOString()) ?? 0 : Math.floor(now.getTime() / DAY_MS);
+  const nowDay =
+    typeof now === 'string'
+      ? (parseDateDay(now) ?? parseDateDay(new Date().toISOString()) ?? 0)
+      : Math.floor(now.getTime() / DAY_MS);
   const itemIds = new Set(items.map((item) => item.id));
   const blockingEdges = buildBlockingEdges(dependencies, itemIds);
 
@@ -305,7 +329,9 @@ export function buildGanttTimelineModel(
     const durationDays = estimateDurationDays(item);
     const dueDay = parseDateDay(item.due_date);
     const explicitStartDay = parseDateDay(item.start_date);
-    const endDay = dueDay ?? (explicitStartDay !== undefined ? explicitStartDay + durationDays - 1 : nowDay + index);
+    const endDay =
+      dueDay ??
+      (explicitStartDay !== undefined ? explicitStartDay + durationDays - 1 : nowDay + index);
     const startDay = explicitStartDay ?? estimateStartDay(item, endDay);
     return {
       item,
@@ -316,8 +342,10 @@ export function buildGanttTimelineModel(
     };
   });
 
-  const firstDay = candidates.length > 0 ? Math.min(...candidates.map((candidate) => candidate.startDay)) : nowDay;
-  const lastDay = candidates.length > 0 ? Math.max(...candidates.map((candidate) => candidate.endDay)) : nowDay;
+  const firstDay =
+    candidates.length > 0 ? Math.min(...candidates.map((candidate) => candidate.startDay)) : nowDay;
+  const lastDay =
+    candidates.length > 0 ? Math.max(...candidates.map((candidate) => candidate.endDay)) : nowDay;
   const totalDays = Math.max(1, lastDay - firstDay + 1);
   const blockedByCounts = new Map<string, number>();
   const blocksCounts = new Map<string, number>();

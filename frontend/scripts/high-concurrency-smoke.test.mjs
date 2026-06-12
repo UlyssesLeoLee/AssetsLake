@@ -16,6 +16,7 @@ CREATE
   (v2:Variable {name: "TEST_PASSWORD", type: "variable"}),
   (v3:Variable {name: "ACCOUNTS", type: "variable"}),
   (v4:Variable {name: "HEALTH_CONCURRENCY", type: "variable"}),
+  (v5:Variable {name: "API_LATENCY_SLO_MS", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(fn1),
   (m)-[:CONTAINS]->(fn2),
@@ -30,6 +31,7 @@ CREATE
   (m)-[:USES]->(v2),
   (m)-[:USES]->(v3),
   (m)-[:USES]->(v4),
+  (m)-[:USES]->(v5),
   (fn3)-[:CALLS]->(fn1),
   (fn5)-[:CALLS]->(fn1),
   (fn6)-[:CALLS]->(fn1),
@@ -51,11 +53,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 const API_BASE =
-  process.env.ASSETSLAKE_API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  'http://127.0.0.1:18080';
-const TEST_PASSWORD = process.env.ASSETSLAKE_TEST_PASSWORD || 'AssetsLake#2026';
+  process.env.ASSETSLAKE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18080';
+const TEST_PASSWORD = process.env.ASSETSLAKE_TEST_PASSWORD || 'test';
+const ADMIN_PASSWORD = process.env.ASSETSLAKE_ADMIN_PASSWORD || TEST_PASSWORD;
 const HEALTH_CONCURRENCY = Number.parseInt(process.env.HIGH_CONCURRENCY_HEALTH || '200', 10);
+const API_LATENCY_SLO_MS = Number.parseInt(process.env.API_LATENCY_SLO_MS || '3000', 10);
 const ACCOUNTS = ['alice.producer', 'bob.artist', 'chen.reviewer', 'dana.manager'];
 
 async function jsonRequest(path, options = {}) {
@@ -75,7 +77,7 @@ function expectStatus(result, status, label) {
   assert.equal(
     result.response.status,
     status,
-    `${label} expected HTTP ${status}, got HTTP ${result.response.status}: ${JSON.stringify(result.body)}`
+    `${label} expected HTTP ${status}, got HTTP ${result.response.status}: ${JSON.stringify(result.body)}`,
   );
 }
 
@@ -84,7 +86,7 @@ async function login(username) {
     method: 'POST',
     body: JSON.stringify({
       username,
-      password: TEST_PASSWORD,
+      password: username === 'dana.manager' ? ADMIN_PASSWORD : TEST_PASSWORD,
       device_label: `concurrency-${username}-${Date.now()}`,
     }),
   });
@@ -136,20 +138,32 @@ async function logout(session) {
 }
 
 test('concurrent health and auth requests stay responsive', async () => {
+  const healthStartedAt = performance.now();
   const healthResponses = await Promise.all(
-    Array.from({ length: HEALTH_CONCURRENCY }, () => jsonRequest('/api/health'))
+    Array.from({ length: HEALTH_CONCURRENCY }, () => jsonRequest('/api/health')),
+  );
+  const healthElapsedMs = performance.now() - healthStartedAt;
+  assert.ok(
+    healthElapsedMs <= API_LATENCY_SLO_MS,
+    `health burst finished in ${healthElapsedMs.toFixed(0)}ms, over ${API_LATENCY_SLO_MS}ms SLO`,
   );
   for (const [index, response] of healthResponses.entries()) {
     expectStatus(response, 200, `health ${index}`);
   }
 
   const sessions = await Promise.all(ACCOUNTS.map((account) => login(account)));
+  const meStartedAt = performance.now();
   const meResponses = await Promise.all(
     sessions.flatMap((session) =>
       Array.from({ length: 5 }, () =>
-        jsonRequest('/api/auth/me', { headers: authHeaders(session) })
-      )
-    )
+        jsonRequest('/api/auth/me', { headers: authHeaders(session) }),
+      ),
+    ),
+  );
+  const meElapsedMs = performance.now() - meStartedAt;
+  assert.ok(
+    meElapsedMs <= API_LATENCY_SLO_MS,
+    `auth session burst finished in ${meElapsedMs.toFixed(0)}ms, over ${API_LATENCY_SLO_MS}ms SLO`,
   );
   for (const [index, response] of meResponses.entries()) {
     expectStatus(response, 200, `me ${index}`);

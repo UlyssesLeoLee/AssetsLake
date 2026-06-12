@@ -113,6 +113,6 @@ export function clearStoredAuthSession(): void {
 export function isAuthRequiredPath(pathname: string): boolean {
   const normalizedPath = pathname.trim() || '/';
   return !PUBLIC_AUTH_PATH_PREFIXES.some(
-    (prefix) => normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`)
+    (prefix) => normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`),
   );
 }

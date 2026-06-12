@@ -13,7 +13,7 @@ export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
       className={cn(
         'badge',
         STATUS_COLORS[status],
-        size === 'sm' ? 'text-[10px] px-1.5 py-0' : 'text-xs'
+        size === 'sm' ? 'text-[10px] px-1.5 py-0' : 'text-xs',
       )}
     >
       {ASSET_STATUS_LABELS[status]}

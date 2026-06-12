@@ -132,12 +132,22 @@ export const AI_QA_RULES = [
   'duplicate_similarity',
 ];
 
-export function ReviewLane({ title, issues, loading }: { title: string; issues: IssueSummary[]; loading: boolean }) {
+export function ReviewLane({
+  title,
+  issues,
+  loading,
+}: {
+  title: string;
+  issues: IssueSummary[];
+  loading: boolean;
+}) {
   return (
     <section className="rounded-lg border border-surface-border bg-surface-secondary">
       <div className="flex items-center justify-between border-b border-surface-border p-4">
         <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-        <span className="rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-slate-400">{issues.length}</span>
+        <span className="rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-slate-400">
+          {issues.length}
+        </span>
       </div>
       <div className="divide-y divide-surface-border">
         {issues.map((issue) => (
@@ -175,28 +185,41 @@ export function IssueCard({
       onDragEnd={onDragEnd}
       className={cn(
         'group relative block rounded-lg border border-surface-border bg-[#111a24] p-3 shadow-[0_12px_28px_rgba(0,0,0,0.16)] transition duration-150 hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-[#152233] hover:shadow-[0_18px_34px_rgba(0,0,0,0.24)]',
-        dragging && 'scale-[0.98] opacity-55 ring-2 ring-sakura-300/35'
+        dragging && 'scale-[0.98] opacity-55 ring-2 ring-sakura-300/35',
       )}
     >
-      <span className={cn('absolute left-0 top-3 h-[calc(100%-1.5rem)] w-1 rounded-r-full', priorityAccentClass(issue.priority))} />
+      <span
+        className={cn(
+          'absolute left-0 top-3 h-[calc(100%-1.5rem)] w-1 rounded-r-full',
+          priorityAccentClass(issue.priority),
+        )}
+      />
       <GripVertical className="absolute right-2 top-2 h-4 w-4 text-slate-600 transition-colors group-hover:text-sakura-300" />
       <div className="mb-3 flex items-start gap-3 pr-5">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-white/[0.06] bg-[#0b121a]">
           {issue.thumbnail_url ? (
-            <img src={issue.thumbnail_url} alt={issue.title} className="h-full w-full object-cover" />
+            <img
+              src={issue.thumbnail_url}
+              alt={issue.title}
+              className="h-full w-full object-cover"
+            />
           ) : (
             <ImageIcon className="h-5 w-5 text-slate-500" />
           )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate font-mono text-xs text-brand-300/80">{issue.issue_key}</div>
-          <h3 className="mt-0.5 line-clamp-2 text-sm font-semibold text-slate-100">{issue.title}</h3>
+          <h3 className="mt-0.5 line-clamp-2 text-sm font-semibold text-slate-100">
+            {issue.title}
+          </h3>
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5">
         <PriorityPill priority={issue.priority} />
         <QaPill status={issue.qa_status} />
-        <span className="badge border-surface-border bg-surface/70 text-slate-300">{issue.revision_count} rev</span>
+        <span className="badge border-surface-border bg-surface/70 text-slate-300">
+          {issue.revision_count} rev
+        </span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 border-t border-white/[0.04] pt-3 text-xs text-slate-500">
         <span className="flex min-w-0 items-center gap-1">
@@ -228,7 +251,10 @@ export function IssueRow({ issue, actions }: { issue: IssueSummary; actions?: Re
           <StatusPill status={issue.status} />
           <PriorityPill priority={issue.priority} />
         </div>
-        <Link href={`/issues/${issue.id}`} className="mt-2 block truncate text-sm font-semibold text-slate-100">
+        <Link
+          href={`/issues/${issue.id}`}
+          className="mt-2 block truncate text-sm font-semibold text-slate-100"
+        >
           {issue.title}
         </Link>
         <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
@@ -243,22 +269,45 @@ export function IssueRow({ issue, actions }: { issue: IssueSummary; actions?: Re
   );
 }
 
-export function FilterBar({ filters, onChange }: { filters: IssueFilters; onChange: (next: Partial<IssueFilters>) => void }) {
+export function FilterBar({
+  filters,
+  onChange,
+}: {
+  filters: IssueFilters;
+  onChange: (next: Partial<IssueFilters>) => void;
+}) {
   return (
     <div className="grid gap-3 border-b border-surface-border bg-[#0d141c]/80 px-5 py-3 backdrop-blur lg:grid-cols-[1.2fr_repeat(4,1fr)]">
       <label className="relative">
         <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-        <input className="input pl-9" value={filters.q || ''} onChange={(event) => onChange({ q: event.target.value })} placeholder="Search issues" />
+        <input
+          className="input pl-9"
+          value={filters.q || ''}
+          onChange={(event) => onChange({ q: event.target.value })}
+          placeholder="Search issues"
+        />
       </label>
-      <select className="input" value={filters.project_id || ''} onChange={(event) => onChange({ project_id: event.target.value })}>
+      <select
+        className="input"
+        value={filters.project_id || ''}
+        onChange={(event) => onChange({ project_id: event.target.value })}
+      >
         <option value="">All projects</option>
         <option value={DEFAULT_PROJECT_ID}>DEFAULT</option>
       </select>
-      <select className="input" value={filters.vendor_id || ''} onChange={(event) => onChange({ vendor_id: event.target.value })}>
+      <select
+        className="input"
+        value={filters.vendor_id || ''}
+        onChange={(event) => onChange({ vendor_id: event.target.value })}
+      >
         <option value="">All vendors</option>
         <option value={DEFAULT_VENDOR_ID}>VENDOR</option>
       </select>
-      <select className="input" value={filters.asset_type || ''} onChange={(event) => onChange({ asset_type: event.target.value as AssetType | '' })}>
+      <select
+        className="input"
+        value={filters.asset_type || ''}
+        onChange={(event) => onChange({ asset_type: event.target.value as AssetType | '' })}
+      >
         <option value="">All asset types</option>
         {ASSET_TYPES.map((type) => (
           <option key={type} value={type}>
@@ -266,7 +315,11 @@ export function FilterBar({ filters, onChange }: { filters: IssueFilters; onChan
           </option>
         ))}
       </select>
-      <select className="input" value={filters.priority || ''} onChange={(event) => onChange({ priority: event.target.value as IssuePriority | '' })}>
+      <select
+        className="input"
+        value={filters.priority || ''}
+        onChange={(event) => onChange({ priority: event.target.value as IssuePriority | '' })}
+      >
         <option value="">All priorities</option>
         {(['low', 'medium', 'high', 'urgent'] as IssuePriority[]).map((priority) => (
           <option key={priority} value={priority}>
@@ -278,7 +331,15 @@ export function FilterBar({ filters, onChange }: { filters: IssueFilters; onChan
   );
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  subtitle,
+  actions,
+}: {
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+}) {
   return (
     <div className="flex shrink-0 flex-col gap-3 border-b border-surface-border bg-[linear-gradient(180deg,rgba(243,234,216,0.05),rgba(17,24,33,0.18))] px-6 py-4 md:flex-row md:items-center md:justify-between">
       <div className="min-w-0">
@@ -299,7 +360,15 @@ export function SectionTitle({ icon, title }: { icon: ReactNode; title: string }
   );
 }
 
-export function Metric({ label, value, tone = 'text-slate-100' }: { label: string; value: string | number; tone?: string }) {
+export function Metric({
+  label,
+  value,
+  tone = 'text-slate-100',
+}: {
+  label: string;
+  value: string | number;
+  tone?: string;
+}) {
   return (
     <section className="rounded-lg border border-surface-border bg-surface-secondary p-4">
       <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
@@ -322,7 +391,9 @@ export function StatusPill({ status }: { status: IssueStatus }) {
 }
 
 export function PriorityPill({ priority }: { priority: IssuePriority }) {
-  return <span className={cn('badge', priorityClass(priority))}>{ISSUE_PRIORITY_LABELS[priority]}</span>;
+  return (
+    <span className={cn('badge', priorityClass(priority))}>{ISSUE_PRIORITY_LABELS[priority]}</span>
+  );
 }
 
 export function QaPill({ status }: { status: AiQaStatus }) {
@@ -348,7 +419,7 @@ export function getParamId(value: string | string[] | undefined): string | undef
 export function groupIssuesByStatus(issues: IssueSummary[]): Record<IssueStatus, IssueSummary[]> {
   const grouped = ISSUE_STATUSES.reduce(
     (acc, status) => ({ ...acc, [status]: [] }),
-    {} as Record<IssueStatus, IssueSummary[]>
+    {} as Record<IssueStatus, IssueSummary[]>,
   );
   issues.forEach((issue) => {
     grouped[issue.status].push(issue);

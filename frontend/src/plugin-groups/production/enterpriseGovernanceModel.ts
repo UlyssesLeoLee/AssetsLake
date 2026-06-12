@@ -51,12 +51,18 @@ export function buildPermissionCoverage(controls?: ProjectEnterpriseControls): s
   return Array.from(new Set((controls?.roles ?? []).flatMap((role) => role.permissions))).sort();
 }
 
-export function buildGovernanceRisks(controls?: ProjectEnterpriseControls): EnterpriseGovernanceRisk[] {
+export function buildGovernanceRisks(
+  controls?: ProjectEnterpriseControls,
+): EnterpriseGovernanceRisk[] {
   const risks: EnterpriseGovernanceRisk[] = [];
   const requiredGates = (controls?.ci_gates ?? []).filter((gate) => gate.required);
   const failingRequired = requiredGates.filter((gate) => gate.status !== 'passing');
-  const disabledNotifications = (controls?.notifications ?? []).filter((notification) => !notification.enabled);
-  const guardedWebhooks = (controls?.webhooks ?? []).filter((webhook) => webhook.status === 'guarded');
+  const disabledNotifications = (controls?.notifications ?? []).filter(
+    (notification) => !notification.enabled,
+  );
+  const guardedWebhooks = (controls?.webhooks ?? []).filter(
+    (webhook) => webhook.status === 'guarded',
+  );
 
   if (failingRequired.length > 0) {
     risks.push({
@@ -94,7 +100,9 @@ export function buildGovernanceRisks(controls?: ProjectEnterpriseControls): Ente
   return risks;
 }
 
-export function buildEnterpriseGovernanceModel(controls?: ProjectEnterpriseControls): EnterpriseGovernanceModel {
+export function buildEnterpriseGovernanceModel(
+  controls?: ProjectEnterpriseControls,
+): EnterpriseGovernanceModel {
   const risks = buildGovernanceRisks(controls);
   const requiredGates = (controls?.ci_gates ?? []).filter((gate) => gate.required);
   const requiredCiPassing = requiredGates.filter((gate) => gate.status === 'passing').length;
@@ -104,11 +112,15 @@ export function buildEnterpriseGovernanceModel(controls?: ProjectEnterpriseContr
   return {
     score: Math.max(0, 100 - blockedPenalty - watchPenalty),
     permissionCoverage: buildPermissionCoverage(controls),
-    enabledNotificationCount: (controls?.notifications ?? []).filter((notification) => notification.enabled).length,
+    enabledNotificationCount: (controls?.notifications ?? []).filter(
+      (notification) => notification.enabled,
+    ).length,
     requiredCiPassing,
     requiredCiTotal: requiredGates.length,
-    importReadyCount: (controls?.import_export ?? []).filter((job) => job.status === 'ready').length,
-    webhookActiveCount: (controls?.webhooks ?? []).filter((webhook) => webhook.status === 'active').length,
+    importReadyCount: (controls?.import_export ?? []).filter((job) => job.status === 'ready')
+      .length,
+    webhookActiveCount: (controls?.webhooks ?? []).filter((webhook) => webhook.status === 'active')
+      .length,
     auditDrilldownCount: controls?.audit.drilldowns.length ?? 0,
     risks,
   };

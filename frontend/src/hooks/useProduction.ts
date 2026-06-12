@@ -4,6 +4,7 @@ CREATE
   (f:File {name: "useProduction.ts", type: "file", language: "typescript"}),
   (m:Module {name: "@/hooks/useProduction", type: "module"}),
   (fn1:Function {name: "useIssues", type: "function", language: "typescript", signature: "function useIssues(filters?: IssueFilters)"}),
+  (fn20:Function {name: "useIssueBoardSync", type: "function", language: "typescript", signature: "function useIssueBoardSync(since?: string | null)"}),
   (fn2:Function {name: "useIssue", type: "function", language: "typescript", signature: "function useIssue(id?: string)"}),
   (fn3:Function {name: "useIssueAssets", type: "function", language: "typescript", signature: "function useIssueAssets(id?: string)"}),
   (fn4:Function {name: "useIssueHistory", type: "function", language: "typescript", signature: "function useIssueHistory(id?: string)"}),
@@ -26,6 +27,7 @@ CREATE
   (v2:Variable {name: "queryClient", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(fn1),
+  (m)-[:CONTAINS]->(fn20),
   (m)-[:CONTAINS]->(fn2),
   (m)-[:CONTAINS]->(fn3),
   (m)-[:CONTAINS]->(fn4),
@@ -45,6 +47,7 @@ CREATE
   (m)-[:CONTAINS]->(fn18),
   (m)-[:CONTAINS]->(fn19),
   (fn1)-[:USES]->(v1),
+  (fn20)-[:USES]->(v1),
   (fn2)-[:USES]->(v1),
   (fn3)-[:USES]->(v1),
   (fn4)-[:USES]->(v1),
@@ -73,6 +76,7 @@ CREATE
 'use client';
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { getStoredAuthSession } from '@/lib/authSession';
 import { productionApi } from '@/lib/productionApi';
 import type {
   ApproveIssueRequest,
@@ -92,6 +96,17 @@ export function useIssues(filters: IssueFilters = {}) {
     queryKey: ['issues', filters],
     queryFn: () => productionApi.issues.list(filters),
     staleTime: 20_000,
+  });
+}
+
+export function useIssueBoardSync(since?: string | null) {
+  return useQuery({
+    queryKey: ['issue-board-sync', since ?? 'initial'],
+    queryFn: () => productionApi.issues.boardSync(since),
+    staleTime: 1_000,
+    refetchInterval: 2_000,
+    refetchIntervalInBackground: true,
+    retry: 1,
   });
 }
 
@@ -227,13 +242,17 @@ export function useTransitionIssue() {
       id: string;
       status: IssueStatus;
       expectedVersion?: number;
-    }) =>
-      productionApi.issues.transition(id, {
+    }) => {
+      const session = getStoredAuthSession();
+      const actor = session?.user.display_name || session?.user.username || 'ui-kanban';
+      return productionApi.issues.transition(id, {
         status,
-        actor: 'ui-kanban',
+        actor_id: session?.user.id,
+        actor,
         reason: 'Kanban drag transition',
         expected_version: expectedVersion,
-      }),
+      });
+    },
     onSuccess: (issue) => {
       queryClient.setQueryData(['issue', issue.id], issue);
       invalidateIssueCollections(queryClient, issue.id);
@@ -268,8 +287,7 @@ export function useRequestRevision() {
 export function useCreateDeliveryPackage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (req: CreateDeliveryPackageRequest) =>
-      productionApi.deliveryPackages.create(req),
+    mutationFn: (req: CreateDeliveryPackageRequest) => productionApi.deliveryPackages.create(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['issues'] });
     },

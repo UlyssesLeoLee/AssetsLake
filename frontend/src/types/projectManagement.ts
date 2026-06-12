@@ -87,7 +87,12 @@ export type ProjectManagementWorkItemType = 'epic' | 'story' | 'task' | 'bug' | 
 
 export type SprintStatus = 'planned' | 'active' | 'completed' | 'cancelled';
 
-export type IssueDependencyType = 'blocks' | 'is_blocked_by' | 'relates_to' | 'duplicates' | 'parent_child';
+export type IssueDependencyType =
+  | 'blocks'
+  | 'is_blocked_by'
+  | 'relates_to'
+  | 'duplicates'
+  | 'parent_child';
 
 export type IssueEventType =
   | 'created'

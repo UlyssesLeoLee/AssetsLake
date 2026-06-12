@@ -5,6 +5,7 @@ CREATE
   (m:Module {name: "@/lib/productionApi", type: "module"}),
   (fn1:Function {name: "buildParams", type: "function", language: "typescript", signature: "function buildParams(filters: object): string"}),
   (fn2:Function {name: "productionApi.issues.list", type: "function", language: "typescript", signature: "async list(filters?: IssueFilters): Promise<PaginatedResponse<IssueSummary>>"}),
+  (fn25:Function {name: "productionApi.issues.boardSync", type: "function", language: "typescript", signature: "async boardSync(since?: string | null, limit?: number): Promise<IssueBoardSyncSnapshot>"}),
   (fn3:Function {name: "productionApi.issues.create", type: "function", language: "typescript", signature: "async create(req: CreateIssueRequest): Promise<Issue>"}),
   (fn4:Function {name: "productionApi.issues.get", type: "function", language: "typescript", signature: "async get(id: string): Promise<Issue>"}),
   (fn5:Function {name: "productionApi.issues.update", type: "function", language: "typescript", signature: "async update(id: string, req: UpdateIssueRequest): Promise<Issue>"}),
@@ -57,6 +58,8 @@ CREATE
   (fn1)-[:USES]->(v2),
   (fn2)-[:CALLS]->(fn1),
   (fn2)-[:USES]->(v1),
+  (fn25)-[:CALLS]->(fn1),
+  (fn25)-[:USES]->(v1),
   (fn3)-[:USES]->(v1),
   (fn4)-[:USES]->(v1),
   (fn5)-[:USES]->(v1),
@@ -87,6 +90,9 @@ import type {
   AttachIssueAssetRequest,
   AiControlChatRequest,
   AiControlChatResponse,
+  AiProviderTestResponse,
+  AiAutopilotPlanRequest,
+  AiAutopilotPlanResponse,
   CreateDeliveryPackageRequest,
   CreateIssueCommentRequest,
   CreateIssueRequest,
@@ -94,6 +100,7 @@ import type {
   CreateReviewRequest,
   DeliveryPackage,
   Issue,
+  IssueBoardSyncSnapshot,
   IssueAssetSummary,
   IssueComment,
   IssueFilters,
@@ -124,14 +131,20 @@ function buildParams(filters: object): string {
 
 export const productionApi = {
   issues: {
-    list: async (
-      filters: IssueFilters = {}
-    ): Promise<PaginatedResponse<IssueSummary>> => {
+    list: async (filters: IssueFilters = {}): Promise<PaginatedResponse<IssueSummary>> => {
       const params = buildParams(filters);
       const { data } = await apiClient.get<PaginatedResponse<IssueSummary>>(
-        `/api/issues${params ? `?${params}` : ''}`
+        `/api/issues${params ? `?${params}` : ''}`,
       );
       return data;
+    },
+
+    boardSync: async (since?: string | null, limit = 6): Promise<IssueBoardSyncSnapshot> => {
+      const params = buildParams({ since, limit });
+      const { data } = await apiClient.get<ApiResponse<IssueBoardSyncSnapshot>>(
+        `/api/issues/board-sync${params ? `?${params}` : ''}`,
+      );
+      return data.data;
     },
 
     create: async (req: CreateIssueRequest): Promise<Issue> => {
@@ -152,43 +165,37 @@ export const productionApi = {
     transition: async (id: string, req: TransitionIssueRequest): Promise<Issue> => {
       const { data } = await apiClient.post<ApiResponse<Issue>>(
         `/api/issues/${id}/transition`,
-        req
+        req,
       );
       return data.data;
     },
 
-    comment: async (
-      id: string,
-      req: CreateIssueCommentRequest
-    ): Promise<IssueComment> => {
+    comment: async (id: string, req: CreateIssueCommentRequest): Promise<IssueComment> => {
       const { data } = await apiClient.post<ApiResponse<IssueComment>>(
         `/api/issues/${id}/comments`,
-        req
+        req,
       );
       return data.data;
     },
 
     comments: async (id: string): Promise<IssueComment[]> => {
       const { data } = await apiClient.get<ApiResponse<IssueComment[]>>(
-        `/api/issues/${id}/comments`
+        `/api/issues/${id}/comments`,
       );
       return data.data;
     },
 
-    createWorkLog: async (
-      id: string,
-      req: CreateIssueWorkLogRequest
-    ): Promise<IssueWorkLog> => {
+    createWorkLog: async (id: string, req: CreateIssueWorkLogRequest): Promise<IssueWorkLog> => {
       const { data } = await apiClient.post<ApiResponse<IssueWorkLog>>(
         `/api/issues/${id}/work-logs`,
-        req
+        req,
       );
       return data.data;
     },
 
     workLogs: async (id: string): Promise<IssueWorkLog[]> => {
       const { data } = await apiClient.get<ApiResponse<IssueWorkLog[]>>(
-        `/api/issues/${id}/work-logs`
+        `/api/issues/${id}/work-logs`,
       );
       return data.data;
     },
@@ -203,14 +210,14 @@ export const productionApi = {
 
     assets: async (id: string): Promise<IssueAssetSummary[]> => {
       const { data } = await apiClient.get<ApiResponse<IssueAssetSummary[]>>(
-        `/api/issues/${id}/assets`
+        `/api/issues/${id}/assets`,
       );
       return data.data;
     },
 
     history: async (id: string): Promise<IssueStatusHistory[]> => {
       const { data } = await apiClient.get<ApiResponse<IssueStatusHistory[]>>(
-        `/api/issues/${id}/history`
+        `/api/issues/${id}/history`,
       );
       return data.data;
     },
@@ -218,26 +225,20 @@ export const productionApi = {
     review: async (id: string, req: CreateReviewRequest): Promise<ReviewRound> => {
       const { data } = await apiClient.post<ApiResponse<ReviewRound>>(
         `/api/issues/${id}/review`,
-        req
+        req,
       );
       return data.data;
     },
 
     approve: async (id: string, req: ApproveIssueRequest): Promise<Issue> => {
-      const { data } = await apiClient.post<ApiResponse<Issue>>(
-        `/api/issues/${id}/approve`,
-        req
-      );
+      const { data } = await apiClient.post<ApiResponse<Issue>>(`/api/issues/${id}/approve`, req);
       return data.data;
     },
 
-    requestRevision: async (
-      id: string,
-      req: RequestRevisionRequest
-    ): Promise<Issue> => {
+    requestRevision: async (id: string, req: RequestRevisionRequest): Promise<Issue> => {
       const { data } = await apiClient.post<ApiResponse<Issue>>(
         `/api/issues/${id}/request-revision`,
-        req
+        req,
       );
       return data.data;
     },
@@ -247,7 +248,7 @@ export const productionApi = {
     list: async (projectId?: string): Promise<Milestone[]> => {
       const params = buildParams({ project_id: projectId });
       const { data } = await apiClient.get<ApiResponse<Milestone[]>>(
-        `/api/milestones${params ? `?${params}` : ''}`
+        `/api/milestones${params ? `?${params}` : ''}`,
       );
       return data.data;
     },
@@ -257,18 +258,18 @@ export const productionApi = {
     create: async (req: CreateDeliveryPackageRequest): Promise<DeliveryPackage> => {
       const { data } = await apiClient.post<ApiResponse<DeliveryPackage>>(
         '/api/delivery-packages',
-        req
+        req,
       );
       return data.data;
     },
 
     submit: async (
       id: string,
-      req: { submitted_by?: string; actor?: string }
+      req: { submitted_by?: string; actor?: string },
     ): Promise<DeliveryPackage> => {
       const { data } = await apiClient.post<ApiResponse<DeliveryPackage>>(
         `/api/delivery-packages/${id}/submit`,
-        req
+        req,
       );
       return data.data;
     },
@@ -277,7 +278,7 @@ export const productionApi = {
   management: {
     intelligence: async (): Promise<ManagementIntelligence> => {
       const { data } = await apiClient.get<ApiResponse<ManagementIntelligence>>(
-        '/api/management/intelligence'
+        '/api/management/intelligence',
       );
       return data.data;
     },
@@ -286,7 +287,25 @@ export const productionApi = {
       const { data } = await apiClient.post<ApiResponse<AiControlChatResponse>>(
         '/api/management/chat',
         req,
-        { timeout: 90_000 }
+        { timeout: 90_000 },
+      );
+      return data.data;
+    },
+
+    testConnection: async (): Promise<AiProviderTestResponse> => {
+      const { data } = await apiClient.post<ApiResponse<AiProviderTestResponse>>(
+        '/api/management/ai/test',
+        {},
+        { timeout: 25_000 },
+      );
+      return data.data;
+    },
+
+    autopilotPlan: async (req: AiAutopilotPlanRequest): Promise<AiAutopilotPlanResponse> => {
+      const { data } = await apiClient.post<ApiResponse<AiAutopilotPlanResponse>>(
+        '/api/management/autopilot-plan',
+        req,
+        { timeout: 90_000 },
       );
       return data.data;
     },
@@ -295,21 +314,19 @@ export const productionApi = {
       const { data } = await apiClient.post<ApiResponse<RagSearchResponse>>(
         '/api/management/rag/search',
         req,
-        { timeout: 45_000 }
+        { timeout: 45_000 },
       );
       return data.data;
     },
 
-    recordReplicaAction: async (
-      req: ReplicaActionRequest
-    ): Promise<ReplicaActionResponse> => {
+    recordReplicaAction: async (req: ReplicaActionRequest): Promise<ReplicaActionResponse> => {
       const { data } = await apiClient.post<ApiResponse<ReplicaActionResponse>>(
         '/api/management/replica-actions',
         req,
         {
           headers: { 'x-assetslake-ai-write-scope': 'replica' },
           timeout: 45_000,
-        }
+        },
       );
       return data.data;
     },

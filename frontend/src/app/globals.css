@@ -29,7 +29,10 @@
       linear-gradient(180deg, rgba(243, 234, 216, 0.045), rgba(11, 15, 20, 0) 34rem),
       linear-gradient(90deg, rgba(243, 234, 216, 0.025) 1px, transparent 1px),
       linear-gradient(180deg, rgba(243, 234, 216, 0.02) 1px, transparent 1px);
-    background-size: auto, 28px 28px, 28px 28px;
+    background-size:
+      auto,
+      28px 28px,
+      28px 28px;
     color: #e8edf2;
     min-height: 100vh;
   }

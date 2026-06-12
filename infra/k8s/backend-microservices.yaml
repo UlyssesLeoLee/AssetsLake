@@ -537,3 +537,246 @@ spec:
     - name: http
       port: 8080
       targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-wiki-api
+  labels:
+    app.kubernetes.io/component: wiki-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-wiki-api
+  template:
+    metadata:
+      labels:
+        app: assetslake-wiki-api
+        app.kubernetes.io/component: wiki-api
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: wiki
+            - name: OTEL_SERVICE_NAME
+              value: assetslake-wiki-api
+            - name: WIKI_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: INTERNAL_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: INTERNAL_SERVICE_TOKEN
+            - name: ASSET_ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: ASSET_ACCESS_TOKEN_SECRET
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-wiki-api
+spec:
+  selector:
+    app: assetslake-wiki-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-design-requirements-api
+  labels:
+    app.kubernetes.io/component: design-requirements-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-design-requirements-api
+  template:
+    metadata:
+      labels:
+        app: assetslake-design-requirements-api
+        app.kubernetes.io/component: design-requirements-api
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: design-requirements
+            - name: OTEL_SERVICE_NAME
+              value: assetslake-design-requirements-api
+            - name: DESIGN_REQUIREMENTS_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: INTERNAL_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: INTERNAL_SERVICE_TOKEN
+            - name: ASSET_ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: ASSET_ACCESS_TOKEN_SECRET
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-design-requirements-api
+spec:
+  selector:
+    app: assetslake-design-requirements-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assetslake-people-intelligence-api
+  labels:
+    app.kubernetes.io/component: people-intelligence-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: assetslake-people-intelligence-api
+  template:
+    metadata:
+      labels:
+        app: assetslake-people-intelligence-api
+        app.kubernetes.io/component: people-intelligence-api
+    spec:
+      containers:
+        - name: api
+          image: assetslake-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASSETSLAKE_SERVICE
+              value: people-intelligence
+            - name: OTEL_SERVICE_NAME
+              value: assetslake-people-intelligence-api
+            - name: PEOPLE_INTELLIGENCE_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: DATABASE_URL
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: INTERNAL_SERVICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: INTERNAL_SERVICE_TOKEN
+            - name: ASSET_ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: assetslake-secrets
+                  key: ASSET_ACCESS_TOKEN_SECRET
+          envFrom:
+            - configMapRef:
+                name: assetslake-config
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assetslake-people-intelligence-api
+spec:
+  selector:
+    app: assetslake-people-intelligence-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

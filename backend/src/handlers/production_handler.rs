@@ -4,6 +4,7 @@ CREATE
   (f:File {name: "production_handler.rs", type: "file", language: "rust"}),
   (m:Module {name: "crate::handlers::production_handler", type: "module"}),
   (fn1:Function {name: "list_issues", type: "function", language: "rust", signature: "async fn list_issues(state: web::Data<AppState>, query: web::Query<IssueQuery>) -> Result<HttpResponse, AppError>"}),
+  (fn20:Function {name: "issue_board_sync", type: "function", language: "rust", signature: "async fn issue_board_sync(state: web::Data<AppState>, query: web::Query<IssueBoardSyncQuery>) -> Result<HttpResponse, AppError>"}),
   (fn2:Function {name: "create_issue", type: "function", language: "rust", signature: "async fn create_issue(state: web::Data<AppState>, body: web::Json<CreateIssueRequest>) -> Result<HttpResponse, AppError>"}),
   (fn3:Function {name: "get_issue", type: "function", language: "rust", signature: "async fn get_issue(state: web::Data<AppState>, path: web::Path<Uuid>) -> Result<HttpResponse, AppError>"}),
   (fn4:Function {name: "update_issue", type: "function", language: "rust", signature: "async fn update_issue(state: web::Data<AppState>, path: web::Path<Uuid>, body: web::Json<UpdateIssueRequest>) -> Result<HttpResponse, AppError>"}),
@@ -27,6 +28,7 @@ CREATE
   (v3:Variable {name: "PaginatedResponse", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(fn1),
+  (m)-[:CONTAINS]->(fn20),
   (m)-[:CONTAINS]->(fn2),
   (m)-[:CONTAINS]->(fn3),
   (m)-[:CONTAINS]->(fn4),
@@ -73,8 +75,9 @@ use crate::{
     models::production::{
         ApproveIssueRequest, AttachIssueAssetRequest, CreateDeliveryPackageRequest,
         CreateIssueCommentRequest, CreateIssueRequest, CreateIssueWorkLogRequest,
-        CreateReviewRequest, IssueQuery, MilestoneQuery, RequestRevisionRequest,
-        SubmitDeliveryPackageRequest, TransitionIssueRequest, UpdateIssueRequest,
+        CreateReviewRequest, IssueBoardSyncQuery, IssueQuery, MilestoneQuery,
+        RequestRevisionRequest, SubmitDeliveryPackageRequest, TransitionIssueRequest,
+        UpdateIssueRequest,
     },
     services::{
         ai_provider_service::AiProviderConfig, event_publisher_service::DomainEventInput,
@@ -96,6 +99,16 @@ pub async fn list_issues(
         query.page(),
         query.page_size(),
     )))
+}
+
+/// GET /api/issues/board-sync
+#[get("/api/issues/board-sync")]
+pub async fn issue_board_sync(
+    state: web::Data<AppState>,
+    query: web::Query<IssueBoardSyncQuery>,
+) -> Result<HttpResponse, AppError> {
+    let snapshot = state.production_service.board_sync_snapshot(&query).await?;
+    Ok(HttpResponse::Ok().json(ApiResponse::ok(snapshot)))
 }
 
 /// POST /api/issues
@@ -481,6 +494,25 @@ pub async fn create_issue_work_log(
             })),
     )
     .await;
+    let issue = state.production_service.find_issue(*path).await?;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "IssueWorkLogCreated",
+            "issue",
+            *path,
+            json!({
+                "issue_id": *path,
+                "work_log_id": work_log.id,
+                "author_id": work_log.author_id,
+                "minutes": work_log.time_spent_minutes
+            }),
+        )
+        .workspace_id(Some(issue.workspace_id))
+        .idempotency_key(format!("issue-work-log-created:{}", work_log.id)),
+    )
+    .await;
     Ok(HttpResponse::Created().json(ApiResponse::ok(work_log)))
 }
 
@@ -505,6 +537,7 @@ pub async fn delete_issue(
         .resource_lock_service
         .ensure_write_allowed(&req, "issue", *path)
         .await?;
+    let issue = state.production_service.find_issue(*path).await?;
     state.production_service.delete_issue(*path).await?;
     remember_product_operation(
         &state,
@@ -518,6 +551,24 @@ pub async fn delete_issue(
                 *path
             ))
             .metadata(json!({})),
+    )
+    .await;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "IssueDeleted",
+            "issue",
+            issue.id,
+            json!({
+                "issue_id": issue.id,
+                "workspace_id": issue.workspace_id,
+                "project_id": issue.project_id,
+                "assignee_id": issue.assignee_id
+            }),
+        )
+        .workspace_id(Some(issue.workspace_id))
+        .idempotency_key(format!("issue-deleted:{}", issue.id)),
     )
     .await;
     Ok(HttpResponse::Ok().json(serde_json::json!({ "success": true })))
@@ -569,6 +620,26 @@ pub async fn create_issue_review(
             })),
     )
     .await;
+    let issue = state.production_service.find_issue(*path).await?;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "ReviewCreated",
+            "issue",
+            *path,
+            json!({
+                "issue_id": *path,
+                "review_id": review.id,
+                "reviewer_id": review.reviewer_id,
+                "scope": review.scope,
+                "status": review.status
+            }),
+        )
+        .workspace_id(Some(issue.workspace_id))
+        .idempotency_key(format!("review-created:{}", review.id)),
+    )
+    .await;
     Ok(HttpResponse::Created().json(ApiResponse::ok(review)))
 }
 
@@ -606,6 +677,29 @@ pub async fn approve_issue(
                 "issue_key": issue.issue_key.clone(),
                 "status": issue.status
             })),
+    )
+    .await;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "IssueApproved",
+            "issue",
+            issue.id,
+            json!({
+                "issue_id": issue.id,
+                "workspace_id": issue.workspace_id,
+                "project_id": issue.project_id,
+                "assignee_id": issue.assignee_id,
+                "status": issue.status
+            }),
+        )
+        .workspace_id(Some(issue.workspace_id))
+        .idempotency_key(format!(
+            "issue-approved:{}:{}",
+            issue.id,
+            issue.updated_at.timestamp_micros()
+        )),
     )
     .await;
     Ok(HttpResponse::Ok().json(ApiResponse::ok(issue)))
@@ -646,6 +740,30 @@ pub async fn request_issue_revision(
                 "revision_count": issue.revision_count,
                 "status": issue.status
             })),
+    )
+    .await;
+    stage_production_event(
+        &state,
+        DomainEventInput::new(
+            "production.issue.v1",
+            "RevisionRequested",
+            "issue",
+            issue.id,
+            json!({
+                "issue_id": issue.id,
+                "workspace_id": issue.workspace_id,
+                "project_id": issue.project_id,
+                "assignee_id": issue.assignee_id,
+                "revision_count": issue.revision_count,
+                "status": issue.status
+            }),
+        )
+        .workspace_id(Some(issue.workspace_id))
+        .idempotency_key(format!(
+            "revision-requested:{}:{}",
+            issue.id,
+            issue.updated_at.timestamp_micros()
+        )),
     )
     .await;
     Ok(HttpResponse::Ok().json(ApiResponse::ok(issue)))

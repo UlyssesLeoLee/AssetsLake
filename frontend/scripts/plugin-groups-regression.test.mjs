@@ -95,14 +95,25 @@ const REPO_ROOT = resolve(FRONTEND_ROOT, '..');
 const REGISTRY_PATH = join(FRONTEND_ROOT, 'src', 'plugin-groups', 'registry.ts');
 const PRODUCTION_DIR = join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production');
 const VALIDATION_PATH = join(FRONTEND_ROOT, 'src', 'plugin-groups', 'validation.ts');
-const BACKEND_MANAGEMENT_HANDLER_PATH = join(REPO_ROOT, 'backend', 'src', 'handlers', 'management_handler.rs');
+const BACKEND_MANAGEMENT_HANDLER_PATH = join(
+  REPO_ROOT,
+  'backend',
+  'src',
+  'handlers',
+  'management_handler.rs',
+);
 const PROJECT_MANAGEMENT_CONTRACT_FILES = {
   types: join(FRONTEND_ROOT, 'src', 'types', 'projectManagement.ts'),
   api: join(FRONTEND_ROOT, 'src', 'lib', 'projectManagementApi.ts'),
   hooks: join(FRONTEND_ROOT, 'src', 'hooks', 'useProjectManagement.ts'),
   ganttModel: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'ganttModel.ts'),
   migration: join(REPO_ROOT, 'database', 'migrations', '003_project_management_planning.sql'),
-  productizationMigration: join(REPO_ROOT, 'database', 'migrations', '004_project_management_productization.sql'),
+  productizationMigration: join(
+    REPO_ROOT,
+    'database',
+    'migrations',
+    '004_project_management_productization.sql',
+  ),
   issueCoreMigration: join(REPO_ROOT, 'database', 'migrations', '005_issue_core_loop.sql'),
 };
 const BACKEND_PROJECT_MANAGEMENT_FILES = {
@@ -116,7 +127,9 @@ const BACKEND_PROJECT_MANAGEMENT_FILES = {
 
 const ICON_NAMES = [
   'Boxes',
+  'BookOpen',
   'ClipboardCheck',
+  'ClipboardList',
   'Database',
   'FileText',
   'KanbanSquare',
@@ -130,11 +143,15 @@ const ICON_NAMES = [
   'ShieldCheck',
   'Truck',
   'Upload',
+  'UserRoundSearch',
 ];
 
 const REGISTRY_CONSTS = [
   'WORKSPACE_PLUGIN_GROUP',
   'IDENTITY_VERIFICATION_PLUGIN_GROUP',
+  'WIKI_PLUGIN_GROUP',
+  'DESIGN_REQUIREMENTS_PLUGIN_GROUP',
+  'PEOPLE_INTELLIGENCE_PLUGIN_GROUP',
   'PRODUCTION_MANAGEMENT_PLUGIN_GROUP',
   'PRODUCTION_PLANNING_PLUGIN_GROUP',
   'PRODUCTION_EXECUTION_PLUGIN_GROUP',
@@ -149,6 +166,7 @@ const REGISTRY_CONSTS = [
 ];
 
 const PRODUCTION_ROUTE_COMPONENTS = new Map([
+  ['admin.control', 'AdminControlPage'],
   ['production.ai-control', 'AiControlPage'],
   ['production.management', 'ManagementConsolePage'],
   ['production.planning', 'PlanningPage'],
@@ -187,6 +205,7 @@ const PROJECT_MANAGEMENT_ATOMIC_PAGE_COMPONENTS = new Set([
   'WorkflowPage',
   'AutomationPage',
   'EnterpriseAdminPage',
+  'AdminControlPage',
   'SecurityAuditPage',
 ]);
 
@@ -220,7 +239,7 @@ function extractConstObject(source, constName) {
       continue;
     }
 
-    if (char === '\'' || char === '"' || char === '`') {
+    if (char === "'" || char === '"' || char === '`') {
       quote = char;
       continue;
     }
@@ -295,8 +314,8 @@ function flattenPluginRoutes(groups, app) {
           pluginAppLabel: plugin.pluginAppLabel,
           pluginGroupId: plugin.pluginGroupId,
           pluginGroupLabel: plugin.pluginGroupLabel,
-        }))
-      )
+        })),
+      ),
     )
     .sort((a, b) => a.order - b.order);
 }
@@ -321,7 +340,9 @@ function isPluginEnabledForApp(plugin, app) {
 
   const allowedPermissions = policy.allowedPermissions;
   if (allowedPermissions) {
-    return plugin.manifest.permissions.every((permission) => allowedPermissions.includes(permission));
+    return plugin.manifest.permissions.every((permission) =>
+      allowedPermissions.includes(permission),
+    );
   }
 
   return true;
@@ -339,7 +360,9 @@ function navAppPluginRoutes(app) {
 
 function resolvePluginRoute(routes, pathname) {
   return routes.find((route) =>
-    route.exact ? pathname === route.href : pathname === route.href || pathname.startsWith(`${route.href}/`)
+    route.exact
+      ? pathname === route.href
+      : pathname === route.href || pathname.startsWith(`${route.href}/`),
   );
 }
 
@@ -360,6 +383,9 @@ test('plugin product architecture regression test', () => {
   const productionApp = apps.find((app) => app.id === 'production-console');
   const assetApp = apps.find((app) => app.id === 'asset-console');
   const observabilityApp = apps.find((app) => app.id === 'observability-console');
+  const wikiApp = apps.find((app) => app.id === 'wiki-app');
+  const designRequirementsApp = apps.find((app) => app.id === 'design-requirements-app');
+  const peopleIntelligenceApp = apps.find((app) => app.id === 'people-intelligence-app');
 
   assert.equal(product.id, 'assetslake-product');
   assert.equal(product.label, 'AssetsLake');
@@ -373,13 +399,20 @@ test('plugin product architecture regression test', () => {
       'reporting-console',
       'asset-console',
       'observability-console',
+      'admin-console',
+      'people-intelligence-app',
+      'wiki-app',
+      'design-requirements-app',
       'verification-app',
-    ]
+    ],
   );
   assert.ok(defaultApp, 'default studio app exists');
   assert.ok(productionApp, 'production app exists');
   assert.ok(assetApp, 'asset app exists');
   assert.ok(observabilityApp, 'observability app exists');
+  assert.ok(wikiApp, 'wiki app exists');
+  assert.ok(designRequirementsApp, 'design requirements app exists');
+  assert.ok(peopleIntelligenceApp, 'people intelligence app exists');
 
   for (const app of apps) {
     const groups = flattenAppPluginGroups(app);
@@ -388,21 +421,48 @@ test('plugin product architecture regression test', () => {
     const pluginIds = new Set(plugins.map((plugin) => plugin.id));
 
     assert.ok(groups.length >= 2, `${app.id} is composed from multiple plugin groups`);
-    assert.ok(groups.every((group) => group.plugins.length > 0), `${app.id} groups are composed from plugins`);
-    assert.ok(plugins.every((plugin) => plugin.manifest), `${app.id} plugins declare manifests`);
     assert.ok(
-      plugins.every((plugin) => plugin.manifest.permissions.length > 0 && plugin.manifest.backendScopes.length > 0),
-      `${app.id} plugin manifests declare permissions and backend scopes`
+      groups.every((group) => group.plugins.length > 0),
+      `${app.id} groups are composed from plugins`,
     );
-    assert.ok(plugins.every((plugin) => plugin.manifest.lifecycle), `${app.id} plugin manifests declare lifecycle`);
     assert.ok(
-      plugins.every((plugin) => (plugin.manifest.dependencies ?? []).every((dependencyId) => pluginIds.has(dependencyId))),
-      `${app.id} plugin dependencies resolve within the app`
+      plugins.every((plugin) => plugin.manifest),
+      `${app.id} plugins declare manifests`,
     );
-    assert.equal(new Set(routeIds(routes)).size, routes.length, `${app.id} route ids are unique within the app`);
-    assert.ok(routes.every((route) => route.pluginAppId === app.id), `${app.id} routes carry app scope`);
-    assert.ok(routes.every((route) => route.pluginGroupId), `${app.id} routes carry group scope`);
-    assert.ok(routes.every((route) => route.pluginId), `${app.id} routes carry plugin scope`);
+    assert.ok(
+      plugins.every(
+        (plugin) =>
+          plugin.manifest.permissions.length > 0 && plugin.manifest.backendScopes.length > 0,
+      ),
+      `${app.id} plugin manifests declare permissions and backend scopes`,
+    );
+    assert.ok(
+      plugins.every((plugin) => plugin.manifest.lifecycle),
+      `${app.id} plugin manifests declare lifecycle`,
+    );
+    assert.ok(
+      plugins.every((plugin) =>
+        (plugin.manifest.dependencies ?? []).every((dependencyId) => pluginIds.has(dependencyId)),
+      ),
+      `${app.id} plugin dependencies resolve within the app`,
+    );
+    assert.equal(
+      new Set(routeIds(routes)).size,
+      routes.length,
+      `${app.id} route ids are unique within the app`,
+    );
+    assert.ok(
+      routes.every((route) => route.pluginAppId === app.id),
+      `${app.id} routes carry app scope`,
+    );
+    assert.ok(
+      routes.every((route) => route.pluginGroupId),
+      `${app.id} routes carry group scope`,
+    );
+    assert.ok(
+      routes.every((route) => route.pluginId),
+      `${app.id} routes carry plugin scope`,
+    );
   }
 
   const groups = flattenAppPluginGroups(defaultApp);
@@ -414,6 +474,9 @@ test('plugin product architecture regression test', () => {
     [
       'workspace',
       'identity-verification',
+      'collaboration-wiki',
+      'design-requirements',
+      'people-intelligence',
       'production-management',
       'production-planning',
       'production-execution',
@@ -424,19 +487,31 @@ test('plugin product architecture regression test', () => {
       'production-enterprise',
       'asset-library',
       'observability',
-    ]
+    ],
   );
-  assert.equal(defaultApp.pluginGroups[0].pluginAppId, undefined, 'flattening does not mutate source groups');
-  assert.equal(routes.length, 25);
+  assert.equal(
+    defaultApp.pluginGroups[0].pluginAppId,
+    undefined,
+    'flattening does not mutate source groups',
+  );
+  assert.equal(routes.length, 29);
 
   const routeOrders = Array.from(routes, (route) => route.order);
   assert.deepEqual(
     routeOrders,
     routeOrders.toSorted((a, b) => a - b),
-    'routes are ordered by registry order'
+    'routes are ordered by registry order',
   );
-  assert.equal(new Set(routeOrders).size, routeOrders.length, 'routes have unique ordering for stable navigation');
-  assert.equal(new Set(Array.from(routes, (route) => route.href)).size, routes.length, 'route hrefs are unique within the app');
+  assert.equal(
+    new Set(routeOrders).size,
+    routeOrders.length,
+    'routes have unique ordering for stable navigation',
+  );
+  assert.equal(
+    new Set(Array.from(routes, (route) => route.href)).size,
+    routes.length,
+    'route hrefs are unique within the app',
+  );
 
   assert.deepEqual(routeIds(navRoutes), [
     'workspace.home',
@@ -454,7 +529,11 @@ test('plugin product architecture regression test', () => {
     'production.delivery',
     'production.enterprise',
     'production.security-audit',
+    'admin.control',
     'verification.sms',
+    'wiki.editor',
+    'design.requirements',
+    'people.intelligence',
     'assets.library',
     'assets.query',
     'assets.upload',
@@ -473,15 +552,38 @@ test('plugin product architecture regression test', () => {
     'observability.runtime',
     'workspace.settings',
   ]);
-  assert.deepEqual(routeIds(flattenAppPluginRoutes(productionApp)).includes('assets.upload'), false);
+  assert.deepEqual(routeIds(flattenAppPluginRoutes(wikiApp)), [
+    'workspace.home',
+    'wiki.editor',
+    'workspace.settings',
+  ]);
+  assert.deepEqual(routeIds(flattenAppPluginRoutes(designRequirementsApp)), [
+    'workspace.home',
+    'design.requirements',
+    'workspace.settings',
+  ]);
+  assert.deepEqual(routeIds(flattenAppPluginRoutes(peopleIntelligenceApp)), [
+    'workspace.home',
+    'people.intelligence',
+    'workspace.settings',
+  ]);
+  assert.deepEqual(
+    routeIds(flattenAppPluginRoutes(productionApp)).includes('assets.upload'),
+    false,
+  );
   assert.deepEqual(
     routeIds(flattenAppPluginRoutes(productionApp)).includes('assets.library'),
     true,
-    'production app can read asset library while upload stays isolated to studio/asset apps'
+    'production app can read asset library while upload stays isolated to studio/asset apps',
   );
 
   assert.equal(resolvePluginRoute(routes, '/')?.id, 'workspace.home');
   assert.equal(resolvePluginRoute(routes, '/verification')?.id, 'verification.sms');
+  assert.equal(resolvePluginRoute(routes, '/wiki')?.id, 'wiki.editor');
+  assert.equal(
+    resolvePluginRoute(routes, '/design-requirements')?.id,
+    'design.requirements',
+  );
   assert.equal(resolvePluginRoute(routes, '/ai-control')?.id, 'production.ai-control');
   assert.equal(resolvePluginRoute(routes, '/management')?.id, 'production.management');
   assert.equal(resolvePluginRoute(routes, '/planning')?.id, 'production.planning');
@@ -490,6 +592,7 @@ test('plugin product architecture regression test', () => {
   assert.equal(resolvePluginRoute(routes, '/reports')?.id, 'production.reports');
   assert.equal(resolvePluginRoute(routes, '/workflow')?.id, 'production.workflow');
   assert.equal(resolvePluginRoute(routes, '/security-audit')?.id, 'production.security-audit');
+  assert.equal(resolvePluginRoute(routes, '/admin-control')?.id, 'admin.control');
   assert.equal(resolvePluginRoute(routes, '/assets')?.id, 'assets.library');
   assert.equal(resolvePluginRoute(routes, '/assets/asset-001')?.id, 'assets.library');
   assert.equal(resolvePluginRoute(routes, '/data-lake-query')?.id, 'assets.query');
@@ -505,20 +608,22 @@ test('plugin product architecture regression test', () => {
     assert.ok(existsSync(pagePath), `${component} page adapter exists`);
     assert.match(
       pageSource,
-      new RegExp(`export \\{ ${component}, ${component} as default \\}|export default function ${component}|export default ${component}`),
-      `${component} exports a page component`
+      new RegExp(
+        `export \\{ ${component}, ${component} as default \\}|export default function ${component}|export default ${component}`,
+      ),
+      `${component} exports a page component`,
     );
 
     if (PRODUCTION_ATOMIC_PAGE_COMPONENTS.has(component)) {
       assert.doesNotMatch(
         pageSource,
         /@\/components\/production\/ProductionViews/,
-        `${component} owns its implementation instead of re-exporting ProductionViews`
+        `${component} owns its implementation instead of re-exporting ProductionViews`,
       );
       assert.match(
         pageSource,
         /ProductionPluginPrimitives/,
-        `${component} consumes atomized production primitives`
+        `${component} consumes atomized production primitives`,
       );
     }
 
@@ -526,33 +631,33 @@ test('plugin product architecture regression test', () => {
       assert.doesNotMatch(
         pageSource,
         /AdvancedProjectManagementPages/,
-        `${component} owns its implementation instead of re-exporting AdvancedProjectManagementPages`
+        `${component} owns its implementation instead of re-exporting AdvancedProjectManagementPages`,
       );
       assert.match(
         pageSource,
         /ProjectManagementPluginPrimitives/,
-        `${component} consumes atomized project management primitives`
+        `${component} consumes atomized project management primitives`,
       );
     }
   }
 
   assert.ok(
     existsSync(join(PRODUCTION_DIR, 'ProductionPluginPrimitives.tsx')),
-    'production plugin primitives are isolated from page implementations'
+    'production plugin primitives are isolated from page implementations',
   );
   assert.ok(
     existsSync(join(PRODUCTION_DIR, 'ProjectManagementPluginPrimitives.tsx')),
-    'project management plugin primitives are isolated from page implementations'
+    'project management plugin primitives are isolated from page implementations',
   );
   assert.match(
     readText(REGISTRY_PATH),
     /assertHealthyProductArchitecture\(\{[\s\S]*getProductArchitectureHealth/,
-    'plugin registry validates product architecture health at module load'
+    'plugin registry validates product architecture health at module load',
   );
   assert.match(
     readText(VALIDATION_PATH),
     /validateProductArchitecture[\s\S]*route\.order\.unique[\s\S]*plugin\.dependency\.missing[\s\S]*plugin\.manifest\.required[\s\S]*plugin\.nav\.route-required/,
-    'plugin architecture validator guards route order uniqueness, dependencies, manifests, and nav route completeness'
+    'plugin architecture validator guards route order uniqueness, dependencies, manifests, and nav route completeness',
   );
 
   for (const component of PRODUCTION_ATOMIC_PAGE_COMPONENTS) {
@@ -560,9 +665,13 @@ test('plugin product architecture regression test', () => {
     assert.doesNotMatch(
       pageSource,
       /@\/components\/production\/ProductionViews/,
-      `${component} is not a ProductionViews adapter`
+      `${component} is not a ProductionViews adapter`,
     );
-    assert.match(pageSource, /ProductionPluginPrimitives/, `${component} uses production primitives`);
+    assert.match(
+      pageSource,
+      /ProductionPluginPrimitives/,
+      `${component} uses production primitives`,
+    );
   }
 
   for (const component of PROJECT_MANAGEMENT_ATOMIC_PAGE_COMPONENTS) {
@@ -570,9 +679,13 @@ test('plugin product architecture regression test', () => {
     assert.doesNotMatch(
       pageSource,
       /AdvancedProjectManagementPages/,
-      `${component} is not an AdvancedProjectManagementPages adapter`
+      `${component} is not an AdvancedProjectManagementPages adapter`,
     );
-    assert.match(pageSource, /ProjectManagementPluginPrimitives/, `${component} uses project management primitives`);
+    assert.match(
+      pageSource,
+      /ProjectManagementPluginPrimitives/,
+      `${component} uses project management primitives`,
+    );
   }
 
   const productionIndex = readText(join(PRODUCTION_DIR, 'index.ts'));
@@ -580,175 +693,180 @@ test('plugin product architecture regression test', () => {
     assert.match(
       productionIndex,
       new RegExp(`export \\{ ${component} \\} from '@/plugin-groups/production/${component}'`),
-      `${component} is exported through the production plugin group index`
+      `${component} is exported through the production plugin group index`,
     );
   }
 
   assert.match(
     readText(BACKEND_MANAGEMENT_HANDLER_PATH),
     /#\[get\("\/api\/management\/intelligence"\)\]/,
-    'backend exposes the management intelligence contract'
+    'backend exposes the management intelligence contract',
   );
   assert.match(
     readText(BACKEND_MANAGEMENT_HANDLER_PATH),
     /#\[post\("\/api\/management\/rag\/search"\)\]/,
-    'backend exposes the Qdrant RAG operation memory search contract'
+    'backend exposes the Qdrant RAG operation memory search contract',
+  );
+  assert.match(
+    readText(BACKEND_MANAGEMENT_HANDLER_PATH),
+    /#\[post\("\/api\/management\/autopilot-plan"\)\][\s\S]*AiAutopilotPlanResponse[\s\S]*AiAutopilotDecisionReview/,
+    'backend exposes the AI Autopilot planning contract',
   );
   assert.match(
     readText(BACKEND_MANAGEMENT_HANDLER_PATH),
     /LangGraphNode[\s\S]*DataLakeFeed[\s\S]*AiAutomationRule/,
-    'backend management contract covers LangGraph, data lake, and AI automation'
+    'backend management contract covers LangGraph, data lake, and AI automation',
   );
   assert.match(
     readText(join(REPO_ROOT, 'backend', 'src', 'services', 'rag_memory_service.rs')),
     /Qdrant[\s\S]*remember_operation[\s\S]*search_points/,
-    'backend RAG memory service writes operation memory into Qdrant and retrieves it'
+    'backend RAG memory service writes operation memory into Qdrant and retrieves it',
   );
   assert.match(
     readText(join(REPO_ROOT, 'infra', 'docker-compose.yml')),
     /qdrant:[\s\S]*QDRANT_COLLECTION/,
-    'local stack includes Qdrant for operation memory vectors'
+    'local stack includes Qdrant for operation memory vectors',
   );
   assert.match(
     readText(join(FRONTEND_ROOT, 'src', 'lib', 'productionApi.ts')),
-    /\/api\/management\/intelligence[\s\S]*\/api\/management\/rag\/search/,
-    'frontend API client targets management intelligence and RAG memory contracts'
+    /\/api\/management\/intelligence[\s\S]*\/api\/management\/autopilot-plan[\s\S]*\/api\/management\/rag\/search/,
+    'frontend API client targets management intelligence, Autopilot planning, and RAG memory contracts',
   );
   assert.match(
     readText(join(FRONTEND_ROOT, 'src', 'lib', 'dataLakeQueryApi.ts')),
     /\/api\/data-lake\/query\/sql[\s\S]*\/api\/data-lake\/query\/cypher/,
-    'frontend API client targets SQL and Cypher data lake query contracts'
+    'frontend API client targets SQL and Cypher data lake query contracts',
   );
   assert.match(
     readText(join(REPO_ROOT, 'backend', 'src', 'services', 'lake_query_service.rs')),
     /execute_sql[\s\S]*execute_cypher[\s\S]*HAS_EVIDENCE[\s\S]*HAS_INSIGHT/,
-    'backend data lake query service supports read-only SQL, Cypher graph projections, and AI insight relations'
+    'backend data lake query service supports read-only SQL, Cypher graph projections, and AI insight relations',
   );
   assert.match(
     readText(join(FRONTEND_ROOT, 'src', 'lib', 'aiSettings.ts')),
     /embeddingModel[\s\S]*x-assetslake-ai-embedding-model/,
-    'frontend AI settings carry an embedding model for operation-memory vectorization'
+    'frontend AI settings carry an embedding model for operation-memory vectorization',
   );
   assert.match(
     readText(join(FRONTEND_ROOT, 'src', 'hooks', 'useProduction.ts')),
     /useManagementIntelligence/,
-    'frontend hook exposes management intelligence to product pages'
+    'frontend hook exposes management intelligence to product pages',
   );
   assert.match(
     readText(join(FRONTEND_ROOT, 'src', 'hooks', 'useProduction.ts')),
     /useIssueComments[\s\S]*useIssueWorkLogs[\s\S]*useUpdateIssue[\s\S]*useDeleteIssue[\s\S]*useAddIssueComment[\s\S]*useCreateIssueWorkLog/,
-    'frontend hooks expose issue core loop queries and mutations'
+    'frontend hooks expose issue core loop queries and mutations',
   );
   assert.match(
     readText(join(FRONTEND_ROOT, 'src', 'lib', 'productionApi.ts')),
     /\/api\/issues\/\$\{id\}\/comments[\s\S]*\/api\/issues\/\$\{id\}\/work-logs[\s\S]*apiClient\.delete\(`\/api\/issues\/\$\{id\}`\)/,
-    'frontend production API declares issue comments, work logs, and delete endpoints'
+    'frontend production API declares issue comments, work logs, and delete endpoints',
   );
   assert.match(
     readText(join(FRONTEND_ROOT, 'src', 'types', 'production.ts')),
     /IssueWorkLog[\s\S]*CreateIssueWorkLogRequest[\s\S]*story_points|story_points[\s\S]*IssueWorkLog[\s\S]*CreateIssueWorkLogRequest/,
-    'frontend production types cover issue work logs and planning fields'
+    'frontend production types cover issue work logs and planning fields',
   );
   assert.match(
     readText(join(PRODUCTION_DIR, 'ManagementConsolePage.tsx')),
     /intelligence\?\.langgraph_nodes[\s\S]*intelligence\?\.data_lake_feeds[\s\S]*intelligence\?\.automation_rules/,
-    'management console consumes LangGraph, data lake, and AI automation intelligence'
+    'management console consumes LangGraph, data lake, and AI automation intelligence',
   );
 
   assert.match(
     readText(PROJECT_MANAGEMENT_CONTRACT_FILES.types),
     /ProjectManagementEpic[\s\S]*ProjectManagementSprint[\s\S]*IssueDependency[\s\S]*IssueEvent/,
-    'frontend project management contracts cover epics, sprints, dependencies, and events'
+    'frontend project management contracts cover epics, sprints, dependencies, and events',
   );
   assert.match(
     readText(PROJECT_MANAGEMENT_CONTRACT_FILES.types),
     /ProjectGanttItem[\s\S]*priority: IssuePriority[\s\S]*start_date\?: string[\s\S]*story_points\?: number/,
-    'frontend Gantt contract carries priority, start date, and story point schedule inputs'
+    'frontend Gantt contract carries priority, start date, and story point schedule inputs',
   );
   assert.match(
     readText(PROJECT_MANAGEMENT_CONTRACT_FILES.ganttModel),
     /normalizeBlockingEdge[\s\S]*findCriticalPath[\s\S]*getScheduleRisk[\s\S]*buildGanttTimelineModel/,
-    'frontend Gantt model computes timeline layout, blocking edges, critical path, and schedule risk'
+    'frontend Gantt model computes timeline layout, blocking edges, critical path, and schedule risk',
   );
   assert.match(
     readText(join(PRODUCTION_DIR, 'GanttPage.tsx')),
     /buildGanttTimelineModel[\s\S]*Schedule Timeline[\s\S]*Critical Path[\s\S]*Dependency Map[\s\S]*Risk Queue/,
-    'Gantt page renders the product timeline, critical path, dependency map, and risk queue'
+    'Gantt page renders the product timeline, critical path, dependency map, and risk queue',
   );
   assert.match(
     readText(PROJECT_MANAGEMENT_CONTRACT_FILES.api),
     /\/api\/project-management\/plan[\s\S]*\/api\/project-management\/epics[\s\S]*\/api\/project-management\/sprints[\s\S]*\/api\/project-management\/dependencies[\s\S]*\/api\/project-management\/gantt[\s\S]*\/api\/project-management\/calendar[\s\S]*\/api\/project-management\/reports[\s\S]*\/api\/project-management\/workflow[\s\S]*\/api\/project-management\/automation[\s\S]*\/api\/project-management\/enterprise/,
-    'frontend project management API client declares Phase 1-5 endpoints'
+    'frontend project management API client declares Phase 1-5 endpoints',
   );
   assert.match(
     readText(PROJECT_MANAGEMENT_CONTRACT_FILES.types),
     /ProjectEnterpriseRole[\s\S]*ProjectEnterpriseNotification[\s\S]*ProjectEnterpriseImportExport[\s\S]*ProjectEnterpriseWebhook[\s\S]*ProjectEnterpriseTemplate[\s\S]*ProjectEnterpriseCiGate[\s\S]*ProjectEnterpriseAudit/,
-    'frontend project management contracts cover structured Phase 5 enterprise controls'
+    'frontend project management contracts cover structured Phase 5 enterprise controls',
   );
   assert.match(
     readText(PROJECT_MANAGEMENT_CONTRACT_FILES.hooks),
     /useProjectManagementPlan[\s\S]*useProjectManagementEpics[\s\S]*useProjectManagementSprints[\s\S]*useIssueDependencies/,
-    'frontend hooks expose project management planning queries'
+    'frontend hooks expose project management planning queries',
   );
   assert.match(
     readText(PROJECT_MANAGEMENT_CONTRACT_FILES.hooks),
     /useProjectGantt[\s\S]*useProjectCalendar[\s\S]*useProjectReports[\s\S]*useProjectWorkflow[\s\S]*useProjectAutomation[\s\S]*useEnterpriseControls/,
-    'frontend hooks expose Phase 2-5 product queries'
+    'frontend hooks expose Phase 2-5 product queries',
   );
   assert.match(
     readText(PROJECT_MANAGEMENT_CONTRACT_FILES.migration),
     /CREATE TABLE IF NOT EXISTS epics[\s\S]*CREATE TABLE IF NOT EXISTS sprints[\s\S]*CREATE TABLE IF NOT EXISTS issue_dependencies[\s\S]*CREATE TABLE IF NOT EXISTS issue_events/,
-    'database migration adds Phase 1 project management planning tables'
+    'database migration adds Phase 1 project management planning tables',
   );
   assert.match(
     readText(PROJECT_MANAGEMENT_CONTRACT_FILES.productizationMigration),
     /CREATE TABLE IF NOT EXISTS schedule_baselines[\s\S]*CREATE TABLE IF NOT EXISTS calendar_events[\s\S]*CREATE TABLE IF NOT EXISTS report_snapshots[\s\S]*CREATE TABLE IF NOT EXISTS workflow_definitions[\s\S]*CREATE TABLE IF NOT EXISTS automation_rules[\s\S]*CREATE TABLE IF NOT EXISTS project_role_assignments[\s\S]*CREATE TABLE IF NOT EXISTS import_export_jobs[\s\S]*CREATE TABLE IF NOT EXISTS project_webhooks/,
-    'database migration adds Phase 2-5 productization tables'
+    'database migration adds Phase 2-5 productization tables',
   );
   assert.match(
     readText(PROJECT_MANAGEMENT_CONTRACT_FILES.issueCoreMigration),
     /ALTER TABLE issues ADD COLUMN IF NOT EXISTS epic_id[\s\S]*ALTER TABLE issues ADD COLUMN IF NOT EXISTS sprint_id[\s\S]*ALTER TABLE issues ADD COLUMN IF NOT EXISTS story_points[\s\S]*ALTER TABLE issues ADD COLUMN IF NOT EXISTS rank_key[\s\S]*CREATE TABLE IF NOT EXISTS issue_work_logs[\s\S]*time_spent_minutes/,
-    'database migration adds issue core loop work logs and planning fields'
+    'database migration adds issue core loop work logs and planning fields',
   );
 
   assert.match(
     readText(BACKEND_PROJECT_MANAGEMENT_FILES.model),
     /ProjectManagementEpic[\s\S]*ProjectManagementSprint[\s\S]*IssueDependency[\s\S]*IssueEvent[\s\S]*ProjectManagementPlan/,
-    'backend project management model mirrors Phase 1 contracts'
+    'backend project management model mirrors Phase 1 contracts',
   );
   assert.match(
     readText(BACKEND_PROJECT_MANAGEMENT_FILES.repository),
     /list_epics[\s\S]*create_epic[\s\S]*list_sprints[\s\S]*create_sprint[\s\S]*list_dependencies[\s\S]*create_dependency[\s\S]*list_events/,
-    'backend repository declares project management persistence operations'
+    'backend repository declares project management persistence operations',
   );
   assert.match(
     readText(BACKEND_PROJECT_MANAGEMENT_FILES.service),
     /planning_plan[\s\S]*list_epics[\s\S]*list_sprints[\s\S]*list_dependencies[\s\S]*list_events[\s\S]*gantt_snapshot[\s\S]*calendar_snapshot[\s\S]*reports_snapshot[\s\S]*workflow_catalog[\s\S]*automation_catalog[\s\S]*enterprise_controls/,
-    'backend service assembles project management planning and productization data'
+    'backend service assembles project management planning and productization data',
   );
   assert.match(
     readText(BACKEND_PROJECT_MANAGEMENT_FILES.service),
     /"roles": \[[\s\S]*"permissions"[\s\S]*"notifications": \[[\s\S]*"import_export": \[[\s\S]*"webhooks": \[[\s\S]*"templates": \[[\s\S]*"ci_gates": \[[\s\S]*"audit": \{/,
-    'backend service exposes structured Phase 5 enterprise productization controls'
+    'backend service exposes structured Phase 5 enterprise productization controls',
   );
   assert.match(
     readText(BACKEND_PROJECT_MANAGEMENT_FILES.handler),
     /#\[get\("\/api\/project-management\/plan"\)\][\s\S]*#\[get\("\/api\/project-management\/epics"\)\][\s\S]*#\[post\("\/api\/project-management\/epics"\)\][\s\S]*#\[get\("\/api\/project-management\/sprints"\)\][\s\S]*#\[post\("\/api\/project-management\/sprints"\)\][\s\S]*#\[get\("\/api\/project-management\/dependencies"\)\][\s\S]*#\[post\("\/api\/project-management\/dependencies"\)\][\s\S]*#\[get\("\/api\/project-management\/events"\)\][\s\S]*#\[get\("\/api\/project-management\/gantt"\)\][\s\S]*#\[get\("\/api\/project-management\/calendar"\)\][\s\S]*#\[get\("\/api\/project-management\/reports"\)\][\s\S]*#\[get\("\/api\/project-management\/workflow"\)\][\s\S]*#\[get\("\/api\/project-management\/automation"\)\][\s\S]*#\[get\("\/api\/project-management\/enterprise"\)\]/,
-    'backend handler exposes project management planning and productization endpoints'
+    'backend handler exposes project management planning and productization endpoints',
   );
   assert.match(
     readText(BACKEND_PROJECT_MANAGEMENT_FILES.routes),
     /project_management_handler(?=[\s\S]*planning_plan)(?=[\s\S]*list_epics)(?=[\s\S]*create_epic)(?=[\s\S]*list_sprints)(?=[\s\S]*create_sprint)(?=[\s\S]*list_dependencies)(?=[\s\S]*create_dependency)(?=[\s\S]*list_events)(?=[\s\S]*gantt_snapshot)(?=[\s\S]*calendar_snapshot)(?=[\s\S]*reports_snapshot)(?=[\s\S]*workflow_catalog)(?=[\s\S]*automation_catalog)(?=[\s\S]*enterprise_controls)/,
-    'backend routes register project management endpoints through Phase 5'
+    'backend routes register project management endpoints through Phase 5',
   );
   assert.match(
     readText(BACKEND_PROJECT_MANAGEMENT_FILES.routes),
     /production_handler::list_issue_comments[\s\S]*production_handler::create_issue_work_log[\s\S]*production_handler::list_issue_work_logs[\s\S]*production_handler::delete_issue/,
-    'backend routes register issue core loop endpoints'
+    'backend routes register issue core loop endpoints',
   );
   assert.match(
     readText(BACKEND_PROJECT_MANAGEMENT_FILES.main),
     /project_management_service::ProjectManagementService[\s\S]*pub project_management_service: ProjectManagementService[\s\S]*ProjectManagementService::new\(pool\.clone\(\)\)/,
-    'backend app state owns project management service'
+    'backend app state owns project management service',
   );
 });

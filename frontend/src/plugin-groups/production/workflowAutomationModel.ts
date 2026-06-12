@@ -135,12 +135,16 @@ export function labelStatus(status: IssueStatus): string {
 export function deriveFallbackTransitions(
   statuses: IssueStatus[],
   guards: string[],
-  validators: string[]
+  validators: string[],
 ): ProjectWorkflowTransition[] {
   return statuses.slice(0, -1).map((status, index) => {
     const nextStatus = statuses[index + 1];
-    const evidenceRequired = nextStatus === 'submitted' || nextStatus === 'approved' || nextStatus === 'delivered';
-    const approvalRequired = nextStatus === 'internal_review' || nextStatus === 'client_review' || nextStatus === 'approved';
+    const evidenceRequired =
+      nextStatus === 'submitted' || nextStatus === 'approved' || nextStatus === 'delivered';
+    const approvalRequired =
+      nextStatus === 'internal_review' ||
+      nextStatus === 'client_review' ||
+      nextStatus === 'approved';
     return {
       id: `${status}_to_${nextStatus}`,
       from_status: status,
@@ -157,7 +161,7 @@ export function deriveFallbackTransitions(
 
 export function resolveWorkflowTransitions(
   catalog: ProjectWorkflowCatalog | undefined,
-  statuses: IssueStatus[]
+  statuses: IssueStatus[],
 ): ProjectWorkflowTransition[] {
   if (catalog?.transitions?.length) {
     return catalog.transitions;
@@ -167,12 +171,14 @@ export function resolveWorkflowTransitions(
 
 export function buildWorkflowDesignerModel(
   catalog: ProjectWorkflowCatalog | undefined,
-  fallbackStatuses: IssueStatus[]
+  fallbackStatuses: IssueStatus[],
 ): WorkflowDesignerModel {
   const statuses = catalog?.statuses?.length ? catalog.statuses : fallbackStatuses;
   const transitions = resolveWorkflowTransitions(catalog, statuses);
   const policy = catalog?.approval_policy ?? DEFAULT_APPROVAL_POLICY;
-  const transitionPairs = new Set(transitions.map((transition) => `${transition.from_status}->${transition.to_status}`));
+  const transitionPairs = new Set(
+    transitions.map((transition) => `${transition.from_status}->${transition.to_status}`),
+  );
   const missingTransitionPairs = statuses
     .slice(0, -1)
     .map((status, index) => `${status}->${statuses[index + 1]}`)
@@ -194,7 +200,10 @@ export function buildWorkflowDesignerModel(
         .filter(Boolean)
         .join(' / '),
     })),
-    coveragePercent: Math.min(100, Math.round((transitions.length / expectedTransitionCount) * 100)),
+    coveragePercent: Math.min(
+      100,
+      Math.round((transitions.length / expectedTransitionCount) * 100),
+    ),
     evidenceGateCount: transitions.filter((transition) => transition.evidence_required).length,
     approvalGateCount: transitions.filter((transition) => transition.approval_required).length,
     humanApprovalStatuses: policy.human_approval_statuses,
@@ -204,12 +213,18 @@ export function buildWorkflowDesignerModel(
 }
 
 export function ruleReadsDataLake(rule: ProjectAutomationRule): boolean {
-  const searchable = [...rule.conditions, ...rule.actions, rule.trigger, rule.langgraph_node].join(' ').toLowerCase();
-  return searchable.includes('data_lake') || searchable.includes('evidence') || searchable.includes('asset');
+  const searchable = [...rule.conditions, ...rule.actions, rule.trigger, rule.langgraph_node]
+    .join(' ')
+    .toLowerCase();
+  return (
+    searchable.includes('data_lake') ||
+    searchable.includes('evidence') ||
+    searchable.includes('asset')
+  );
 }
 
 export function buildAutomationExecutionPlan(
-  catalog: ProjectAutomationCatalog | undefined
+  catalog: ProjectAutomationCatalog | undefined,
 ): AutomationExecutionPlan {
   const rules = catalog?.rules ?? [];
   const runbook = catalog?.runbook ?? [];
@@ -234,6 +249,8 @@ export function buildAutomationExecutionPlan(
     approvalRequiredCount: readiness.filter((item) => item.rule.approval_required).length,
     dataLakeReadCount: readiness.filter((item) => item.readsDataLake).length,
     graphCoveragePercent:
-      enabledRules.length === 0 ? 100 : Math.round((coveredRules.length / enabledRules.length) * 100),
+      enabledRules.length === 0
+        ? 100
+        : Math.round((coveredRules.length / enabledRules.length) * 100),
   };
 }

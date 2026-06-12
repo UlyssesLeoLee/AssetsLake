@@ -129,6 +129,9 @@ pub enum DomainService {
     Planning,
     Workflow,
     Reporting,
+    Wiki,
+    DesignRequirements,
+    PeopleIntelligence,
 }
 
 impl DomainService {
@@ -149,6 +152,13 @@ impl DomainService {
             "planning" | "planning-api" | "schedule" => Self::Planning,
             "workflow" | "workflow-api" | "automation" => Self::Workflow,
             "reporting" | "reports" | "reporting-api" | "data-lake" => Self::Reporting,
+            "wiki" | "wiki-api" => Self::Wiki,
+            "design" | "design-requirements" | "design-requirements-api" => {
+                Self::DesignRequirements
+            }
+            "people" | "people-intelligence" | "people-intelligence-api" => {
+                Self::PeopleIntelligence
+            }
             _ => Self::Gateway,
         }
     }
@@ -163,6 +173,9 @@ impl DomainService {
             Self::Planning => "planning",
             Self::Workflow => "workflow",
             Self::Reporting => "reporting",
+            Self::Wiki => "wiki",
+            Self::DesignRequirements => "design-requirements",
+            Self::PeopleIntelligence => "people-intelligence",
         }
     }
 
@@ -176,6 +189,9 @@ impl DomainService {
             Self::Planning => Some("PLANNING_DATABASE_URL"),
             Self::Workflow => Some("WORKFLOW_DATABASE_URL"),
             Self::Reporting => Some("REPORTING_DATABASE_URL"),
+            Self::Wiki => Some("WIKI_DATABASE_URL"),
+            Self::DesignRequirements => Some("DESIGN_REQUIREMENTS_DATABASE_URL"),
+            Self::PeopleIntelligence => Some("PEOPLE_INTELLIGENCE_DATABASE_URL"),
         }
     }
 }

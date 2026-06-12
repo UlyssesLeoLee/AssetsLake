@@ -1,5 +1,6 @@
 node_modules/
 .next/
+frontend/.next-*/
 target/
 dist/
 build/
@@ -14,3 +15,4 @@ test-results/
 playwright-report/
 frontend/test-results/
 frontend/playwright-report/
+.run-logs/perf/

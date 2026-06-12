@@ -13,6 +13,12 @@ CREATE
   (v6:Variable {name: "_telemetry_guard", type: "variable"}),
   (v7:Variable {name: "event_publisher_service", type: "variable"}),
   (v8:Variable {name: "security_audit_service", type: "variable"}),
+  (v9:Variable {name: "admin_control_service", type: "variable"}),
+  (v10:Variable {name: "wiki_service", type: "variable"}),
+  (v11:Variable {name: "design_requirement_service", type: "variable"}),
+  (v12:Variable {name: "asset_if_service", type: "variable"}),
+  (v13:Variable {name: "design_ai_if_service", type: "variable"}),
+  (v14:Variable {name: "people_intelligence_service", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(c1),
   (m)-[:CONTAINS]->(fn1),
@@ -23,7 +29,13 @@ CREATE
   (fn1)-[:USES]->(v5),
   (fn1)-[:USES]->(v6),
   (fn1)-[:USES]->(v7),
-  (fn1)-[:USES]->(v8);
+  (fn1)-[:USES]->(v8),
+  (fn1)-[:USES]->(v9),
+  (fn1)-[:USES]->(v10),
+  (fn1)-[:USES]->(v11),
+  (fn1)-[:USES]->(v12),
+  (fn1)-[:USES]->(v13),
+  (fn1)-[:USES]->(v14);
 ```
 */
 
@@ -37,24 +49,30 @@ use tracing_actix_web::TracingLogger;
 mod config;
 mod errors;
 mod handlers;
+mod interfaces;
 mod models;
 mod repositories;
 mod routes;
 mod services;
 
-use config::AppConfig;
+use config::{AppConfig, DomainService};
 use services::{
+    admin_control_service::AdminControlService,
     ai_index_service::AiIndexService,
     ai_replica_action_service::AiReplicaActionService,
     asset_analysis_service::AssetAnalysisService,
+    asset_if_service::AssetIfService,
     asset_service::AssetService,
     auth_service::AuthService,
     authorization_service::enforce_route_authorization,
+    design_ai_if_service::DesignAiIfService,
+    design_requirement_service::DesignRequirementService,
     emergence_service::EmergenceService,
     event_publisher_service::EventPublisherService,
     graph_relation_service::GraphRelationService,
     lake_query_service::LakeQueryService,
     maintenance_service::{MaintenanceConfig, MaintenanceService},
+    people_intelligence_service::PeopleIntelligenceService,
     production_service::ProductionService,
     project_management_service::ProjectManagementService,
     rag_memory_service::RagMemoryService,
@@ -65,6 +83,7 @@ use services::{
     storage_service::StorageService,
     telemetry_service,
     verification_service::VerificationService,
+    wiki_service::WikiService,
 };
 
 pub struct AppState {
@@ -86,6 +105,12 @@ pub struct AppState {
     pub rate_limit_service: RateLimitService,
     pub emergence_service: EmergenceService,
     pub security_audit_service: SecurityAuditService,
+    pub admin_control_service: AdminControlService,
+    pub wiki_service: WikiService,
+    pub design_requirement_service: DesignRequirementService,
+    pub asset_if_service: AssetIfService,
+    pub design_ai_if_service: DesignAiIfService,
+    pub people_intelligence_service: PeopleIntelligenceService,
 }
 
 #[actix_web::main]
@@ -121,6 +146,22 @@ async fn main() -> std::io::Result<()> {
     let event_publisher_service = EventPublisherService::new(pool.clone(), cfg.events.clone());
     let security_audit_service =
         SecurityAuditService::new(pool.clone(), event_publisher_service.clone());
+    let admin_control_service = AdminControlService::new(pool.clone());
+    let wiki_service = WikiService::new(pool.clone());
+    let design_requirement_service = DesignRequirementService::new(pool.clone());
+    let asset_if_service = AssetIfService::new(pool.clone());
+    let design_ai_if_service = DesignAiIfService::new();
+    let people_intelligence_service = PeopleIntelligenceService::new(
+        pool.clone(),
+        cfg.rag.clone(),
+        event_publisher_service.clone(),
+    );
+    if matches!(
+        cfg.service,
+        DomainService::Gateway | DomainService::PeopleIntelligence
+    ) {
+        people_intelligence_service.spawn_event_consumer();
+    }
 
     let app_state = web::Data::new(AppState {
         asset_service,
@@ -141,6 +182,12 @@ async fn main() -> std::io::Result<()> {
         rate_limit_service: RateLimitService::from_env(),
         emergence_service: EmergenceService::new(pool.clone()),
         security_audit_service,
+        admin_control_service,
+        wiki_service,
+        design_requirement_service,
+        asset_if_service,
+        design_ai_if_service,
+        people_intelligence_service,
     });
 
     let default_workers = std::thread::available_parallelism()

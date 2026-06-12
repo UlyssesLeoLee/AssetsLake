@@ -15,6 +15,8 @@ CREATE
   (v6:Variable {name: "infrastructureLogging", type: "variable"}),
   (v7:Variable {name: "KIALI_PROXY_URL", type: "variable"}),
   (v8:Variable {name: "kialiProxyUrl", type: "variable"}),
+  (v9:Variable {name: "NEXT_DIST_DIR", type: "variable"}),
+  (v10:Variable {name: "distDir", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(fn1),
   (m)-[:CONTAINS]->(fn2),
@@ -30,9 +32,12 @@ CREATE
   (m)-[:USES]->(v1),
   (m)-[:USES]->(v2),
   (m)-[:USES]->(v8),
+  (m)-[:USES]->(v10),
   (v1)-[:USES]->(v3),
   (v8)-[:USES]->(v7),
-  (v2)-[:USES]->(v1);
+  (v10)-[:USES]->(v9),
+  (v2)-[:USES]->(v1),
+  (v2)-[:USES]->(v10);
 ```
 */
 
@@ -41,6 +46,7 @@ import { join } from 'node:path';
 
 const standaloneOutput = process.env.NEXT_OUTPUT_MODE === 'standalone';
 const kialiProxyUrl = process.env.KIALI_PROXY_URL || 'http://127.0.0.1:20001';
+const distDir = process.env.NEXT_DIST_DIR;
 
 function hasPackageManifest(managedPath) {
   return typeof managedPath !== 'string' || existsSync(join(managedPath, 'package.json'));
@@ -61,6 +67,7 @@ function keepManagedPath(managedPath) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  ...(distDir ? { distDir } : {}),
   ...(standaloneOutput ? { output: 'standalone' } : {}),
   images: {
     remotePatterns: [

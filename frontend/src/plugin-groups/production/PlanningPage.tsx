@@ -114,9 +114,24 @@ export function PlanningPage() {
       <div className="flex-1 overflow-y-auto p-5">
         <div className="grid gap-4 md:grid-cols-4">
           <Metric label="Backlog" value={model.backlog.length} detail="ready for grooming" />
-          <Metric label="Sprint Pull" value={model.sprintCandidates.length} detail="active work candidates" tone="text-cyan-300" />
-          <Metric label="Review Load" value={model.reviewQueue.length} detail="review or revision queue" tone="text-amber-300" />
-          <Metric label="Schedule Risk" value={model.overdue.length} detail={`${model.totalEstimate} estimated points`} tone="text-red-300" />
+          <Metric
+            label="Sprint Pull"
+            value={model.sprintCandidates.length}
+            detail="active work candidates"
+            tone="text-cyan-300"
+          />
+          <Metric
+            label="Review Load"
+            value={model.reviewQueue.length}
+            detail="review or revision queue"
+            tone="text-amber-300"
+          />
+          <Metric
+            label="Schedule Risk"
+            value={model.overdue.length}
+            detail={`${model.totalEstimate} estimated points`}
+            tone="text-red-300"
+          />
         </div>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
@@ -145,7 +160,9 @@ export function PlanningPage() {
                 {milestones.map((milestone) => (
                   <div key={milestone.id} className="p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 truncate text-sm font-medium text-slate-100">{milestone.name}</div>
+                      <div className="min-w-0 truncate text-sm font-medium text-slate-100">
+                        {milestone.name}
+                      </div>
                       <span className="rounded-md border border-slate-600 bg-slate-700/30 px-2 py-0.5 text-xs text-slate-300">
                         {milestone.status}
                       </span>
@@ -181,7 +198,9 @@ function buildPlanningModel(issues: IssueSummary[]): PlanningModel {
   const backlog = issues.filter(isBacklogCandidate);
   const sprintCandidates = issues
     .filter(isSprintCandidate)
-    .toSorted((left, right) => (daysUntil(left.due_date) ?? 9999) - (daysUntil(right.due_date) ?? 9999));
+    .toSorted(
+      (left, right) => (daysUntil(left.due_date) ?? 9999) - (daysUntil(right.due_date) ?? 9999),
+    );
   const reviewQueue = issues.filter((issue) => REVIEW_STATUSES.includes(issue.status));
   const overdue = issues.filter(isOverdue);
   const totalEstimate = issues.reduce((sum, issue) => sum + Number(issue.revision_count || 0), 0);
@@ -205,7 +224,12 @@ function isSprintCandidate(issue: IssueSummary): boolean {
 
 function isOverdue(issue: IssueSummary): boolean {
   const remaining = daysUntil(issue.due_date);
-  return remaining !== null && remaining < 0 && issue.status !== 'delivered' && issue.status !== 'archived';
+  return (
+    remaining !== null &&
+    remaining < 0 &&
+    issue.status !== 'delivered' &&
+    issue.status !== 'archived'
+  );
 }
 
 function daysUntil(value?: string): number | null {
@@ -257,16 +281,27 @@ function WorkList({
       </div>
       <div className="divide-y divide-surface-border">
         {issues.slice(0, 8).map((issue) => (
-          <Link key={issue.id} href={`/issues/${issue.id}`} className="block p-4 transition hover:bg-slate-800/50">
+          <Link
+            key={issue.id}
+            href={`/issues/${issue.id}`}
+            className="block p-4 transition hover:bg-slate-800/50"
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-brand-300">{issue.issue_key}</span>
                   <StatusBadge issue={issue} />
                 </div>
-                <div className="mt-1 line-clamp-2 text-sm font-medium text-slate-100">{issue.title}</div>
+                <div className="mt-1 line-clamp-2 text-sm font-medium text-slate-100">
+                  {issue.title}
+                </div>
               </div>
-              <span className={cn('shrink-0 rounded-md border px-2 py-0.5 text-xs', priorityClass(issue.priority))}>
+              <span
+                className={cn(
+                  'shrink-0 rounded-md border px-2 py-0.5 text-xs',
+                  priorityClass(issue.priority),
+                )}
+              >
                 {ISSUE_PRIORITY_LABELS[issue.priority]}
               </span>
             </div>

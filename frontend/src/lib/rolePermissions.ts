@@ -38,7 +38,7 @@ CREATE
 
 import type { PluginPermission, PluginRoute } from '@/plugin-groups/types';
 
-const PUBLIC_ROUTE_IDS = new Set<string>(['verification.sms']);
+const PUBLIC_ROUTE_IDS = new Set<string>(['workspace.home', 'verification.sms']);
 
 const ALL_PLUGIN_PERMISSIONS: readonly PluginPermission[] = [
   'asset:read',
@@ -58,15 +58,27 @@ const ALL_PLUGIN_PERMISSIONS: readonly PluginPermission[] = [
   'verification:admin',
   'verification:read',
   'verification:write',
+  'wiki:read',
+  'wiki:write',
+  'design-requirement:read',
+  'design-requirement:write',
+  'design-requirement:ai',
+  'people:read',
+  'people:write',
+  'people:evaluate',
+  'people:admin',
   'workflow:read',
   'workflow:write',
 ];
 
 const ROUTE_PERMISSION_REQUIREMENTS: Record<string, readonly PluginPermission[]> = {
+  'admin.control': ['enterprise:admin'],
   'assets.library': ['asset:read'],
   'assets.query': ['report:read'],
   'assets.upload': ['asset:write'],
+  'design.requirements': ['design-requirement:read'],
   'observability.runtime': ['observability:read'],
+  'people.intelligence': ['people:read'],
   'production.ai-control': ['automation:read'],
   'production.approvals': ['automation:approve'],
   'production.automation': ['automation:read'],
@@ -87,6 +99,7 @@ const ROUTE_PERMISSION_REQUIREMENTS: Record<string, readonly PluginPermission[]>
   'production.workflow': ['workflow:read'],
   'workspace.home': ['project:read'],
   'workspace.settings': ['settings:read'],
+  'wiki.editor': ['wiki:read'],
 };
 
 const ROLE_PERMISSIONS: Record<string, readonly PluginPermission[]> = {
@@ -105,24 +118,64 @@ const ROLE_PERMISSIONS: Record<string, readonly PluginPermission[]> = {
     'settings:read',
     'settings:write',
     'verification:read',
+    'wiki:read',
+    'wiki:write',
+    'design-requirement:read',
+    'design-requirement:write',
+    'design-requirement:ai',
+    'people:read',
+    'people:write',
+    'people:evaluate',
     'workflow:read',
     'workflow:write',
   ],
-  artist: ['asset:read', 'asset:write', 'issue:read', 'issue:write', 'project:read'],
+  artist: [
+    'asset:read',
+    'asset:write',
+    'design-requirement:ai',
+    'design-requirement:read',
+    'design-requirement:write',
+    'issue:read',
+    'issue:write',
+    'project:read',
+    'people:read',
+    'people:write',
+    'people:evaluate',
+    'wiki:read',
+    'wiki:write',
+  ],
   reviewer: [
     'asset:read',
     'automation:approve',
     'automation:read',
+    'design-requirement:read',
+    'design-requirement:write',
     'issue:read',
     'project:read',
+    'people:read',
+    'people:write',
+    'people:evaluate',
     'report:read',
     'verification:read',
+    'wiki:read',
+    'wiki:write',
     'workflow:read',
   ],
-  manager: ['asset:read', 'issue:read', 'project:read', 'report:read'],
-  viewer: ['asset:read', 'issue:read', 'project:read'],
-  client: ['asset:read', 'issue:read', 'project:read'],
-  vendor: ['asset:read', 'issue:read', 'project:read'],
+  manager: [
+    'asset:read',
+    'design-requirement:read',
+    'issue:read',
+    'people:read',
+    'people:write',
+    'people:evaluate',
+    'project:read',
+    'report:read',
+    'wiki:read',
+    'wiki:write',
+  ],
+  viewer: ['asset:read', 'design-requirement:read', 'issue:read', 'project:read', 'wiki:read'],
+  client: ['asset:read', 'design-requirement:read', 'issue:read', 'project:read', 'wiki:read'],
+  vendor: ['asset:read', 'design-requirement:read', 'issue:read', 'project:read', 'wiki:read'],
 };
 
 export function normalizeRole(role?: string | null): string {
@@ -139,19 +192,16 @@ function rolePermissionSet(role?: string | null): ReadonlySet<PluginPermission> 
 
 export function roleHasPermission(
   role: string | null | undefined,
-  permission: PluginPermission
+  permission: PluginPermission,
 ): boolean {
   return rolePermissionSet(role).has(permission);
 }
 
 export function routePermissionRequirements(routeId?: string): readonly PluginPermission[] {
-  return routeId ? ROUTE_PERMISSION_REQUIREMENTS[routeId] ?? [] : [];
+  return routeId ? (ROUTE_PERMISSION_REQUIREMENTS[routeId] ?? []) : [];
 }
 
-export function roleCanAccessRouteId(
-  role: string | null | undefined,
-  routeId?: string
-): boolean {
+export function roleCanAccessRouteId(role: string | null | undefined, routeId?: string): boolean {
   if (!routeId || PUBLIC_ROUTE_IDS.has(routeId)) {
     return true;
   }
@@ -165,7 +215,7 @@ export function roleCanAccessRouteId(
 
 export function filterPluginRoutesForRole<T extends Pick<PluginRoute, 'id'>>(
   routes: readonly T[],
-  role?: string | null
+  role?: string | null,
 ): T[] {
   return routes.filter((route) => roleCanAccessRouteId(role, route.id));
 }

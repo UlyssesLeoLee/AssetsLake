@@ -1,0 +1,56 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Asia/Shanghai",
+  "dependencyDashboard": true,
+  "dependencyDashboardAutoclose": true,
+  "configMigration": true,
+  "automerge": false,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "kubernetes": {
+    "managerFilePatterns": ["/^infra/k8s/.*\\.ya?ml$/"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update dependency versions explicitly annotated in Markdown",
+      "managerFilePatterns": [
+        "/(^|/)README\\.md$/",
+        "/^docs/.*\\.md$/"
+      ],
+      "matchStrings": [
+        "<!--\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\s*-->\\s*`(?<currentValue>[^`]+)`"
+      ]
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"]
+  },
+  "packageRules": [
+    {
+      "description": "Require Dependency Dashboard approval for major updates",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Group non-major npm and pnpm updates",
+      "matchDatasources": ["npm"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "frontend non-major dependencies"
+    },
+    {
+      "description": "Group non-major Rust crate updates",
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "backend non-major dependencies"
+    },
+    {
+      "description": "Group non-major container image updates",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "container image updates"
+    }
+  ]
+}

@@ -35,10 +35,19 @@ export function ReportsPage() {
   const reportModel = buildReportsDashboardModel(reports);
 
   return (
-    <PageShell title="Reports" subtitle="Burndown, velocity, cumulative flow, cycle time, aging, SLA, and delivery readiness">
+    <PageShell
+      title="Reports"
+      subtitle="Burndown, velocity, cumulative flow, cycle time, aging, SLA, and delivery readiness"
+    >
       <div className="grid gap-4 md:grid-cols-4">
         {reportModel.kpis.map((kpi) => (
-          <Metric key={kpi.label} label={kpi.label} value={kpi.value} detail={kpi.detail} tone={kpi.tone} />
+          <Metric
+            key={kpi.label}
+            label={kpi.label}
+            value={kpi.value}
+            detail={kpi.detail}
+            tone={kpi.tone}
+          />
         ))}
       </div>
       <div className="mt-5 grid gap-5 xl:grid-cols-2">

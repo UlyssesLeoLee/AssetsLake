@@ -23,7 +23,7 @@ export const dataLakeQueryApi = {
     const { data } = await apiClient.post<ApiResponse<DataLakeQueryResponse>>(
       '/api/data-lake/query/sql',
       req,
-      { timeout: 45_000 }
+      { timeout: 45_000 },
     );
     return data.data;
   },
@@ -32,7 +32,7 @@ export const dataLakeQueryApi = {
     const { data } = await apiClient.post<ApiResponse<DataLakeQueryResponse>>(
       '/api/data-lake/query/cypher',
       req,
-      { timeout: 45_000 }
+      { timeout: 45_000 },
     );
     return data.data;
   },

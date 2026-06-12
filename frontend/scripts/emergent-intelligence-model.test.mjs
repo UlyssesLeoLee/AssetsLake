@@ -48,7 +48,7 @@ const FILES = {
     'src',
     'plugin-groups',
     'production',
-    'emergentIntelligenceModel.ts'
+    'emergentIntelligenceModel.ts',
   ),
 };
 
@@ -74,7 +74,10 @@ function loadEmergentIntelligenceModel() {
     },
   };
 
-  vm.runInNewContext(compiled.outputText, sandbox, { filename: FILES.emergentIntelligenceModel, timeout: 1000 });
+  vm.runInNewContext(compiled.outputText, sandbox, {
+    filename: FILES.emergentIntelligenceModel,
+    timeout: 1000,
+  });
   return module.exports;
 }
 
@@ -160,5 +163,8 @@ test('emergent model combines lake evidence, project flow, and AI readiness', ()
   assert.ok(operatingModel.aiReadinessPercent >= 90);
   assert.equal(operatingModel.signals.length, 4);
   assert.equal(operatingModel.recommendations[0].id, 'evidence_gate');
-  assert.equal(operatingModel.recommendations.some((item) => item.id === 'delivery_package'), true);
+  assert.equal(
+    operatingModel.recommendations.some((item) => item.id === 'delivery_package'),
+    true,
+  );
 });

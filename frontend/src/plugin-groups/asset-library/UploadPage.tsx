@@ -116,10 +116,17 @@ export default function UploadPage() {
       {stage === 'idle' && <UploadZone onFile={handleFileDrop} />}
 
       {stage === 'form' && selectedFile && (
-        <UploadForm file={selectedFile} onSubmit={handleSubmit} onCancel={handleReset} error={error} />
+        <UploadForm
+          file={selectedFile}
+          onSubmit={handleSubmit}
+          onCancel={handleReset}
+          error={error}
+        />
       )}
 
-      {stage === 'uploading' && <UploadProgress progress={progress} filename={selectedFile?.name ?? ''} />}
+      {stage === 'uploading' && (
+        <UploadProgress progress={progress} filename={selectedFile?.name ?? ''} />
+      )}
 
       {stage === 'done' && result && (
         <UploadSuccess

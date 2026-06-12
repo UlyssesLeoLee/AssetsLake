@@ -115,7 +115,12 @@ function prepareGalleryDirectory(): void {
   mkdirSync(GALLERY_ROOT, { recursive: true });
 }
 
-async function captureInterface(page: Page, route: InterfaceRoute, index: number, testInfo: TestInfo): Promise<string> {
+async function captureInterface(
+  page: Page,
+  route: InterfaceRoute,
+  index: number,
+  testInfo: TestInfo,
+): Promise<string> {
   const fileName = galleryFileName(route, index);
   const screenshotPath = join(GALLERY_ROOT, fileName);
 

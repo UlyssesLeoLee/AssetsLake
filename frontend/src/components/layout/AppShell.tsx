@@ -67,7 +67,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const settingsActive = pathname === '/settings';
   const observabilityActive = OBSERVABILITY_NAV_ITEM
-    ? pathname === OBSERVABILITY_NAV_ITEM.href || pathname.startsWith(`${OBSERVABILITY_NAV_ITEM.href}/`)
+    ? pathname === OBSERVABILITY_NAV_ITEM.href ||
+      pathname.startsWith(`${OBSERVABILITY_NAV_ITEM.href}/`)
     : false;
   const role = session?.user.role;
   const visiblePrimaryNavItems = filterPluginRoutesForRole(PRIMARY_NAV_ITEMS, role);
@@ -76,7 +77,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ? OBSERVABILITY_NAV_ITEM
       : undefined;
   const visibleSettingsNavItem =
-    SETTINGS_NAV_ITEM && roleCanAccessRouteId(role, SETTINGS_NAV_ITEM.id) ? SETTINGS_NAV_ITEM : undefined;
+    SETTINGS_NAV_ITEM && roleCanAccessRouteId(role, SETTINGS_NAV_ITEM.id)
+      ? SETTINGS_NAV_ITEM
+      : undefined;
   const VisibleObservabilityIcon = visibleObservabilityNavItem?.icon;
   const VisibleSettingsIcon = visibleSettingsNavItem?.icon;
   const displayName = session?.user.display_name ?? session?.user.username;
@@ -114,14 +117,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="leading-tight">
             <span className="block text-sm font-bold text-white">AssetsLake</span>
-            <span className="hidden text-[10px] font-medium text-washi-200/70 sm:block">{PLUGIN_APP.label}</span>
+            <span className="hidden text-[10px] font-medium text-washi-200/70 sm:block">
+              {PLUGIN_APP.label}
+            </span>
           </div>
         </Link>
 
         {/* Nav */}
         <nav className="flex min-w-0 items-center gap-1 overflow-x-auto rounded-lg border border-white/[0.04] bg-white/[0.025] p-1">
           {visiblePrimaryNavItems.map(({ href, label, icon: Icon }) => {
-            const active = href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
+            const active =
+              href === '/'
+                ? pathname === '/'
+                : pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link
                 key={href}
@@ -130,7 +138,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   'relative flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150',
                   active
                     ? 'bg-brand-500/15 text-brand-100 shadow-[inset_0_0_0_1px_rgba(134,197,255,0.14)] after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-sakura-300'
-                    : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100'
+                    : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100',
                 )}
               >
                 <Icon className={cn('h-4 w-4', active ? 'text-sakura-300' : 'text-slate-500')} />
@@ -150,11 +158,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 'inline-flex h-9 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors',
                 observabilityActive
                   ? 'border-brand-300/35 bg-brand-500/15 text-brand-100'
-                  : 'border-surface-border bg-surface-elevated/80 text-slate-300 hover:border-brand-500/35 hover:text-slate-100'
+                  : 'border-surface-border bg-surface-elevated/80 text-slate-300 hover:border-brand-500/35 hover:text-slate-100',
               )}
             >
               <VisibleObservabilityIcon
-                className={cn('h-4 w-4', observabilityActive ? 'text-sakura-300' : 'text-slate-500')}
+                className={cn(
+                  'h-4 w-4',
+                  observabilityActive ? 'text-sakura-300' : 'text-slate-500',
+                )}
               />
               <span className="hidden lg:inline">Observability</span>
             </Link>
@@ -171,7 +182,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 'flex h-8 w-8 items-center justify-center rounded-md border transition-colors',
                 settingsActive
                   ? 'border-sakura-300/35 bg-sakura-300/10 text-sakura-300'
-                  : 'border-surface-border bg-surface-elevated/80 text-slate-400 hover:border-brand-500/35 hover:text-slate-100'
+                  : 'border-surface-border bg-surface-elevated/80 text-slate-400 hover:border-brand-500/35 hover:text-slate-100',
               )}
             >
               <VisibleSettingsIcon className="h-4 w-4" />
@@ -195,9 +206,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main */}
-      <main className="flex flex-1 flex-col overflow-hidden">
-        {children}
-      </main>
+      <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
     </div>
   );
 }

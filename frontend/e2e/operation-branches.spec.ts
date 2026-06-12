@@ -83,6 +83,7 @@ CREATE
 */
 
 import { expect, test, type Page } from '@playwright/test';
+import { installAuthenticatedSession } from './fixtures/authSession';
 import { mockApi } from './fixtures/apiMocks';
 
 test.use({
@@ -90,6 +91,7 @@ test.use({
 });
 
 test.beforeEach(async ({ page }) => {
+  await installAuthenticatedSession(page);
   await mockApi(page);
 });
 
@@ -150,7 +152,10 @@ test('operation branch: review and approval decisions', async ({ page }) => {
   await gotoApp(page, '/reviews');
   await expectHeading(page, 'Review Board');
   await expect(page.getByText('Internal Review')).toBeVisible();
-  await page.getByRole('main').getByRole('link', { name: /Approvals/ }).click();
+  await page
+    .getByRole('main')
+    .getByRole('link', { name: /Approvals/ })
+    .click();
   await expect(page).toHaveURL(/\/approvals$/);
   await expectHeading(page, 'Art Director Approval Queue');
   await clickFirstButton(page, /Revision/);
@@ -261,7 +266,8 @@ test('operation branch: AI settings save and test', async ({ page }) => {
   await page.getByLabel('API Key').fill('nvapi-playwright-trace-key');
   await page.getByRole('button', { name: /^Save$/ }).click();
   await page.getByRole('button', { name: /^Test$/ }).click();
-  await expect(page.getByText(/responded with/)).toBeVisible();
+  await expect(page.getByText(/responded in/)).toBeVisible();
+  await expect(page.getByText(/Embedding probe passed/)).toBeVisible();
 });
 
 test('operation branch: AI control cross-app execution', async ({ page }) => {
@@ -276,9 +282,13 @@ test('operation branch: AI control cross-app execution', async ({ page }) => {
 
   await page.getByLabel('API Key').fill('nvapi-playwright-trace-key');
   await page.getByRole('button', { name: /Save API/ }).click();
-  await page.getByLabel('Goal').fill('Drive release readiness across lake, version graph, and Jira flow.');
+  await page
+    .getByLabel('Goal')
+    .fill('Drive release readiness across lake, version graph, and Jira flow.');
   await page.getByRole('button', { name: /Generate Plan/ }).click();
   await expect(page.getByText('Impact Preview').first()).toBeVisible();
+  await expect(page.getByText('Decision Review')).toBeVisible();
+  await expect(page.getByText('LangGraph Chain')).toBeVisible();
   await page.getByRole('button', { name: /Run Approved/ }).click();
   await expect(page.getByText(/Autopilot recorded Lake Index/)).toBeVisible();
   await expect(page.getByText(/RAG Memory/)).toBeVisible();
@@ -308,11 +318,19 @@ async function fillBriefForm(page: Page): Promise<void> {
   await page.getByRole('combobox', { name: 'Priority' }).selectOption('urgent');
   await page.getByLabel('Due Date').fill('2026-06-08');
   await page.getByLabel('Story Points').fill('5');
-  await page.getByLabel('Brief').fill('Trace branch brief for data lake, project, and AI validation.');
-  await page.getByLabel('Acceptance Criteria').fill('trace recorded\nassets linked\nAI decision visible');
+  await page
+    .getByLabel('Brief')
+    .fill('Trace branch brief for data lake, project, and AI validation.');
+  await page
+    .getByLabel('Acceptance Criteria')
+    .fill('trace recorded\nassets linked\nAI decision visible');
 }
 
-async function dragIssueToColumn(page: Page, issueTitle: string, columnTitle: string): Promise<void> {
+async function dragIssueToColumn(
+  page: Page,
+  issueTitle: string,
+  columnTitle: string,
+): Promise<void> {
   const issueCard = page.getByRole('link', { name: new RegExp(issueTitle) }).first();
   const targetColumn = page.getByRole('region', { name: `${columnTitle} column` });
 

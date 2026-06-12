@@ -7,6 +7,7 @@ CREATE
   (fn1:Function {name: "ProductionService::new", type: "function", language: "rust", signature: "fn new(pool: PgPool) -> Self"}),
   (fn2:Function {name: "ProductionService::create_issue", type: "function", language: "rust", signature: "async fn create_issue(&self, req: CreateIssueRequest) -> Result<Issue, AppError>"}),
   (fn3:Function {name: "ProductionService::list_issues", type: "function", language: "rust", signature: "async fn list_issues(&self, query: &IssueQuery) -> Result<(Vec<IssueSummary>, i64), AppError>"}),
+  (fn21:Function {name: "ProductionService::board_sync_snapshot", type: "function", language: "rust", signature: "async fn board_sync_snapshot(&self, query: &IssueBoardSyncQuery) -> Result<IssueBoardSyncSnapshot, AppError>"}),
   (fn4:Function {name: "ProductionService::find_issue", type: "function", language: "rust", signature: "async fn find_issue(&self, id: Uuid) -> Result<Issue, AppError>"}),
   (fn5:Function {name: "ProductionService::update_issue", type: "function", language: "rust", signature: "async fn update_issue(&self, id: Uuid, req: UpdateIssueRequest) -> Result<Issue, AppError>"}),
   (fn6:Function {name: "ProductionService::transition_issue", type: "function", language: "rust", signature: "async fn transition_issue(&self, id: Uuid, req: TransitionIssueRequest) -> Result<Issue, AppError>"}),
@@ -30,6 +31,7 @@ CREATE
   (c1)-[:HAS_METHOD]->(fn1),
   (c1)-[:HAS_METHOD]->(fn2),
   (c1)-[:HAS_METHOD]->(fn3),
+  (c1)-[:HAS_METHOD]->(fn21),
   (c1)-[:HAS_METHOD]->(fn4),
   (c1)-[:HAS_METHOD]->(fn5),
   (c1)-[:HAS_METHOD]->(fn6),
@@ -78,10 +80,10 @@ use crate::{
     models::production::{
         ApproveIssueRequest, AttachIssueAssetRequest, CreateDeliveryPackageRequest,
         CreateIssueCommentRequest, CreateIssueRequest, CreateIssueWorkLogRequest,
-        CreateReviewRequest, DeliveryPackage, Issue, IssueAssetSummary, IssueComment, IssueQuery,
-        IssueStatusHistory, IssueSummary, IssueWorkLog, Milestone, MilestoneQuery,
-        RequestRevisionRequest, ReviewRound, SubmitDeliveryPackageRequest, TransitionIssueRequest,
-        UpdateIssueRequest,
+        CreateReviewRequest, DeliveryPackage, Issue, IssueAssetSummary, IssueBoardSyncQuery,
+        IssueBoardSyncSnapshot, IssueComment, IssueQuery, IssueStatusHistory, IssueSummary,
+        IssueWorkLog, Milestone, MilestoneQuery, RequestRevisionRequest, ReviewRound,
+        SubmitDeliveryPackageRequest, TransitionIssueRequest, UpdateIssueRequest,
     },
     repositories::production_repository::ProductionRepository,
 };
@@ -106,6 +108,13 @@ impl ProductionService {
         query: &IssueQuery,
     ) -> Result<(Vec<IssueSummary>, i64), AppError> {
         self.repo.list_issues(query).await
+    }
+
+    pub async fn board_sync_snapshot(
+        &self,
+        query: &IssueBoardSyncQuery,
+    ) -> Result<IssueBoardSyncSnapshot, AppError> {
+        self.repo.board_sync_snapshot(query).await
     }
 
     pub async fn find_issue(&self, id: Uuid) -> Result<Issue, AppError> {

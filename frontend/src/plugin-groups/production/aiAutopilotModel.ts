@@ -11,6 +11,9 @@ CREATE
   (c6:Class {name: "BuildAutopilotPlanInput", type: "class", language: "typescript", signature: "interface BuildAutopilotPlanInput"}),
   (c7:Class {name: "AutopilotCommand", type: "class", language: "typescript", signature: "interface AutopilotCommand"}),
   (c8:Class {name: "AutopilotPlan", type: "class", language: "typescript", signature: "interface AutopilotPlan"}),
+  (c9:Class {name: "AutopilotDecisionEvidence", type: "class", language: "typescript", signature: "interface AutopilotDecisionEvidence"}),
+  (c10:Class {name: "AutopilotRiskReview", type: "class", language: "typescript", signature: "interface AutopilotRiskReview"}),
+  (c11:Class {name: "AutopilotDecisionReview", type: "class", language: "typescript", signature: "interface AutopilotDecisionReview"}),
   (fn1:Function {name: "buildAutopilotPlan", type: "function", language: "typescript", signature: "function buildAutopilotPlan(input: BuildAutopilotPlanInput): AutopilotPlan", visibility: "public"}),
   (fn2:Function {name: "selectAutopilotMode", type: "function", language: "typescript", signature: "function selectAutopilotMode(input: BuildAutopilotPlanInput): AutopilotMode", visibility: "private"}),
   (fn3:Function {name: "buildPlanSummary", type: "function", language: "typescript", signature: "function buildPlanSummary(input: BuildAutopilotPlanInput, commandCount: number): string", visibility: "private"}),
@@ -24,6 +27,9 @@ CREATE
   (fn11:Function {name: "fallbackCommand", type: "function", language: "typescript", signature: "function fallbackCommand(): AutopilotCommand", visibility: "private"}),
   (fn12:Function {name: "buildAuditTrail", type: "function", language: "typescript", signature: "function buildAuditTrail(input: BuildAutopilotPlanInput): string[]", visibility: "private"}),
   (fn13:Function {name: "slugGoal", type: "function", language: "typescript", signature: "function slugGoal(goal: string): string", visibility: "private"}),
+  (fn14:Function {name: "buildDecisionReview", type: "function", language: "typescript", signature: "function buildDecisionReview(input: BuildAutopilotPlanInput, commands: AutopilotCommand[]): AutopilotDecisionReview", visibility: "private"}),
+  (fn15:Function {name: "riskReviewReason", type: "function", language: "typescript", signature: "function riskReviewReason(command: AutopilotCommand): string", visibility: "private"}),
+  (fn16:Function {name: "guardrailForRisk", type: "function", language: "typescript", signature: "function guardrailForRisk(risk: AutopilotRisk): string", visibility: "private"}),
   (v1:Variable {name: "AUTOPILOT_ACTION_ORDER", type: "variable"}),
   (v2:Variable {name: "HIGH_RISK_ACTIONS", type: "variable"}),
   (v3:Variable {name: "MEDIUM_RISK_ACTIONS", type: "variable"}),
@@ -36,6 +42,9 @@ CREATE
   (m)-[:CONTAINS]->(c6),
   (m)-[:CONTAINS]->(c7),
   (m)-[:CONTAINS]->(c8),
+  (m)-[:CONTAINS]->(c9),
+  (m)-[:CONTAINS]->(c10),
+  (m)-[:CONTAINS]->(c11),
   (m)-[:CONTAINS]->(fn1),
   (m)-[:CONTAINS]->(fn2),
   (m)-[:CONTAINS]->(fn3),
@@ -49,6 +58,9 @@ CREATE
   (m)-[:CONTAINS]->(fn11),
   (m)-[:CONTAINS]->(fn12),
   (m)-[:CONTAINS]->(fn13),
+  (m)-[:CONTAINS]->(fn14),
+  (m)-[:CONTAINS]->(fn15),
+  (m)-[:CONTAINS]->(fn16),
   (m)-[:USES]->(v1),
   (m)-[:USES]->(v2),
   (m)-[:USES]->(v3),
@@ -59,6 +71,7 @@ CREATE
   (fn1)-[:CALLS]->(fn11),
   (fn1)-[:CALLS]->(fn12),
   (fn1)-[:CALLS]->(fn13),
+  (fn1)-[:CALLS]->(fn14),
   (fn1)-[:USES]->(v1),
   (fn5)-[:CALLS]->(fn6),
   (fn5)-[:CALLS]->(fn7),
@@ -67,9 +80,13 @@ CREATE
   (fn5)-[:CALLS]->(fn10),
   (fn6)-[:USES]->(v2),
   (fn6)-[:USES]->(v3),
-  (fn8)-[:CALLS]->(fn7);
+  (fn8)-[:CALLS]->(fn7),
+  (fn14)-[:CALLS]->(fn15),
+  (fn14)-[:CALLS]->(fn16);
 ```
 */
+
+import type { AiCallStatus, LangGraphNode } from '@/types/production';
 
 export type AutopilotMode = 'advisor' | 'operator' | 'manager';
 export type AutopilotRisk = 'low' | 'medium' | 'high';
@@ -115,6 +132,27 @@ export interface AutopilotCommand {
   status: AutopilotCommandStatus;
 }
 
+export interface AutopilotDecisionEvidence {
+  label: string;
+  value: string;
+  source: string;
+}
+
+export interface AutopilotRiskReview {
+  commandId: string;
+  risk: AutopilotRisk;
+  reason: string;
+  guardrail: string;
+}
+
+export interface AutopilotDecisionReview {
+  evidence: AutopilotDecisionEvidence[];
+  riskAssessment: AutopilotRiskReview[];
+  approvalGates: string[];
+  outcomeChecks: string[];
+  governanceNotes: string[];
+}
+
 export interface AutopilotPlan {
   id: string;
   goal: string;
@@ -122,7 +160,10 @@ export interface AutopilotPlan {
   confidence: number;
   summary: string;
   commands: AutopilotCommand[];
+  decisionReview: AutopilotDecisionReview;
   auditTrail: string[];
+  langgraphNodes?: LangGraphNode[];
+  aiStatus?: AiCallStatus;
 }
 
 const AUTOPILOT_ACTION_ORDER = [
@@ -137,12 +178,17 @@ const AUTOPILOT_ACTION_ORDER = [
 ];
 
 const HIGH_RISK_ACTIONS = new Set(['create-issue-from-asset', 'transition-review']);
-const MEDIUM_RISK_ACTIONS = new Set(['version-gate', 'attach-asset-evidence', 'comment-risk']);
+const MEDIUM_RISK_ACTIONS = new Set([
+  'version-gate',
+  'attach-asset-evidence',
+  'comment-risk',
+  'rebalance-kanban-wip',
+  'prioritize-board-risk',
+]);
 
 export function buildAutopilotPlan(input: BuildAutopilotPlanInput): AutopilotPlan {
   const actionsById = new Map(input.actions.map((action) => [action.id, action]));
-  const commands = AUTOPILOT_ACTION_ORDER
-    .map((actionId) => actionsById.get(actionId))
+  const commands = AUTOPILOT_ACTION_ORDER.map((actionId) => actionsById.get(actionId))
     .filter((action): action is AutopilotActionSnapshot => Boolean(action))
     .slice(0, 6)
     .map(buildCommand);
@@ -156,12 +202,16 @@ export function buildAutopilotPlan(input: BuildAutopilotPlanInput): AutopilotPla
     confidence: computeConfidence(input),
     summary: buildPlanSummary(input, finalCommands.length),
     commands: finalCommands,
+    decisionReview: buildDecisionReview(input, finalCommands),
     auditTrail: buildAuditTrail(input),
   };
 }
 
 function selectAutopilotMode(input: BuildAutopilotPlanInput): AutopilotMode {
-  if (input.deliveryReadyPercent >= 75 && input.signals.every((signal) => signal.strength !== 'blocked')) {
+  if (
+    input.deliveryReadyPercent >= 75 &&
+    input.signals.every((signal) => signal.strength !== 'blocked')
+  ) {
     return 'manager';
   }
   if (input.actions.some((action) => !action.disabled)) {
@@ -216,12 +266,24 @@ function statusForAction(action: AutopilotActionSnapshot): AutopilotCommandStatu
 }
 
 function intentForAction(action: AutopilotActionSnapshot): string {
-  if (action.id === 'index-data-lake') return 'Record a replica proposal to promote useful lake records into AI-readable retrieval context.';
-  if (action.id === 'version-gate') return 'Record a replica branch-style gate proposal for the most relevant asset version.';
-  if (action.id === 'attach-asset-evidence') return 'Record a replica evidence-link proposal for the strongest Jira-style work item.';
-  if (action.id === 'create-issue-from-asset') return 'Record a replica follow-up issue proposal from selected lake evidence.';
-  if (action.id === 'transition-review') return 'Record a replica review-lane transition proposal after evidence is prepared.';
-  if (action.id === 'comment-risk') return 'Record a replica risk-note proposal for the strongest issue target.';
+  if (action.id === 'index-data-lake')
+    return 'Record a replica proposal to promote useful lake records into AI-readable retrieval context.';
+  if (action.id === 'version-gate')
+    return 'Record a replica branch-style gate proposal for the most relevant asset version.';
+  if (action.id === 'attach-asset-evidence')
+    return 'Record a replica evidence-link proposal for the strongest Jira-style work item.';
+  if (action.id === 'create-issue-from-asset')
+    return 'Record a replica follow-up issue proposal from selected lake evidence.';
+  if (action.id === 'transition-review')
+    return 'Record a replica review-lane transition proposal after evidence is prepared.';
+  if (action.id === 'comment-risk')
+    return 'Record a replica risk-note proposal for the strongest issue target.';
+  if (action.id === 'rebalance-kanban-wip')
+    return 'Record a replica WIP rebalance proposal from current board pressure.';
+  if (action.id === 'prioritize-board-risk')
+    return 'Record a replica risk queue ordering proposal from current board signals.';
+  if (action.id === 'sync-board-context')
+    return 'Record a replica board-context snapshot for later AI comparison.';
   return `Record ${action.title} through the replica-only control bus.`;
 }
 
@@ -239,7 +301,8 @@ function fallbackCommand(): AutopilotCommand {
     title: 'Observe Context',
     app: 'AI Control',
     targetLabel: 'No executable target',
-    intent: 'Collect more lake, version, and issue context before recording replica shadow actions.',
+    intent:
+      'Collect more lake, version, and issue context before recording replica shadow actions.',
     writes: [],
     impactPreview: ['No product data will be modified.'],
     risk: 'low',
@@ -256,6 +319,88 @@ function buildAuditTrail(input: BuildAutopilotPlanInput): string[] {
   ];
 }
 
+function buildDecisionReview(
+  input: BuildAutopilotPlanInput,
+  commands: AutopilotCommand[],
+): AutopilotDecisionReview {
+  const readyActions = input.actions.filter((action) => !action.disabled).length;
+  const signalSummary = input.signals.length
+    ? input.signals
+        .slice(0, 4)
+        .map((signal) => `${signal.source}:${signal.strength}`)
+        .join(', ')
+    : 'no emergent signals';
+  const approvalGates = commands
+    .filter((command) => command.approvalRequired)
+    .map(
+      (command) => `${command.title} requires approval before ${command.app} replica recording.`,
+    );
+
+  return {
+    evidence: [
+      {
+        label: 'Goal',
+        value: input.goal.trim() || 'Drive the project toward delivery readiness',
+        source: 'local.goal',
+      },
+      {
+        label: 'Product Context',
+        value: `issues=${input.issues}, assets=${input.assets}, readiness=${input.deliveryReadyPercent}`,
+        source: 'local.model',
+      },
+      {
+        label: 'Action Surface',
+        value: `${readyActions} ready of ${input.actions.length} supplied guarded actions`,
+        source: 'local.actions',
+      },
+      {
+        label: 'Emergent Signals',
+        value: signalSummary,
+        source: 'local.signals',
+      },
+    ],
+    riskAssessment: commands.map((command) => ({
+      commandId: command.id,
+      risk: command.risk,
+      reason: riskReviewReason(command),
+      guardrail: guardrailForRisk(command.risk),
+    })),
+    approvalGates:
+      approvalGates.length > 0
+        ? approvalGates
+        : ['No approval gates required for the current low-risk replica queue.'],
+    outcomeChecks: [
+      'Confirm every accepted command writes only a replica action record.',
+      'Compare live board or asset state before promoting any primary workflow change.',
+      'Review AI memory matches and rejected commands before repeating automation.',
+    ],
+    governanceNotes: [
+      'Server does not persist the user-supplied model API key.',
+      'AI commands must reference supplied action ids or remain observation-only.',
+      'Primary data promotion remains a human or admin-governed operation.',
+    ],
+  };
+}
+
+function riskReviewReason(command: AutopilotCommand): string {
+  if (command.risk === 'high')
+    return 'Command can create or move workflow records from AI-selected context.';
+  if (command.risk === 'medium')
+    return 'Command touches delivery evidence, board priorities, version gates, or review notes.';
+  return 'Command is limited to low-risk replica observation or indexing.';
+}
+
+function guardrailForRisk(risk: AutopilotRisk): string {
+  if (risk === 'high') return 'human_approval_required_and_replica_only';
+  if (risk === 'medium') return 'human_approval_required_before_replica_recording';
+  return 'replica_only_no_primary_write';
+}
+
 function slugGoal(goal: string): string {
-  return (goal.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'delivery-readiness').replace(/^-|-$/g, '');
+  return (
+    goal
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-') || 'delivery-readiness'
+  ).replace(/^-|-$/g, '');
 }

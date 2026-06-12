@@ -8,6 +8,7 @@ CREATE
 */
 
 export { ApprovalQueuePage } from '@/plugin-groups/production/ApprovalQueuePage';
+export { AdminControlPage } from '@/plugin-groups/production/AdminControlPage';
 export { AiControlPage } from '@/plugin-groups/production/AiControlPage';
 export { AutomationPage } from '@/plugin-groups/production/AutomationPage';
 export { BriefEditorPage } from '@/plugin-groups/production/BriefEditorPage';

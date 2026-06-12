@@ -27,7 +27,8 @@ CREATE
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const API_URL = process.env.ASSETSLAKE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18080';
+const API_URL =
+  process.env.ASSETSLAKE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18080';
 const REAL_EMAIL_TO = process.env.REAL_EMAIL_TO;
 
 async function apiRequest(method, path, body, expectedStatuses = [200, 201]) {
@@ -39,7 +40,7 @@ async function apiRequest(method, path, body, expectedStatuses = [200, 201]) {
   const data = await response.json().catch(() => null);
   assert.ok(
     expectedStatuses.includes(response.status),
-    `${method} ${path} expected ${expectedStatuses.join('/')} got ${response.status}: ${JSON.stringify(data)}`
+    `${method} ${path} expected ${expectedStatuses.join('/')} got ${response.status}: ${JSON.stringify(data)}`,
   );
   return { status: response.status, data };
 }
@@ -64,16 +65,21 @@ test(
     assert.equal(challenge.data.data.delivery_status, 'sent');
 
     const outbox = await apiRequest('GET', '/api/verification/outbox?limit=20');
-    const message = outbox.data.data.find((item) => item.challenge_id === challenge.data.data.challenge_id);
+    const message = outbox.data.data.find(
+      (item) => item.challenge_id === challenge.data.data.challenge_id,
+    );
 
     assert.ok(message, 'outbox message exists for real email challenge');
     if (process.env.EXPECTED_EMAIL_PROVIDER) {
       assert.equal(message.provider, process.env.EXPECTED_EMAIL_PROVIDER);
     } else {
-      assert.ok(['gmail', 'outlook', 'smtp'].includes(message.provider), `unexpected provider ${message.provider}`);
+      assert.ok(
+        ['gmail', 'outlook', 'smtp'].includes(message.provider),
+        `unexpected provider ${message.provider}`,
+      );
     }
     assert.equal(message.status, 'sent');
     assert.equal(message.recipient_masked, maskEmail(REAL_EMAIL_TO));
     assert.ok(message.subject, 'email subject is recorded');
-  }
+  },
 );

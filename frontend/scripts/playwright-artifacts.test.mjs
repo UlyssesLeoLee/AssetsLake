@@ -72,7 +72,7 @@ function latestResult(testCase) {
 
 function traceAttachment(result) {
   const trace = result.attachments?.find(
-    (attachment) => attachment.name === 'trace' && attachment.contentType === 'application/zip'
+    (attachment) => attachment.name === 'trace' && attachment.contentType === 'application/zip',
   );
   assert.ok(trace?.path, 'Playwright result has a trace.zip attachment');
   return trace;

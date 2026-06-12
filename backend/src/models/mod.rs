@@ -1,7 +1,11 @@
+pub mod admin_control;
 pub mod asset;
 pub mod auth;
+pub mod design_requirement;
+pub mod people_intelligence;
 pub mod production;
 pub mod project;
 pub mod project_management;
 pub mod user;
 pub mod verification;
+pub mod wiki;

@@ -72,8 +72,7 @@ export function useAnalyzeAsset() {
 export function useUpdateAsset() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, req }: { id: string; req: UpdateAssetRequest }) =>
-      assetsApi.update(id, req),
+    mutationFn: ({ id, req }: { id: string; req: UpdateAssetRequest }) => assetsApi.update(id, req),
     onSuccess: (asset) => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
       queryClient.setQueryData(['asset', asset.id], asset);

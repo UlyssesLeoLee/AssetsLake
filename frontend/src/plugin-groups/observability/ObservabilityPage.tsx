@@ -66,7 +66,16 @@ CREATE
 
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import { Activity, AlertTriangle, Database, ExternalLink, Network, RadioTower, RefreshCw, Route } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  Database,
+  ExternalLink,
+  Network,
+  RadioTower,
+  RefreshCw,
+  Route,
+} from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +86,13 @@ const STATUS_ITEMS = [
   { label: 'Trace/APM', value: 'SkyWalking', icon: RadioTower, tone: 'text-washi-200' },
 ] as const;
 
-const TOPOLOGY_CHECKS = ['assetslake namespace', 'service graph', 'workload health', 'request rate', 'mTLS edges'] as const;
+const TOPOLOGY_CHECKS = [
+  'assetslake namespace',
+  'service graph',
+  'workload health',
+  'request rate',
+  'mTLS edges',
+] as const;
 const DEFAULT_KIALI_TOPOLOGY_URL =
   '/kiali/console/graph/namespaces?namespaces=assetslake&graphType=service&duration=300&refresh=15000';
 const DEFAULT_KIALI_PROXY_TARGET = 'http://127.0.0.1:20001';
@@ -115,9 +130,10 @@ async function checkKialiHealth(proxyTarget: string): Promise<KialiHealth> {
       detail: `Kiali health returned HTTP ${statusCode}`,
     };
   } catch (error) {
-    const detail = error instanceof Error && error.name === 'TimeoutError'
-      ? 'Kiali health check timed out'
-      : 'Kiali proxy target is not reachable';
+    const detail =
+      error instanceof Error && error.name === 'TimeoutError'
+        ? 'Kiali health check timed out'
+        : 'Kiali proxy target is not reachable';
     return { ok: false, detail };
   }
 }
@@ -152,11 +168,11 @@ export default async function ObservabilityPage() {
   const kialiProxyTarget = normalizeProxyTarget(process.env.KIALI_PROXY_URL);
   const kialiUrl = normalizeConsoleUrl(
     process.env.KIALI_CONSOLE_URL ?? process.env.NEXT_PUBLIC_KIALI_CONSOLE_URL,
-    DEFAULT_KIALI_TOPOLOGY_URL
+    DEFAULT_KIALI_TOPOLOGY_URL,
   );
   const skywalkingUrl = normalizeConsoleUrl(
     process.env.SKYWALKING_UI_URL ?? process.env.NEXT_PUBLIC_SKYWALKING_UI_URL,
-    DEFAULT_SKYWALKING_APM_URL
+    DEFAULT_SKYWALKING_APM_URL,
   );
   const kialiHealth = await checkKialiHealth(kialiProxyTarget);
   const rawKialiUrl = resolveRawKialiUrl(kialiUrl, kialiProxyTarget);
@@ -167,7 +183,9 @@ export default async function ObservabilityPage() {
         <div className="mx-auto flex max-w-[1920px] flex-col gap-3 px-4 py-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <h1 className="mr-1 text-xl font-semibold tracking-normal text-slate-100 md:text-2xl">Observability</h1>
+              <h1 className="mr-1 text-xl font-semibold tracking-normal text-slate-100 md:text-2xl">
+                Observability
+              </h1>
               <span
                 className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium ${
                   kialiHealth.ok
@@ -186,7 +204,10 @@ export default async function ObservabilityPage() {
 
             <div className="flex min-w-0 flex-wrap gap-2 text-xs text-slate-400">
               {TOPOLOGY_CHECKS.map((item) => (
-                <span key={item} className="rounded-md border border-white/[0.06] bg-white/[0.035] px-2 py-1">
+                <span
+                  key={item}
+                  className="rounded-md border border-white/[0.06] bg-white/[0.035] px-2 py-1"
+                >
                   {item}
                 </span>
               ))}
@@ -222,9 +243,13 @@ export default async function ObservabilityPage() {
           <div className="flex h-10 items-center justify-between border-b border-surface-border bg-[#111923] px-4">
             <div className="flex min-w-0 items-center gap-2">
               <Network className="h-4 w-4 shrink-0 text-brand-300" />
-              <span className="truncate text-sm font-medium text-slate-200">Kiali service mesh topology</span>
+              <span className="truncate text-sm font-medium text-slate-200">
+                Kiali service mesh topology
+              </span>
             </div>
-            <span className="rounded-md border border-white/[0.06] px-2 py-1 text-xs text-slate-500">assetslake</span>
+            <span className="rounded-md border border-white/[0.06] px-2 py-1 text-xs text-slate-500">
+              assetslake
+            </span>
           </div>
           {kialiHealth.ok ? (
             <iframe
@@ -238,10 +263,15 @@ export default async function ObservabilityPage() {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
                   <div className="min-w-0">
-                    <h2 className="text-base font-semibold text-amber-100">Kiali proxy unavailable</h2>
+                    <h2 className="text-base font-semibold text-amber-100">
+                      Kiali proxy unavailable
+                    </h2>
                     <p className="mt-2 text-sm text-amber-100/80">{kialiHealth.detail}</p>
                     <div className="mt-4 rounded-md border border-white/[0.06] bg-black/20 px-3 py-2 text-xs text-slate-400">
-                      Health check: <span className="text-slate-200">{new URL('/kiali/healthz', kialiProxyTarget).toString()}</span>
+                      Health check:{' '}
+                      <span className="text-slate-200">
+                        {new URL('/kiali/healthz', kialiProxyTarget).toString()}
+                      </span>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <a

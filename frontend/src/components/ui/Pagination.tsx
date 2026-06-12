@@ -37,12 +37,12 @@ export function Pagination({ page, totalPages, onChange }: PaginationProps) {
               'w-8 h-8 rounded-lg text-sm font-medium transition-colors',
               page === p
                 ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30'
-                : 'text-slate-400 hover:bg-surface-elevated hover:text-slate-200'
+                : 'text-slate-400 hover:bg-surface-elevated hover:text-slate-200',
             )}
           >
             {p}
           </button>
-        )
+        ),
       )}
 
       <button

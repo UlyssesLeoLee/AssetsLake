@@ -66,7 +66,7 @@ VALUES
         'alice.producer@assetslake.internal',
         'producer',
         'alice-session-salt',
-        'ee14d353ce2bad0ff99a9f525398477daac5f7ee196208a1877122d7a9d7eb44'
+        '2b07675b2baa91d2c057909d7e536cf89e49dfc6300e20a2b4fec730692b750f'
     ),
     (
         '10000000-0000-0000-0000-000000000002',
@@ -75,7 +75,7 @@ VALUES
         'bob.artist@assetslake.internal',
         'artist',
         'bob-session-salt',
-        'f3b94e3af9ca2f2b88a48e8cdd6d0aab09337493b2797cc790699a023e4ce3aa'
+        '7fc9198f0bc79f59e09fb6f5a0e1724261e5d37d82674113054010ea9eacfabb'
     ),
     (
         '10000000-0000-0000-0000-000000000003',
@@ -84,7 +84,7 @@ VALUES
         'chen.reviewer@assetslake.internal',
         'reviewer',
         'chen-session-salt',
-        'f1035922bc67bbfa81371393d154c91c7c0c5d0ec7d10dc293edc4d8dc858f33'
+        '871a12a3c0f695b297f081b70ff9dc18db681c3328ffbdffc6807cf1551179d8'
     ),
     (
         '10000000-0000-0000-0000-000000000004',
@@ -93,7 +93,7 @@ VALUES
         'dana.manager@assetslake.internal',
         'admin',
         'dana-session-salt',
-        'fb7e28d79441f5c8a86df1a3508c135c480baa276c1e1ba2f35326495904c20b'
+        '62ec552fdfb1c862404222320ee6e1332f2f8284990b3dc0a81302951dec0f41'
     )
 ON CONFLICT (id) DO UPDATE
 SET display_name = EXCLUDED.display_name,
@@ -103,3 +103,10 @@ SET display_name = EXCLUDED.display_name,
     password_hash = EXCLUDED.password_hash,
     deleted_at = NULL,
     updated_at = NOW();
+
+UPDATE users
+SET password_salt = 'system-session-salt',
+    password_hash = 'ea6870105f095a21bc7deb74fdc5d6688392bf5d6b11f7375416517cb27612b9',
+    updated_at = NOW()
+WHERE username = 'system'
+  AND role = 'admin';

@@ -49,11 +49,13 @@ export function AssetVersionControlPanel({
   const { data: versions = [], isLoading } = useAssetVersions(assetId);
   const orderedVersions = useMemo(
     () => [...versions].sort((a, b) => b.version - a.version),
-    [versions]
+    [versions],
   );
   const latestVersion = orderedVersions[0]?.version ?? currentVersion;
   const initialBaseVersion =
-    orderedVersions.length > 1 ? orderedVersions[orderedVersions.length - 1].version : latestVersion;
+    orderedVersions.length > 1
+      ? orderedVersions[orderedVersions.length - 1].version
+      : latestVersion;
   const [baseVersion, setBaseVersion] = useState<number | undefined>(undefined);
   const [headVersion, setHeadVersion] = useState<number | undefined>(undefined);
   const { data: diff } = useAssetVersionDiff(assetId, baseVersion, headVersion);
@@ -72,7 +74,9 @@ export function AssetVersionControlPanel({
             <GitBranch className="h-4 w-4 text-brand-300" />
             Version Control
           </div>
-          <p className="mt-1 text-xs text-slate-500">GitHub-style commits, branches, and version comparison for lake assets.</p>
+          <p className="mt-1 text-xs text-slate-500">
+            GitHub-style commits, branches, and version comparison for lake assets.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md border border-surface-border bg-surface px-2 py-1 font-mono text-xs text-brand-200">
@@ -99,12 +103,22 @@ export function AssetVersionControlPanel({
           </div>
 
           <div className="space-y-2">
-            {isLoading && <div className="rounded-lg border border-surface-border bg-surface p-3 text-sm text-slate-500">Loading versions</div>}
+            {isLoading && (
+              <div className="rounded-lg border border-surface-border bg-surface p-3 text-sm text-slate-500">
+                Loading versions
+              </div>
+            )}
             {!isLoading && orderedVersions.length === 0 && (
-              <div className="rounded-lg border border-surface-border bg-surface p-3 text-sm text-slate-500">No version commits yet</div>
+              <div className="rounded-lg border border-surface-border bg-surface p-3 text-sm text-slate-500">
+                No version commits yet
+              </div>
             )}
             {orderedVersions.map((version) => (
-              <CommitRow key={version.id} version={version} active={version.version === currentVersion} />
+              <CommitRow
+                key={version.id}
+                version={version}
+                active={version.version === currentVersion}
+              />
             ))}
           </div>
         </div>
@@ -157,17 +171,29 @@ export function AssetVersionControlPanel({
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-lg border border-surface-border bg-surface-elevated p-3">
                     <div className="text-xs uppercase text-slate-500">Size Delta</div>
-                    <div className="mt-1 font-mono text-sm text-slate-100">{formatDelta(diff.file_size_delta)}</div>
+                    <div className="mt-1 font-mono text-sm text-slate-100">
+                      {formatDelta(diff.file_size_delta)}
+                    </div>
                   </div>
                   <div className="rounded-lg border border-surface-border bg-surface-elevated p-3">
                     <div className="text-xs uppercase text-slate-500">Checksum</div>
-                    <div className={cn('mt-1 text-sm', diff.checksum_changed ? 'text-amber-300' : 'text-emerald-300')}>
+                    <div
+                      className={cn(
+                        'mt-1 text-sm',
+                        diff.checksum_changed ? 'text-amber-300' : 'text-emerald-300',
+                      )}
+                    >
                       {diff.checksum_changed ? 'changed' : 'unchanged'}
                     </div>
                   </div>
                   <div className="rounded-lg border border-surface-border bg-surface-elevated p-3">
                     <div className="text-xs uppercase text-slate-500">Object</div>
-                    <div className={cn('mt-1 text-sm', diff.object_changed ? 'text-amber-300' : 'text-emerald-300')}>
+                    <div
+                      className={cn(
+                        'mt-1 text-sm',
+                        diff.object_changed ? 'text-amber-300' : 'text-emerald-300',
+                      )}
+                    >
                       {diff.object_changed ? 'changed' : 'unchanged'}
                     </div>
                   </div>
@@ -190,7 +216,12 @@ export function AssetVersionControlPanel({
 
 function CommitRow({ version, active }: { version: AssetVersionSummary; active: boolean }) {
   return (
-    <div className={cn('rounded-lg border p-3', active ? 'border-brand-400/40 bg-brand-500/10' : 'border-surface-border bg-surface')}>
+    <div
+      className={cn(
+        'rounded-lg border p-3',
+        active ? 'border-brand-400/40 bg-brand-500/10' : 'border-surface-border bg-surface',
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -217,9 +248,15 @@ function CommitRow({ version, active }: { version: AssetVersionSummary; active: 
 function DiffRow({ item }: { item: AssetVersionDiffItem }) {
   return (
     <div className="grid gap-2 bg-surface-elevated px-3 py-2 text-xs md:grid-cols-[120px_1fr_1fr]">
-      <span className={cn('font-medium', item.changed ? 'text-amber-300' : 'text-slate-500')}>{item.field}</span>
-      <code className="truncate rounded bg-surface px-2 py-1 font-mono text-slate-400">{item.before}</code>
-      <code className="truncate rounded bg-surface px-2 py-1 font-mono text-slate-200">{item.after}</code>
+      <span className={cn('font-medium', item.changed ? 'text-amber-300' : 'text-slate-500')}>
+        {item.field}
+      </span>
+      <code className="truncate rounded bg-surface px-2 py-1 font-mono text-slate-400">
+        {item.before}
+      </code>
+      <code className="truncate rounded bg-surface px-2 py-1 font-mono text-slate-200">
+        {item.after}
+      </code>
     </div>
   );
 }

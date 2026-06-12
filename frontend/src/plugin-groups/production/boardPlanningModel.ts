@@ -68,7 +68,12 @@ export const BOARD_WIP_LIMITS: Partial<Record<IssueStatus, number>> = {
 
 const PRIORITY_ORDER: IssuePriority[] = ['urgent', 'high', 'medium', 'low'];
 const TERMINAL_STATUSES: IssueStatus[] = ['delivered', 'archived'];
-const REVIEW_STATUSES: IssueStatus[] = ['submitted', 'internal_review', 'client_review', 'revision_required'];
+const REVIEW_STATUSES: IssueStatus[] = [
+  'submitted',
+  'internal_review',
+  'client_review',
+  'revision_required',
+];
 const STATUS_LABELS: Partial<Record<IssueStatus, string>> = {
   backlog: 'Backlog',
   brief_ready: 'Brief Ready',
@@ -122,7 +127,10 @@ export interface BoardPlanningModel {
   reviewPressureCount: number;
 }
 
-export function getBoardRisk(issue: IssueSummary, today = new Date().toISOString().slice(0, 10)): BoardRiskItem['risk'] {
+export function getBoardRisk(
+  issue: IssueSummary,
+  today = new Date().toISOString().slice(0, 10),
+): BoardRiskItem['risk'] {
   if (issue.due_date && issue.due_date < today && !TERMINAL_STATUSES.includes(issue.status)) {
     return 'overdue';
   }
@@ -141,13 +149,20 @@ export function getBoardRisk(issue: IssueSummary, today = new Date().toISOString
 export function buildBoardColumns(
   issues: IssueSummary[],
   statuses = DEFAULT_BOARD_STATUSES,
-  wipLimits = BOARD_WIP_LIMITS
+  wipLimits = BOARD_WIP_LIMITS,
 ): BoardColumnModel[] {
   return statuses.map((status) => {
     const columnIssues = issues.filter((issue) => issue.status === status);
     const limit = wipLimits[status];
     const count = columnIssues.length;
-    const wipState = limit === undefined ? 'unlimited' : count > limit ? 'over_limit' : count === limit ? 'at_limit' : 'healthy';
+    const wipState =
+      limit === undefined
+        ? 'unlimited'
+        : count > limit
+          ? 'over_limit'
+          : count === limit
+            ? 'at_limit'
+            : 'healthy';
 
     return {
       status,
@@ -174,7 +189,10 @@ export function buildBoardSwimlanes(issues: IssueSummary[], today?: string): Boa
   });
 }
 
-export function buildBoardPlanningModel(issues: IssueSummary[], today?: string): BoardPlanningModel {
+export function buildBoardPlanningModel(
+  issues: IssueSummary[],
+  today?: string,
+): BoardPlanningModel {
   const columns = buildBoardColumns(issues);
   const riskQueue = issues
     .map((issue) => ({ issue, risk: getBoardRisk(issue, today) }))

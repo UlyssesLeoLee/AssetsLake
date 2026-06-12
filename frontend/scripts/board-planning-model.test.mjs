@@ -41,7 +41,13 @@ const ts = require('typescript');
 
 const FRONTEND_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = {
-  boardPlanningModel: join(FRONTEND_ROOT, 'src', 'plugin-groups', 'production', 'boardPlanningModel.ts'),
+  boardPlanningModel: join(
+    FRONTEND_ROOT,
+    'src',
+    'plugin-groups',
+    'production',
+    'boardPlanningModel.ts',
+  ),
 };
 
 function readText(filePath) {
@@ -66,7 +72,10 @@ function loadBoardPlanningModel() {
     },
   };
 
-  vm.runInNewContext(compiled.outputText, sandbox, { filename: FILES.boardPlanningModel, timeout: 1000 });
+  vm.runInNewContext(compiled.outputText, sandbox, {
+    filename: FILES.boardPlanningModel,
+    timeout: 1000,
+  });
   return module.exports;
 }
 

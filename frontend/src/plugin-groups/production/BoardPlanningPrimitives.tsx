@@ -33,7 +33,11 @@ import Link from 'next/link';
 import { AlertTriangle, Gauge, Rows3 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import type { BoardColumnModel, BoardPlanningModel, BoardRiskItem } from '@/plugin-groups/production/boardPlanningModel';
+import type {
+  BoardColumnModel,
+  BoardPlanningModel,
+  BoardRiskItem,
+} from '@/plugin-groups/production/boardPlanningModel';
 import { ISSUE_PRIORITY_LABELS } from '@/types/production';
 
 export function BoardHealthPanel({ model }: { model: BoardPlanningModel }) {
@@ -46,16 +50,26 @@ export function BoardHealthPanel({ model }: { model: BoardPlanningModel }) {
           <Gauge className="h-4 w-4 text-brand-300" />
           Board Health
         </div>
-        <span className="badge border-shu-300/25 bg-shu-400/10 text-shu-300">{model.wipBreachCount} breaches</span>
+        <span className="badge border-shu-300/25 bg-shu-400/10 text-shu-300">
+          {model.wipBreachCount} breaches
+        </span>
       </div>
       <div className="space-y-2 p-4">
         {limitedColumns.map((column) => (
-          <div key={column.status} className="flex items-center justify-between gap-3 rounded-md border border-white/[0.04] bg-[#0d141c]/75 px-3 py-2">
+          <div
+            key={column.status}
+            className="flex items-center justify-between gap-3 rounded-md border border-white/[0.04] bg-[#0d141c]/75 px-3 py-2"
+          >
             <div className="min-w-0">
               <div className="truncate text-xs font-medium text-slate-200">{column.label}</div>
               <div className="mt-1 text-xs text-slate-500">{column.storyPoints} pts</div>
             </div>
-            <span className={cn('rounded-md px-2 py-1 text-xs font-semibold', wipStateClass(column.wipState))}>
+            <span
+              className={cn(
+                'rounded-md px-2 py-1 text-xs font-semibold',
+                wipStateClass(column.wipState),
+              )}
+            >
               {column.count}/{column.limit}
             </span>
           </div>
@@ -73,15 +87,24 @@ export function BoardSwimlanePanel({ model }: { model: BoardPlanningModel }) {
           <Rows3 className="h-4 w-4 text-sakura-300" />
           Swimlanes
         </div>
-        <span className="badge border-brand-300/25 bg-brand-500/10 text-brand-200">{model.totalStoryPoints} pts</span>
+        <span className="badge border-brand-300/25 bg-brand-500/10 text-brand-200">
+          {model.totalStoryPoints} pts
+        </span>
       </div>
       <div className="divide-y divide-surface-border">
         {model.swimlanes.map((lane) => (
-          <div key={lane.priority} className="grid grid-cols-[1fr_repeat(3,auto)] items-center gap-3 px-4 py-3 text-xs">
-            <div className="min-w-0 font-medium text-slate-200">{ISSUE_PRIORITY_LABELS[lane.priority]}</div>
+          <div
+            key={lane.priority}
+            className="grid grid-cols-[1fr_repeat(3,auto)] items-center gap-3 px-4 py-3 text-xs"
+          >
+            <div className="min-w-0 font-medium text-slate-200">
+              {ISSUE_PRIORITY_LABELS[lane.priority]}
+            </div>
             <div className="text-slate-500">{lane.count} issues</div>
             <div className="text-slate-500">{lane.reviewCount} review</div>
-            <div className={lane.riskCount > 0 ? 'text-amber-300' : 'text-slate-500'}>{lane.riskCount} risk</div>
+            <div className={lane.riskCount > 0 ? 'text-amber-300' : 'text-slate-500'}>
+              {lane.riskCount} risk
+            </div>
           </div>
         ))}
       </div>
@@ -97,21 +120,31 @@ export function BoardRiskQueuePanel({ model }: { model: BoardPlanningModel }) {
           <AlertTriangle className="h-4 w-4 text-shu-300" />
           Board Risk Queue
         </div>
-        <span className="badge border-sakura-300/25 bg-sakura-400/10 text-sakura-300">{model.reviewPressureCount} review</span>
+        <span className="badge border-sakura-300/25 bg-sakura-400/10 text-sakura-300">
+          {model.reviewPressureCount} review
+        </span>
       </div>
       <div className="divide-y divide-surface-border">
         {model.riskQueue.slice(0, 5).map((item) => (
-          <Link key={item.issue.id} href={`/issues/${item.issue.id}`} className="block px-4 py-3 transition hover:bg-white/[0.035]">
+          <Link
+            key={item.issue.id}
+            href={`/issues/${item.issue.id}`}
+            className="block px-4 py-3 transition hover:bg-white/[0.035]"
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className={cn('text-xs font-semibold', riskClass(item.risk))}>{item.risk}</div>
-                <div className="mt-1 truncate text-sm font-medium text-slate-100">{item.issue.title}</div>
+                <div className="mt-1 truncate text-sm font-medium text-slate-100">
+                  {item.issue.title}
+                </div>
               </div>
               <div className="shrink-0 text-xs text-slate-500">{item.issue.issue_key}</div>
             </div>
           </Link>
         ))}
-        {model.riskQueue.length === 0 && <div className="p-4 text-sm text-slate-500">No board risk</div>}
+        {model.riskQueue.length === 0 && (
+          <div className="p-4 text-sm text-slate-500">No board risk</div>
+        )}
       </div>
     </section>
   );

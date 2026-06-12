@@ -43,6 +43,7 @@ CREATE
 */
 
 import type { Page, Route } from '@playwright/test';
+import type { AdminControlSnapshot } from '../../src/types/adminControl';
 import type {
   ApiResponse,
   Asset,
@@ -54,7 +55,16 @@ import type {
   PaginatedResponse,
   UploadResult,
 } from '../../src/types/asset';
-import type { DeliveryPackage, Issue, IssueComment, IssueStatusHistory, IssueSummary, IssueWorkLog, Milestone } from '../../src/types/production';
+import type {
+  DeliveryPackage,
+  Issue,
+  IssueBoardSyncSnapshot,
+  IssueComment,
+  IssueStatusHistory,
+  IssueSummary,
+  IssueWorkLog,
+  Milestone,
+} from '../../src/types/production';
 import type {
   IssueDependency,
   IssueEvent,
@@ -366,7 +376,8 @@ const ASSET_INSIGHTS: AssetAiInsight[] = [
     provider: 'Playwright AI',
     model: 'trace-vision-model',
     status: 'completed',
-    summary: 'Concept board recognized as a reusable character reference with readable title text and delivery evidence value.',
+    summary:
+      'Concept board recognized as a reusable character reference with readable title text and delivery evidence value.',
     labels: ['concept', 'character-reference', 'palette'],
     detected_text: 'AssetsLake',
     quality_risks: ['Verify final resolution before client delivery.'],
@@ -446,22 +457,63 @@ const DELIVERY_PACKAGE: DeliveryPackage = {
 const ENTERPRISE_CONTROLS: ProjectEnterpriseControls = {
   project_id: DEFAULT_PROJECT_ID,
   roles: [
-    { role: 'admin', scope: 'workspace', member_count: 1, permissions: ['project:admin', 'workflow:edit'] },
-    { role: 'producer', scope: 'project', member_count: 3, permissions: ['issue:write', 'sprint:plan'] },
+    {
+      role: 'admin',
+      scope: 'workspace',
+      member_count: 1,
+      permissions: ['project:admin', 'workflow:edit'],
+    },
+    {
+      role: 'producer',
+      scope: 'project',
+      member_count: 3,
+      permissions: ['issue:write', 'sprint:plan'],
+    },
   ],
   notifications: [
-    { event: 'assignments', channels: ['in_app', 'email'], delivery_policy: 'immediate', enabled: true },
-    { event: 'automation_results', channels: ['in_app', 'webhook'], delivery_policy: 'guarded_result', enabled: true },
+    {
+      event: 'assignments',
+      channels: ['in_app', 'email'],
+      delivery_policy: 'immediate',
+      enabled: true,
+    },
+    {
+      event: 'automation_results',
+      channels: ['in_app', 'webhook'],
+      delivery_policy: 'guarded_result',
+      enabled: true,
+    },
   ],
   import_export: [
-    { job_type: 'csv_import', direction: 'import', format: 'csv', status: 'ready', description: 'Bulk issue import.' },
-    { job_type: 'json_export', direction: 'export', format: 'json', status: 'ready', description: 'Project export.' },
+    {
+      job_type: 'csv_import',
+      direction: 'import',
+      format: 'csv',
+      status: 'ready',
+      description: 'Bulk issue import.',
+    },
+    {
+      job_type: 'json_export',
+      direction: 'export',
+      format: 'json',
+      status: 'ready',
+      description: 'Project export.',
+    },
   ],
   webhooks: [
-    { event: 'issue_transition', status: 'active', target: 'project_webhook.issue_transition', retry_policy: '3_attempts' },
+    {
+      event: 'issue_transition',
+      status: 'active',
+      target: 'project_webhook.issue_transition',
+      retry_policy: '3_attempts',
+    },
   ],
   templates: [
-    { name: 'Outsourcing Art Board', description: 'Brief through delivery workflow.', includes: ['workflow', 'roles'] },
+    {
+      name: 'Outsourcing Art Board',
+      description: 'Brief through delivery workflow.',
+      includes: ['workflow', 'roles'],
+    },
   ],
   ci_gates: [
     { name: 'unit', command: 'pnpm run test:ut', required: true, status: 'passing' },
@@ -474,6 +526,185 @@ const ENTERPRISE_CONTROLS: ProjectEnterpriseControls = {
     export_formats: ['json', 'csv'],
   },
 };
+
+const ADMIN_CONTROL: AdminControlSnapshot = {
+  settings: {
+    id: 'default',
+    session_ttl_seconds: 43_200,
+    idle_timeout_seconds: 3_600,
+    abnormal_login_threshold: 5,
+    abnormal_window_minutes: 15,
+    failed_login_alert_enabled: true,
+    rbac_denial_alert_enabled: true,
+    updated_by: null,
+    created_at: NOW,
+    updated_at: NOW,
+  },
+  risk_policy: {
+    id: 'default',
+    session_weight: 8,
+    lock_weight: 10,
+    event_weight: 3,
+    blocked_weight: 70,
+    auth_failure_weight: 12,
+    rbac_denial_weight: 14,
+    high_session_threshold: 4,
+    high_event_threshold: 25,
+    ai_analysis_enabled: true,
+    langgraph_risk_node: 'admin_risk_orchestrator',
+    updated_by: null,
+    created_at: NOW,
+    updated_at: NOW,
+  },
+  usage: {
+    total_users: 4,
+    active_sessions: 2,
+    expiring_sessions: 0,
+    revoked_sessions_24h: 0,
+    active_locks: 1,
+    auth_failures_window: 0,
+    rbac_denials_window: 0,
+    audit_events_24h: 3,
+  },
+  alerts: [
+    {
+      severity: 'warning',
+      title: 'Blocked users under review',
+      detail: '1 users are blocked and remain visible for traceability',
+      created_at: NOW,
+    },
+  ],
+  security_posture: {
+    blocked_users: 1,
+    high_risk_users: 1,
+    active_admin_sessions: 1,
+    active_user_locks: 1,
+    recent_admin_actions: 2,
+    revocable_sessions: 2,
+  },
+  operation_traces: [
+    {
+      id: 1,
+      entity_type: 'user',
+      entity_id: 'user-blocked',
+      action: 'admin_user_blocked',
+      actor_id: 'user-admin',
+      actor: 'Dana Manager',
+      outcome: 'success',
+      severity: 'warning',
+      reason: 'suspicious concurrent edits',
+      path: '/api/admin/control/users/user-blocked/status',
+      summary: 'admin_user_blocked - Dana Manager - user',
+      created_at: NOW,
+    },
+  ],
+  operation_traces_page: {
+    items: [
+      {
+        id: 1,
+        entity_type: 'user',
+        entity_id: 'user-blocked',
+        action: 'admin_user_blocked',
+        actor_id: 'user-admin',
+        actor: 'Dana Manager',
+        outcome: 'success',
+        severity: 'warning',
+        reason: 'suspicious concurrent edits',
+        path: '/api/admin/control/users/user-blocked/status',
+        summary: 'admin_user_blocked - Dana Manager - user',
+        created_at: NOW,
+      },
+    ],
+    total: 1,
+    limit: 20,
+    offset: 0,
+    next_offset: null,
+  },
+  role_permissions: [
+    { role: 'admin', user_count: 1, permissions: ['enterprise:admin', 'asset:read', 'issue:read'] },
+    {
+      role: 'producer',
+      user_count: 1,
+      permissions: ['issue:write', 'asset:write', 'delivery:write'],
+    },
+    { role: 'artist', user_count: 1, permissions: ['asset:write', 'issue:write'] },
+    { role: 'reviewer', user_count: 1, permissions: ['issue:review', 'report:read'] },
+  ],
+  users: [
+    {
+      id: 'user-admin',
+      username: 'dana.manager',
+      display_name: 'Dana Manager',
+      email: 'dana.manager@assetslake.internal',
+      role: 'admin',
+      status: 'active',
+      blocked_at: null,
+      blocked_by: null,
+      blocked_reason: null,
+      unblocked_at: null,
+      unblocked_by: null,
+      active_sessions: 1,
+      active_locks: 0,
+      recent_event_count: 2,
+      risk_score: 16,
+      risk_level: 'watch',
+      last_login_at: NOW,
+      created_at: NOW,
+      updated_at: NOW,
+    },
+    {
+      id: 'user-producer',
+      username: 'alice.producer',
+      display_name: 'Alice Producer',
+      email: 'alice.producer@assetslake.internal',
+      role: 'producer',
+      status: 'active',
+      blocked_at: null,
+      blocked_by: null,
+      blocked_reason: null,
+      unblocked_at: null,
+      unblocked_by: null,
+      active_sessions: 1,
+      active_locks: 1,
+      recent_event_count: 4,
+      risk_score: 37,
+      risk_level: 'watch',
+      last_login_at: NOW,
+      created_at: NOW,
+      updated_at: NOW,
+    },
+    {
+      id: 'user-blocked',
+      username: 'blocked.vendor',
+      display_name: 'Blocked Vendor',
+      email: 'blocked.vendor@assetslake.internal',
+      role: 'vendor',
+      status: 'blocked',
+      blocked_at: NOW,
+      blocked_by: 'user-admin',
+      blocked_reason: 'suspicious concurrent edits',
+      unblocked_at: null,
+      unblocked_by: null,
+      active_sessions: 0,
+      active_locks: 0,
+      recent_event_count: 5,
+      risk_score: 95,
+      risk_level: 'critical',
+      last_login_at: NOW,
+      created_at: NOW,
+      updated_at: NOW,
+    },
+  ],
+  users_page: {
+    items: [],
+    total: 3,
+    limit: 10,
+    offset: 0,
+    next_offset: null,
+  },
+};
+
+ADMIN_CONTROL.users_page.items = ADMIN_CONTROL.users;
 
 function ok<T>(data: T): ApiResponse<T> {
   return { data, success: true };
@@ -497,7 +728,8 @@ function issueDetail(id: string): Issue {
     workspace_id: WORKSPACE_ID,
     brief_id: 'brief-e2e',
     milestone_id: 'milestone-alpha',
-    description: 'Playwright trace issue fixture with editable fields, comments, work logs, and assets.',
+    description:
+      'Playwright trace issue fixture with editable fields, comments, work logs, and assets.',
     reporter_id: 'user-reporter',
     metadata: {},
   };
@@ -550,7 +782,10 @@ export async function mockApi(page: Page): Promise<void> {
 
     const assetInsightsMatch = pathname.match(/^\/api\/assets\/([^/]+)\/insights$/);
     if (assetInsightsMatch) {
-      return json(route, ok(ASSET_INSIGHTS.filter((insight) => insight.asset_id === assetInsightsMatch[1])));
+      return json(
+        route,
+        ok(ASSET_INSIGHTS.filter((insight) => insight.asset_id === assetInsightsMatch[1])),
+      );
     }
 
     const assetAnalyzeMatch = pathname.match(/^\/api\/assets\/([^/]+)\/analyze$/);
@@ -606,6 +841,28 @@ export async function mockApi(page: Page): Promise<void> {
 
     if (pathname === '/api/issues' && method === 'POST') {
       return json(route, ok(issueDetail('issue-a')));
+    }
+
+    if (pathname === '/api/issues/board-sync') {
+      const snapshot: IssueBoardSyncSnapshot = {
+        cursor: NOW,
+        changed_count: 0,
+        recent_activity: [
+          {
+            id: 'board-sync-e2e',
+            issue_id: 'issue-a',
+            issue_key: 'AL-001',
+            title: 'Concept Lock',
+            from_status: 'brief_ready',
+            to_status: 'backlog',
+            actor: 'Playwright',
+            created_at: NOW,
+            issue_version: 1,
+            issue_updated_at: NOW,
+          },
+        ],
+      };
+      return json(route, ok(snapshot));
     }
 
     const issueMatch = pathname.match(/^\/api\/issues\/([^/]+)$/);
@@ -673,226 +930,614 @@ export async function mockApi(page: Page): Promise<void> {
     }
 
     if (pathname === '/api/management/intelligence') {
-      return json(route, ok({
-        product_surface: 'AssetsLake Playwright E2E',
-        langgraph_nodes: [
-          { name: 'intake_classifier', state: 'ready', detail: 'Classifies incoming issues.' },
-          { name: 'evidence_retriever', state: 'ready', detail: 'Fetches data lake evidence.' },
-        ],
-        data_lake_feeds: [
-          { name: 'asset_lineage', detail: 'Links assets to project evidence.' },
-        ],
-        automation_rules: [
-          { name: 'review_gate', detail: 'Requires human approval.', guardrail: 'human_review_required' },
-        ],
-        ai_status: {
-          configured: true,
-          used: true,
-          provider: 'Playwright AI',
-          model: 'trace-model',
-        },
-      }));
+      return json(
+        route,
+        ok({
+          product_surface: 'AssetsLake Playwright E2E',
+          langgraph_nodes: [
+            { name: 'intake_classifier', state: 'ready', detail: 'Classifies incoming issues.' },
+            { name: 'evidence_retriever', state: 'ready', detail: 'Fetches data lake evidence.' },
+          ],
+          data_lake_feeds: [{ name: 'asset_lineage', detail: 'Links assets to project evidence.' }],
+          automation_rules: [
+            {
+              name: 'review_gate',
+              detail: 'Requires human approval.',
+              guardrail: 'human_review_required',
+            },
+          ],
+          ai_status: {
+            configured: true,
+            used: true,
+            provider: 'Playwright AI',
+            model: 'trace-model',
+          },
+        }),
+      );
+    }
+
+    if (pathname === '/api/management/ai/test' && method === 'POST') {
+      return json(
+        route,
+        ok({
+          ok: true,
+          message:
+            'Chat probe passed: API OK. Embedding probe passed in 12ms with 1024 dimensions.',
+          latency_ms: 24,
+          chat_ok: true,
+          embedding_ok: true,
+          embedding_latency_ms: 12,
+          embedding_dimensions: 1024,
+          ai_status: {
+            configured: true,
+            used: true,
+            provider: request.headers()['x-assetslake-ai-provider'] ?? 'Playwright AI',
+            model: request.headers()['x-assetslake-ai-model'] ?? 'trace-model',
+          },
+        }),
+      );
     }
 
     if (pathname === '/api/management/chat' && method === 'POST') {
-      return json(route, ok({
-        message: 'AI Control ready: inspect risks, then use a guarded control button to write product state.',
-        actions: [
-          { label: 'Risk Comment', action_id: 'comment-risk', kind: 'issue.comment' },
-          { label: 'Asset Evidence Update', action_id: 'update-asset-evidence', kind: 'asset.update' },
-          { label: 'Lake Index', action_id: 'index-data-lake', kind: 'asset.index' },
-          { label: 'Version Gate', action_id: 'version-gate', kind: 'asset.version_gate' },
-          { label: 'Open Issue', action_id: 'create-issue-from-asset', kind: 'issue.create_from_asset' },
-          { label: 'Attach Evidence', action_id: 'attach-asset-evidence', kind: 'issue.attach_asset' },
-        ],
-        ai_status: {
-          configured: true,
-          used: true,
-          provider: 'Playwright AI',
-          model: 'trace-model',
-        },
-      }));
+      return json(
+        route,
+        ok({
+          message:
+            'AI Control ready: inspect risks, then use a guarded control button to write product state.',
+          actions: [
+            { label: 'Risk Comment', action_id: 'comment-risk', kind: 'issue.comment' },
+            {
+              label: 'Asset Evidence Update',
+              action_id: 'update-asset-evidence',
+              kind: 'asset.update',
+            },
+            { label: 'Lake Index', action_id: 'index-data-lake', kind: 'asset.index' },
+            { label: 'Version Gate', action_id: 'version-gate', kind: 'asset.version_gate' },
+            {
+              label: 'Open Issue',
+              action_id: 'create-issue-from-asset',
+              kind: 'issue.create_from_asset',
+            },
+            {
+              label: 'Attach Evidence',
+              action_id: 'attach-asset-evidence',
+              kind: 'issue.attach_asset',
+            },
+          ],
+          ai_status: {
+            configured: true,
+            used: true,
+            provider: 'Playwright AI',
+            model: 'trace-model',
+          },
+        }),
+      );
+    }
+
+    if (pathname === '/api/management/autopilot-plan' && method === 'POST') {
+      const body = JSON.parse(request.postData() || '{}') as {
+        goal?: string;
+        actions?: Array<{
+          id: string;
+          title: string;
+          app: string;
+          target_label: string;
+          writes: string[];
+          disabled: boolean;
+        }>;
+      };
+      const actions = body.actions ?? [];
+      const lakeIndex = actions.find((action) => action.id === 'index-data-lake') ?? actions[0];
+      const versionGate = actions.find((action) => action.id === 'version-gate');
+      return json(
+        route,
+        ok({
+          id: 'plan-playwright-ai-control',
+          goal: body.goal ?? 'Drive release readiness',
+          mode: 'operator',
+          confidence: 0.88,
+          summary: 'AI-generated guarded command queue across lake, version graph, and Jira flow.',
+          ai_status: {
+            configured: true,
+            used: true,
+            provider: request.headers()['x-assetslake-ai-provider'] ?? 'Playwright AI',
+            model: request.headers()['x-assetslake-ai-model'] ?? 'trace-model',
+          },
+          langgraph_nodes: [
+            {
+              name: 'context_hydrator',
+              state: 'ready',
+              detail: 'Loaded mocked issue, asset, version, and readiness context.',
+            },
+            {
+              name: 'approval_gate',
+              state: 'guarded',
+              detail: 'Requires approval before medium or high risk replica actions.',
+            },
+          ],
+          commands: [
+            lakeIndex
+              ? {
+                  id: `cmd-1-${lakeIndex.id}`,
+                  action_id: lakeIndex.id,
+                  title: lakeIndex.title,
+                  app: lakeIndex.app,
+                  target_label: lakeIndex.target_label,
+                  intent:
+                    'Record a replica proposal to promote useful lake records into AI-readable retrieval context.',
+                  writes: lakeIndex.writes,
+                  impact_preview: [
+                    `Target: ${lakeIndex.target_label}`,
+                    `App boundary: ${lakeIndex.app}`,
+                    `Replica writes: ${lakeIndex.writes.join(', ')}`,
+                  ],
+                  risk: 'low',
+                  approval_required: false,
+                  status: lakeIndex.disabled ? 'blocked' : 'queued',
+                }
+              : undefined,
+            versionGate
+              ? {
+                  id: `cmd-2-${versionGate.id}`,
+                  action_id: versionGate.id,
+                  title: versionGate.title,
+                  app: versionGate.app,
+                  target_label: versionGate.target_label,
+                  intent:
+                    'Record a replica branch-style gate proposal for the most relevant asset version.',
+                  writes: versionGate.writes,
+                  impact_preview: [
+                    `Target: ${versionGate.target_label}`,
+                    `App boundary: ${versionGate.app}`,
+                    `Replica writes: ${versionGate.writes.join(', ')}`,
+                  ],
+                  risk: 'medium',
+                  approval_required: true,
+                  status: versionGate.disabled ? 'blocked' : 'requires_approval',
+                }
+              : undefined,
+          ].filter(Boolean),
+          decision_review: {
+            evidence: [
+              {
+                label: 'Goal',
+                value: body.goal ?? 'Drive release readiness',
+                source: 'playwright.goal',
+              },
+              {
+                label: 'Product Context',
+                value: `${actions.length} mocked guarded actions`,
+                source: 'playwright.actions',
+              },
+            ],
+            risk_assessment: [
+              lakeIndex
+                ? {
+                    command_id: `cmd-1-${lakeIndex.id}`,
+                    risk: 'low',
+                    reason: 'Mocked command is limited to replica indexing.',
+                    guardrail: 'replica_only_no_primary_write',
+                  }
+                : undefined,
+              versionGate
+                ? {
+                    command_id: `cmd-2-${versionGate.id}`,
+                    risk: 'medium',
+                    reason: 'Mocked command touches a version gate proposal.',
+                    guardrail: 'human_approval_required_before_replica_recording',
+                  }
+                : undefined,
+            ].filter(Boolean),
+            approval_gates: [
+              'Version Gate requires approval before Version Graph replica recording.',
+            ],
+            outcome_checks: ['Confirm mocked replica action record is visible.'],
+            governance_notes: ['Server does not persist the user-supplied model API key.'],
+          },
+          audit_trail: [
+            'Goal captured from AI Control.',
+            'Guardrails keep every command replica-only.',
+          ],
+        }),
+      );
     }
 
     if (pathname === '/api/management/replica-actions' && method === 'POST') {
       const body = JSON.parse(request.postData() || '{}') as { action_id?: string };
-      return json(route, ok({
-        record: {
-          vector_id: `replica-${body.action_id ?? 'action'}`,
-          collection: 'assetslake_ai_replica_actions',
-          write_scope: 'replica',
-          replica_url: 'http://qdrant-replica:6333',
-          status: 'recorded',
-          created_at: NOW,
-        },
-      }));
+      return json(
+        route,
+        ok({
+          record: {
+            vector_id: `replica-${body.action_id ?? 'action'}`,
+            collection: 'assetslake_ai_replica_actions',
+            write_scope: 'replica',
+            replica_url: 'http://qdrant-replica:6333',
+            status: 'recorded',
+            created_at: NOW,
+          },
+        }),
+      );
     }
 
     if (pathname === '/api/management/rag/search' && method === 'POST') {
-      return json(route, ok({
-        qdrant_enabled: true,
-        collection: 'assetslake_operation_memories',
-        embedding_provider: 'playwright_embedding',
-        matches: [
-          {
-            id: 'rag-memory-e2e',
-            score: 0.91,
-            operation_type: 'asset.updated',
-            app: 'Data Lake',
-            entity_type: 'asset',
-            entity_id: 'asset-code-a',
-            actor: 'AI Control',
-            summary: 'Indexed data lake operation memory',
-            content: 'Playwright RAG memory fixture for operation feedback.',
-            metadata: { source: 'playwright' },
-            created_at: NOW,
+      return json(
+        route,
+        ok({
+          qdrant_enabled: true,
+          collection: 'assetslake_operation_memories',
+          embedding_provider: 'playwright_embedding',
+          matches: [
+            {
+              id: 'rag-memory-e2e',
+              score: 0.91,
+              operation_type: 'asset.updated',
+              app: 'Data Lake',
+              entity_type: 'asset',
+              entity_id: 'asset-code-a',
+              actor: 'AI Control',
+              summary: 'Indexed data lake operation memory',
+              content: 'Playwright RAG memory fixture for operation feedback.',
+              metadata: { source: 'playwright' },
+              created_at: NOW,
+            },
+          ],
+        }),
+      );
+    }
+
+    if (pathname === '/api/admin/control') {
+      return json(route, ok(ADMIN_CONTROL));
+    }
+
+    if (pathname === '/api/admin/control/users' && method === 'GET') {
+      const q = (url.searchParams.get('q') ?? '').toLowerCase();
+      const status = url.searchParams.get('status') ?? '';
+      const role = url.searchParams.get('role') ?? '';
+      const riskLevel = url.searchParams.get('risk_level') ?? '';
+      const limit = Number(url.searchParams.get('limit') ?? '10');
+      const offset = Number(url.searchParams.get('offset') ?? '0');
+      const filtered = ADMIN_CONTROL.users.filter((user) => {
+        const haystack =
+          `${user.username} ${user.display_name ?? ''} ${user.email ?? ''}`.toLowerCase();
+        return (
+          (!q || haystack.includes(q)) &&
+          (!status || user.status === status) &&
+          (!role || user.role === role) &&
+          (!riskLevel || user.risk_level === riskLevel)
+        );
+      });
+      const items = filtered.slice(offset, offset + limit);
+      return json(
+        route,
+        ok({
+          items,
+          total: filtered.length,
+          limit,
+          offset,
+          next_offset: offset + items.length < filtered.length ? offset + items.length : null,
+        }),
+      );
+    }
+
+    if (pathname === '/api/admin/control/operation-traces' && method === 'GET') {
+      const limit = Number(url.searchParams.get('limit') ?? '20');
+      const offset = Number(url.searchParams.get('offset') ?? '0');
+      const items = ADMIN_CONTROL.operation_traces.slice(offset, offset + limit);
+      return json(
+        route,
+        ok({
+          items,
+          total: ADMIN_CONTROL.operation_traces.length,
+          limit,
+          offset,
+          next_offset:
+            offset + items.length < ADMIN_CONTROL.operation_traces.length
+              ? offset + items.length
+              : null,
+        }),
+      );
+    }
+
+    if (pathname === '/api/admin/control/operation-traces/export' && method === 'GET') {
+      const csv = [
+        'id,created_at,actor,action,entity_type,entity_id,outcome,severity,reason,path,summary',
+        ...ADMIN_CONTROL.operation_traces.map((trace) =>
+          [
+            trace.id,
+            trace.created_at,
+            trace.actor ?? '',
+            trace.action,
+            trace.entity_type,
+            trace.entity_id,
+            trace.outcome ?? '',
+            trace.severity ?? '',
+            trace.reason ?? '',
+            trace.path ?? '',
+            trace.summary,
+          ]
+            .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+            .join(','),
+        ),
+      ].join('\n');
+      return route.fulfill({
+        status: 200,
+        contentType: 'text/csv;charset=utf-8',
+        body: csv,
+      });
+    }
+
+    if (pathname === '/api/admin/control/settings' && method === 'PATCH') {
+      const body = JSON.parse(request.postData() || '{}') as Partial<
+        AdminControlSnapshot['settings']
+      >;
+      return json(route, ok({ ...ADMIN_CONTROL.settings, ...body, updated_at: NOW }));
+    }
+
+    if (pathname === '/api/admin/control/risk-policy' && method === 'PATCH') {
+      const body = JSON.parse(request.postData() || '{}') as Partial<
+        AdminControlSnapshot['risk_policy']
+      >;
+      return json(route, ok({ ...ADMIN_CONTROL.risk_policy, ...body, updated_at: NOW }));
+    }
+
+    if (pathname === '/api/admin/control/ai/risk-analysis' && method === 'POST') {
+      return json(
+        route,
+        ok({
+          summary:
+            'Critical vendor account remains blocked; review active locks and RBAC denial drift before unblocking.',
+          severity: 'warning',
+          generated_at: NOW,
+          ai_status: {
+            configured: true,
+            used: true,
+            provider: request.headers()['x-assetslake-ai-provider'] ?? 'Playwright AI',
+            model: request.headers()['x-assetslake-ai-model'] ?? 'trace-model',
           },
-        ],
-      }));
+          langgraph_nodes: [
+            {
+              name: 'admin_risk_orchestrator',
+              state: 'completed',
+              detail: 'Merged session, audit, and block evidence into a single risk view.',
+            },
+            {
+              name: 'human_governance_gate',
+              state: 'waiting_approval',
+              detail: 'Requires administrator approval before account restoration.',
+            },
+          ],
+          recommendations: [
+            {
+              title: 'Keep vendor blocked',
+              severity: 'warning',
+              target: 'blocked.vendor',
+              action: 'Review the last admin_user_blocked trace and confirm owner handoff.',
+              rationale: 'The account has recent abnormal operation evidence.',
+              requires_human_approval: true,
+            },
+          ],
+        }),
+      );
+    }
+
+    const adminUserRoleMatch = pathname.match(/^\/api\/admin\/control\/users\/([^/]+)\/role$/);
+    if (adminUserRoleMatch && method === 'PATCH') {
+      const body = JSON.parse(request.postData() || '{}') as { role?: string };
+      const user =
+        ADMIN_CONTROL.users.find((item) => item.id === adminUserRoleMatch[1]) ??
+        ADMIN_CONTROL.users[0];
+      return json(route, ok({ ...user, role: body.role ?? user.role, updated_at: NOW }));
+    }
+
+    const adminUserStatusMatch = pathname.match(/^\/api\/admin\/control\/users\/([^/]+)\/status$/);
+    if (adminUserStatusMatch && method === 'PATCH') {
+      const body = JSON.parse(request.postData() || '{}') as { blocked?: boolean; reason?: string };
+      const user =
+        ADMIN_CONTROL.users.find((item) => item.id === adminUserStatusMatch[1]) ??
+        ADMIN_CONTROL.users[0];
+      return json(
+        route,
+        ok({
+          ...user,
+          status: body.blocked ? 'blocked' : 'active',
+          blocked_at: body.blocked ? NOW : null,
+          blocked_by: body.blocked ? 'user-admin' : user.blocked_by,
+          blocked_reason: body.blocked ? (body.reason ?? 'E2E block reason') : null,
+          unblocked_at: body.blocked ? null : NOW,
+          unblocked_by: body.blocked ? null : 'user-admin',
+          active_sessions: body.blocked ? 0 : user.active_sessions,
+          active_locks: body.blocked ? 0 : user.active_locks,
+          risk_level: body.blocked ? 'critical' : 'watch',
+          risk_score: body.blocked ? Math.max(user.risk_score, 80) : user.risk_score,
+          updated_at: NOW,
+        }),
+      );
     }
 
     if (pathname === '/api/verification/app') {
-      return json(route, ok({
-        app_key: 'assetslake',
-        name: 'AssetsLake',
-        owner_email: 'owner@example.test',
-        sender_email: 'no-reply@example.test',
-        sms_sender_label: 'AssetsLake',
-        dev_code_visible: true,
-      }));
+      return json(
+        route,
+        ok({
+          app_key: 'assetslake',
+          name: 'AssetsLake',
+          owner_email: 'owner@example.test',
+          sender_email: 'no-reply@example.test',
+          sms_sender_label: 'AssetsLake',
+          dev_code_visible: true,
+        }),
+      );
     }
 
     if (pathname === '/api/verification/outbox') {
-      return json(route, ok([
-        {
-          id: 'outbox-e2e',
-          challenge_id: 'challenge-e2e',
-          app_key: 'assetslake',
-          channel: 'email',
-          provider: 'local',
-          recipient_masked: 'p***@example.test',
-          subject: 'AssetsLake verification code',
-          body: 'Your code is 123456.',
-          status: 'queued',
-          created_at: NOW,
-          sent_at: null,
-        },
-      ]));
+      return json(
+        route,
+        ok([
+          {
+            id: 'outbox-e2e',
+            challenge_id: 'challenge-e2e',
+            app_key: 'assetslake',
+            channel: 'email',
+            provider: 'local',
+            recipient_masked: 'p***@example.test',
+            subject: 'AssetsLake verification code',
+            body: 'Your code is 123456.',
+            status: 'queued',
+            created_at: NOW,
+            sent_at: null,
+          },
+        ]),
+      );
     }
 
     if (pathname === '/api/verification/challenges' && method === 'POST') {
-      return json(route, ok({
-        challenge_id: 'challenge-e2e',
-        app_key: 'assetslake',
-        purpose: 'registration',
-        channel: 'email',
-        masked_target: 'p***@example.test',
-        expires_at: NOW,
-        delivery_status: 'queued',
-        dev_code: '123456',
-      }));
+      return json(
+        route,
+        ok({
+          challenge_id: 'challenge-e2e',
+          app_key: 'assetslake',
+          purpose: 'registration',
+          channel: 'email',
+          masked_target: 'p***@example.test',
+          expires_at: NOW,
+          delivery_status: 'queued',
+          dev_code: '123456',
+        }),
+      );
     }
 
     if (pathname === '/api/verification/challenges/challenge-e2e/verify' && method === 'POST') {
-      return json(route, ok({
-        challenge_id: 'challenge-e2e',
-        purpose: 'registration',
-        verified: true,
-        masked_target: 'p***@example.test',
-        verification_token: 'verification-token-e2e',
-        expires_at: NOW,
-      }));
+      return json(
+        route,
+        ok({
+          challenge_id: 'challenge-e2e',
+          purpose: 'registration',
+          verified: true,
+          masked_target: 'p***@example.test',
+          verification_token: 'verification-token-e2e',
+          expires_at: NOW,
+        }),
+      );
     }
 
     if (pathname === '/api/verification/register' && method === 'POST') {
-      return json(route, ok({
-        success: true,
-        user: {
-          id: 'user-e2e',
-          username: 'playwright',
-          display_name: 'Playwright',
-          email: 'playwright@example.test',
-          phone_number: null,
-          role: 'artist',
-        },
-      }));
+      return json(
+        route,
+        ok({
+          success: true,
+          user: {
+            id: 'user-e2e',
+            username: 'playwright',
+            display_name: 'Playwright',
+            email: 'playwright@example.test',
+            phone_number: null,
+            role: 'artist',
+          },
+        }),
+      );
     }
 
     if (pathname === '/api/verification/password' && method === 'POST') {
-      return json(route, ok({
-        success: true,
-        user: null,
-      }));
+      return json(
+        route,
+        ok({
+          success: true,
+          user: null,
+        }),
+      );
     }
 
     if (pathname === '/api/data-lake/query/sql' && method === 'POST') {
       const body = request.postData() ?? '';
       if (body.includes('asset_ai_insights')) {
-        return json(route, ok({
+        return json(
+          route,
+          ok({
+            engine: 'postgresql',
+            readonly: true,
+            columns: ['name', 'modality', 'provider', 'summary'],
+            rows: [
+              {
+                name: 'Concept Board',
+                modality: 'image',
+                provider: 'Playwright AI',
+                summary: ASSET_INSIGHTS[0].summary,
+              },
+            ],
+            row_count: 1,
+            warnings: ['SQL console is read-only: only SELECT/WITH queries are accepted.'],
+          }),
+        );
+      }
+      return json(
+        route,
+        ok({
           engine: 'postgresql',
           readonly: true,
-          columns: ['name', 'modality', 'provider', 'summary'],
+          columns: ['id', 'name', 'asset_type', 'version'],
           rows: [
             {
-              name: 'Concept Board',
-              modality: 'image',
-              provider: 'Playwright AI',
-              summary: ASSET_INSIGHTS[0].summary,
+              id: 'asset-code-a',
+              name: 'Build Pipeline Script',
+              asset_type: 'code',
+              version: 3,
             },
           ],
           row_count: 1,
           warnings: ['SQL console is read-only: only SELECT/WITH queries are accepted.'],
-        }));
-      }
-      return json(route, ok({
-        engine: 'postgresql',
-        readonly: true,
-        columns: ['id', 'name', 'asset_type', 'version'],
-        rows: [
-          {
-            id: 'asset-code-a',
-            name: 'Build Pipeline Script',
-            asset_type: 'code',
-            version: 3,
-          },
-        ],
-        row_count: 1,
-        warnings: ['SQL console is read-only: only SELECT/WITH queries are accepted.'],
-      }));
+        }),
+      );
     }
 
     if (pathname === '/api/data-lake/query/cypher' && method === 'POST') {
       const body = request.postData() ?? '';
       if (body.includes('HAS_INSIGHT')) {
-        return json(route, ok({
+        return json(
+          route,
+          ok({
+            engine: 'data-lake-cypher-projection',
+            readonly: true,
+            columns: ['a', 'r', 'x'],
+            rows: [
+              {
+                a: { id: 'asset-a', label: 'Asset', properties: { name: 'Concept Board' } },
+                r: { type: 'HAS_INSIGHT', properties: { provider: 'Playwright AI' } },
+                x: {
+                  id: 'insight-asset-a',
+                  label: 'AiInsight',
+                  properties: { summary: ASSET_INSIGHTS[0].summary },
+                },
+              },
+            ],
+            row_count: 1,
+            warnings: ['Cypher runs against the AssetsLake graph projection.'],
+          }),
+        );
+      }
+      return json(
+        route,
+        ok({
           engine: 'data-lake-cypher-projection',
           readonly: true,
-          columns: ['a', 'r', 'x'],
+          columns: ['i', 'r', 'a'],
           rows: [
             {
-              a: { id: 'asset-a', label: 'Asset', properties: { name: 'Concept Board' } },
-              r: { type: 'HAS_INSIGHT', properties: { provider: 'Playwright AI' } },
-              x: { id: 'insight-asset-a', label: 'AiInsight', properties: { summary: ASSET_INSIGHTS[0].summary } },
+              i: {
+                id: 'issue-b',
+                label: 'Issue',
+                properties: { issue_key: 'AL-002', title: 'Model Pass' },
+              },
+              r: { type: 'HAS_EVIDENCE', properties: { link_type: 'reference' } },
+              a: {
+                id: 'asset-code-a',
+                label: 'Asset',
+                properties: { name: 'Build Pipeline Script' },
+              },
             },
           ],
           row_count: 1,
           warnings: ['Cypher runs against the AssetsLake graph projection.'],
-        }));
-      }
-      return json(route, ok({
-        engine: 'data-lake-cypher-projection',
-        readonly: true,
-        columns: ['i', 'r', 'a'],
-        rows: [
-          {
-            i: { id: 'issue-b', label: 'Issue', properties: { issue_key: 'AL-002', title: 'Model Pass' } },
-            r: { type: 'HAS_EVIDENCE', properties: { link_type: 'reference' } },
-            a: { id: 'asset-code-a', label: 'Asset', properties: { name: 'Build Pipeline Script' } },
-          },
-        ],
-        row_count: 1,
-        warnings: ['Cypher runs against the AssetsLake graph projection.'],
-      }));
+        }),
+      );
     }
 
     if (pathname === '/api/delivery-packages' && method === 'POST') {
@@ -900,7 +1545,15 @@ export async function mockApi(page: Page): Promise<void> {
     }
 
     if (pathname === `/api/delivery-packages/${DELIVERY_PACKAGE.id}/submit` && method === 'POST') {
-      return json(route, ok({ ...DELIVERY_PACKAGE, status: 'submitted', submitted_by: 'delivery-manager', submitted_at: NOW }));
+      return json(
+        route,
+        ok({
+          ...DELIVERY_PACKAGE,
+          status: 'submitted',
+          submitted_by: 'delivery-manager',
+          submitted_at: NOW,
+        }),
+      );
     }
 
     if (pathname.startsWith('/api/project-management')) {
@@ -908,8 +1561,12 @@ export async function mockApi(page: Page): Promise<void> {
         project_id: DEFAULT_PROJECT_ID,
         epics: EPICS,
         sprints: SPRINTS,
-        backlog: ISSUES.filter((issue) => issue.status === 'backlog' || issue.status === 'brief_ready'),
-        active_sprint: ISSUES.filter((issue) => ['assigned', 'in_progress', 'submitted'].includes(issue.status)),
+        backlog: ISSUES.filter(
+          (issue) => issue.status === 'backlog' || issue.status === 'brief_ready',
+        ),
+        active_sprint: ISSUES.filter((issue) =>
+          ['assigned', 'in_progress', 'submitted'].includes(issue.status),
+        ),
         dependencies: DEPENDENCIES,
         recent_events: EVENTS,
       };
@@ -932,7 +1589,9 @@ export async function mockApi(page: Page): Promise<void> {
             start_date: issue.start_date,
             due_date: issue.due_date,
             story_points: issue.story_points,
-            dependency_count: DEPENDENCIES.filter((dep) => dep.source_issue_id === issue.id || dep.target_issue_id === issue.id).length,
+            dependency_count: DEPENDENCIES.filter(
+              (dep) => dep.source_issue_id === issue.id || dep.target_issue_id === issue.id,
+            ).length,
           })),
           dependencies: DEPENDENCIES,
           baseline_status: 'ready_for_baseline_capture',
@@ -955,10 +1614,34 @@ export async function mockApi(page: Page): Promise<void> {
             owner: issue.assignee_name,
           })),
           lanes: [
-            { id: 'sprint', label: 'Sprint Plan', calendar_type: 'sprint', status: 'ready', event_count: 2 },
-            { id: 'release', label: 'Release Milestones', calendar_type: 'release', status: 'planned', event_count: 1 },
-            { id: 'review', label: 'Review Windows', calendar_type: 'review', status: 'ready', event_count: 1 },
-            { id: 'vendor', label: 'Vendor Delivery', calendar_type: 'vendor', status: 'ready', event_count: 0 },
+            {
+              id: 'sprint',
+              label: 'Sprint Plan',
+              calendar_type: 'sprint',
+              status: 'ready',
+              event_count: 2,
+            },
+            {
+              id: 'release',
+              label: 'Release Milestones',
+              calendar_type: 'release',
+              status: 'planned',
+              event_count: 1,
+            },
+            {
+              id: 'review',
+              label: 'Review Windows',
+              calendar_type: 'review',
+              status: 'ready',
+              event_count: 1,
+            },
+            {
+              id: 'vendor',
+              label: 'Vendor Delivery',
+              calendar_type: 'vendor',
+              status: 'ready',
+              event_count: 0,
+            },
           ],
           workload: [
             { date: '2026-05-24', total: 1, review: 0, vendor: 0, risk: 0 },
@@ -1010,8 +1693,20 @@ export async function mockApi(page: Page): Promise<void> {
           sla: {
             overall_compliance_percent: 82,
             metrics: [
-              { name: 'Review SLA', target_hours: 24, breached: 1, total: 4, compliance_percent: 75 },
-              { name: 'Evidence SLA', target_hours: 12, breached: 0, total: 4, compliance_percent: 100 },
+              {
+                name: 'Review SLA',
+                target_hours: 24,
+                breached: 1,
+                total: 4,
+                compliance_percent: 75,
+              },
+              {
+                name: 'Evidence SLA',
+                target_hours: 12,
+                breached: 0,
+                total: 4,
+                compliance_percent: 100,
+              },
             ],
           },
           delivery_readiness: {
@@ -1028,16 +1723,87 @@ export async function mockApi(page: Page): Promise<void> {
       if (pathname === '/api/project-management/workflow') {
         const workflow: ProjectWorkflowCatalog = {
           project_id: DEFAULT_PROJECT_ID,
-          statuses: ['backlog', 'brief_ready', 'assigned', 'in_progress', 'submitted', 'internal_review', 'client_review', 'revision_required', 'approved', 'delivered'],
+          statuses: [
+            'backlog',
+            'brief_ready',
+            'assigned',
+            'in_progress',
+            'submitted',
+            'internal_review',
+            'client_review',
+            'revision_required',
+            'approved',
+            'delivered',
+          ],
           guards: ['assignment_required', 'asset_evidence_required'],
           validators: ['valid_transition', 'required_fields'],
           transitions: [
-            { id: 'backlog_to_brief_ready', from_status: 'backlog', to_status: 'brief_ready', name: 'Backlog to Brief Ready', guard: 'required_fields', validator: 'valid_transition', approval_required: false, evidence_required: false, sla_hours: 8 },
-            { id: 'brief_ready_to_assigned', from_status: 'brief_ready', to_status: 'assigned', name: 'Brief Ready to Assigned', guard: 'assignment_required', validator: 'required_fields', approval_required: false, evidence_required: false, sla_hours: 8 },
-            { id: 'assigned_to_in_progress', from_status: 'assigned', to_status: 'in_progress', name: 'Assigned to In Progress', guard: 'assignment_required', validator: 'valid_transition', approval_required: false, evidence_required: false, sla_hours: 8 },
-            { id: 'in_progress_to_submitted', from_status: 'in_progress', to_status: 'submitted', name: 'In Progress to Submitted', guard: 'asset_evidence_required', validator: 'data_lake_evidence_present', approval_required: false, evidence_required: true, sla_hours: 12 },
-            { id: 'submitted_to_internal_review', from_status: 'submitted', to_status: 'internal_review', name: 'Submitted to Internal Review', guard: 'human_approval_required', validator: 'required_fields', approval_required: true, evidence_required: true, sla_hours: 24 },
-            { id: 'client_review_to_approved', from_status: 'client_review', to_status: 'approved', name: 'Client Review to Approved', guard: 'human_approval_required', validator: 'data_lake_evidence_present', approval_required: true, evidence_required: true, sla_hours: 24 },
+            {
+              id: 'backlog_to_brief_ready',
+              from_status: 'backlog',
+              to_status: 'brief_ready',
+              name: 'Backlog to Brief Ready',
+              guard: 'required_fields',
+              validator: 'valid_transition',
+              approval_required: false,
+              evidence_required: false,
+              sla_hours: 8,
+            },
+            {
+              id: 'brief_ready_to_assigned',
+              from_status: 'brief_ready',
+              to_status: 'assigned',
+              name: 'Brief Ready to Assigned',
+              guard: 'assignment_required',
+              validator: 'required_fields',
+              approval_required: false,
+              evidence_required: false,
+              sla_hours: 8,
+            },
+            {
+              id: 'assigned_to_in_progress',
+              from_status: 'assigned',
+              to_status: 'in_progress',
+              name: 'Assigned to In Progress',
+              guard: 'assignment_required',
+              validator: 'valid_transition',
+              approval_required: false,
+              evidence_required: false,
+              sla_hours: 8,
+            },
+            {
+              id: 'in_progress_to_submitted',
+              from_status: 'in_progress',
+              to_status: 'submitted',
+              name: 'In Progress to Submitted',
+              guard: 'asset_evidence_required',
+              validator: 'data_lake_evidence_present',
+              approval_required: false,
+              evidence_required: true,
+              sla_hours: 12,
+            },
+            {
+              id: 'submitted_to_internal_review',
+              from_status: 'submitted',
+              to_status: 'internal_review',
+              name: 'Submitted to Internal Review',
+              guard: 'human_approval_required',
+              validator: 'required_fields',
+              approval_required: true,
+              evidence_required: true,
+              sla_hours: 24,
+            },
+            {
+              id: 'client_review_to_approved',
+              from_status: 'client_review',
+              to_status: 'approved',
+              name: 'Client Review to Approved',
+              guard: 'human_approval_required',
+              validator: 'data_lake_evidence_present',
+              approval_required: true,
+              evidence_required: true,
+              sla_hours: 24,
+            },
           ],
           approval_policy: {
             default_reviewer_role: 'art_director',
@@ -1053,13 +1819,47 @@ export async function mockApi(page: Page): Promise<void> {
         const automation: ProjectAutomationCatalog = {
           project_id: DEFAULT_PROJECT_ID,
           rules: [
-            { id: 'overdue_escalation', name: 'Overdue Escalation', trigger: 'issue_due_date_missed', conditions: ['status_not_delivered', 'assignee_present'], actions: ['summarize_data_lake_evidence', 'notify_producer'], langgraph_node: 'priority_planner', guardrail: 'human_review_required', enabled: true, approval_required: true },
-            { id: 'review_gate', name: 'Review Gate', trigger: 'status_entered_internal_review', conditions: ['asset_evidence_present', 'reviewer_available'], actions: ['prepare_review_context', 'request_human_approval'], langgraph_node: 'evidence_retriever', guardrail: 'human_review_required', enabled: true, approval_required: true },
+            {
+              id: 'overdue_escalation',
+              name: 'Overdue Escalation',
+              trigger: 'issue_due_date_missed',
+              conditions: ['status_not_delivered', 'assignee_present'],
+              actions: ['summarize_data_lake_evidence', 'notify_producer'],
+              langgraph_node: 'priority_planner',
+              guardrail: 'human_review_required',
+              enabled: true,
+              approval_required: true,
+            },
+            {
+              id: 'review_gate',
+              name: 'Review Gate',
+              trigger: 'status_entered_internal_review',
+              conditions: ['asset_evidence_present', 'reviewer_available'],
+              actions: ['prepare_review_context', 'request_human_approval'],
+              langgraph_node: 'evidence_retriever',
+              guardrail: 'human_review_required',
+              enabled: true,
+              approval_required: true,
+            },
           ],
           langgraph_nodes: ['intake_classifier', 'evidence_retriever'],
           runbook: [
-            { id: 'collect-context', node: 'intake_classifier', action: 'classify_issue_and_trigger', reads: ['issue', 'workflow_event'], writes: ['automation_run'], requires_approval: false },
-            { id: 'retrieve-evidence', node: 'evidence_retriever', action: 'load_asset_lineage_and_history', reads: ['data_lake', 'issue_events'], writes: ['evidence_summary'], requires_approval: false },
+            {
+              id: 'collect-context',
+              node: 'intake_classifier',
+              action: 'classify_issue_and_trigger',
+              reads: ['issue', 'workflow_event'],
+              writes: ['automation_run'],
+              requires_approval: false,
+            },
+            {
+              id: 'retrieve-evidence',
+              node: 'evidence_retriever',
+              action: 'load_asset_lineage_and_history',
+              reads: ['data_lake', 'issue_events'],
+              writes: ['evidence_summary'],
+              requires_approval: false,
+            },
           ],
           guardrail: 'human_review_required',
         };
@@ -1071,6 +1871,10 @@ export async function mockApi(page: Page): Promise<void> {
       }
     }
 
-    return json(route, { success: false, error: `Unhandled E2E mock route: ${method} ${pathname}` }, 404);
+    return json(
+      route,
+      { success: false, error: `Unhandled E2E mock route: ${method} ${pathname}` },
+      404,
+    );
   });
 }

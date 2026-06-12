@@ -163,7 +163,10 @@ export default function VerificationAppPage() {
         channel,
         phone_number: channel === 'sms' ? phone : undefined,
         email: channel === 'email' ? targetEmail : undefined,
-        client_ref: purpose === 'registration' ? registerUsername || undefined : passwordUsername || undefined,
+        client_ref:
+          purpose === 'registration'
+            ? registerUsername || undefined
+            : passwordUsername || undefined,
       });
       setChallenge(response);
       setCode(response.dev_code ?? '');
@@ -257,12 +260,24 @@ export default function VerificationAppPage() {
             <h1 className="text-xl font-bold text-white">SMS Identity</h1>
             <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
               <StatusPill label={app?.app_key ?? 'assetslake'} tone="text-brand-300" />
-              <StatusPill label={app?.sender_email ?? 'hanakagumi@outlook.com'} tone="text-sakura-300" />
+              <StatusPill
+                label={app?.sender_email ?? 'hanakagumi@outlook.com'}
+                tone="text-sakura-300"
+              />
               <StatusPill label="local-outbox" tone="text-matcha-300" />
             </div>
           </div>
-          <button type="button" className="btn-secondary" onClick={refreshOutbox} disabled={outboxLoading}>
-            {outboxLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={refreshOutbox}
+            disabled={outboxLoading}
+          >
+            {outboxLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
             Refresh
           </button>
         </div>
@@ -287,10 +302,12 @@ export default function VerificationAppPage() {
                       'flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                       active
                         ? 'bg-brand-500/15 text-brand-100 shadow-[inset_0_0_0_1px_rgba(134,197,255,0.14)]'
-                        : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100'
+                        : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100',
                     )}
                   >
-                    <Icon className={cn('h-4 w-4', active ? 'text-sakura-300' : 'text-slate-500')} />
+                    <Icon
+                      className={cn('h-4 w-4', active ? 'text-sakura-300' : 'text-slate-500')}
+                    />
                     {item.label}
                   </button>
                 );
@@ -334,10 +351,15 @@ export default function VerificationAppPage() {
                               'flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                               active
                                 ? 'bg-brand-500/15 text-brand-100'
-                                : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200'
+                                : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-200',
                             )}
                           >
-                            <Icon className={cn('h-3.5 w-3.5', active ? 'text-sakura-300' : 'text-slate-500')} />
+                            <Icon
+                              className={cn(
+                                'h-3.5 w-3.5',
+                                active ? 'text-sakura-300' : 'text-slate-500',
+                              )}
+                            />
                             {item.label}
                           </button>
                         );
@@ -345,12 +367,20 @@ export default function VerificationAppPage() {
                     </div>
                     <label>
                       <span className="label">App Key</span>
-                      <input className="input font-mono" value={app?.app_key ?? 'assetslake'} readOnly />
+                      <input
+                        className="input font-mono"
+                        value={app?.app_key ?? 'assetslake'}
+                        readOnly
+                      />
                     </label>
                     {channel === 'sms' ? (
                       <label>
                         <span className="label">Phone</span>
-                        <input className="input" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                        <input
+                          className="input"
+                          value={phone}
+                          onChange={(event) => setPhone(event.target.value)}
+                        />
                       </label>
                     ) : (
                       <label>
@@ -388,21 +418,39 @@ export default function VerificationAppPage() {
 
                   {challenge && (
                     <div className="mt-4 rounded-md border border-surface-border bg-surface px-3 py-2 text-xs text-slate-400">
-                      <div className="truncate font-mono text-brand-300">{challenge.challenge_id}</div>
+                      <div className="truncate font-mono text-brand-300">
+                        {challenge.challenge_id}
+                      </div>
                       <div className="mt-1 flex flex-wrap gap-2">
                         <span>{challenge.masked_target}</span>
                         <span>{formatTime(challenge.expires_at)}</span>
-                        {challenge.dev_code && <span className="font-mono text-matcha-300">{challenge.dev_code}</span>}
+                        {challenge.dev_code && (
+                          <span className="font-mono text-matcha-300">{challenge.dev_code}</span>
+                        )}
                       </div>
                     </div>
                   )}
 
                   <div className="mt-4 flex flex-wrap justify-end gap-2">
-                    <button type="button" className="btn-secondary" onClick={requestCode} disabled={loading}>
-                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={requestCode}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
                       Send
                     </button>
-                    <button type="button" className="btn-primary" onClick={verifyCode} disabled={loading || !challenge}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={verifyCode}
+                      disabled={loading || !challenge}
+                    >
                       <CheckCircle2 className="h-4 w-4" />
                       Verify
                     </button>
@@ -417,11 +465,15 @@ export default function VerificationAppPage() {
                   <div className="mt-3 grid gap-2 text-sm">
                     <div className="flex items-center justify-between gap-3 rounded-md border border-surface-border bg-surface px-3 py-2">
                       <span className="text-slate-500">Owner</span>
-                      <span className="truncate text-slate-200">{app?.owner_email ?? 'hanakagumi@outlook.com'}</span>
+                      <span className="truncate text-slate-200">
+                        {app?.owner_email ?? 'hanakagumi@outlook.com'}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between gap-3 rounded-md border border-surface-border bg-surface px-3 py-2">
                       <span className="text-slate-500">From</span>
-                      <span className="truncate text-slate-200">{app?.sender_email ?? 'hanakagumi@outlook.com'}</span>
+                      <span className="truncate text-slate-200">
+                        {app?.sender_email ?? 'hanakagumi@outlook.com'}
+                      </span>
                     </div>
                   </div>
                 </section>
@@ -437,7 +489,10 @@ export default function VerificationAppPage() {
                     )}
                     {purpose === 'registration' ? 'Register Account' : 'Change Password'}
                   </div>
-                  <StatusPill label={verified ? 'verified' : 'pending'} tone={verified ? 'text-matcha-300' : undefined} />
+                  <StatusPill
+                    label={verified ? 'verified' : 'pending'}
+                    tone={verified ? 'text-matcha-300' : undefined}
+                  />
                 </div>
 
                 {purpose === 'registration' ? (
@@ -475,7 +530,12 @@ export default function VerificationAppPage() {
                         onChange={(event) => setRegisterPassword(event.target.value)}
                       />
                     </label>
-                    <button type="button" className="btn-primary mt-2 justify-center" onClick={submitRegister} disabled={loading || !verified}>
+                    <button
+                      type="button"
+                      className="btn-primary mt-2 justify-center"
+                      onClick={submitRegister}
+                      disabled={loading || !verified}
+                    >
                       <UserPlus className="h-4 w-4" />
                       Create
                     </button>
@@ -514,7 +574,9 @@ export default function VerificationAppPage() {
                 {verified && (
                   <div className="mt-4 rounded-md border border-matcha-300/20 bg-matcha-400/10 px-3 py-2 text-xs text-matcha-200">
                     <div className="truncate font-mono">{verified.verification_token}</div>
-                    <div className="mt-1">{verified.masked_target} / {formatTime(verified.expires_at)}</div>
+                    <div className="mt-1">
+                      {verified.masked_target} / {formatTime(verified.expires_at)}
+                    </div>
                   </div>
                 )}
               </section>
@@ -530,7 +592,9 @@ export default function VerificationAppPage() {
 
 function StatusPill({ label, tone = 'text-slate-300' }: { label: string; tone?: string }) {
   return (
-    <span className={cn('rounded-md border border-surface-border bg-surface px-2 py-0.5 text-xs', tone)}>
+    <span
+      className={cn('rounded-md border border-surface-border bg-surface px-2 py-0.5 text-xs', tone)}
+    >
       {label}
     </span>
   );
@@ -560,24 +624,37 @@ function OutboxList({
           title="Refresh outbox"
           aria-label="Refresh outbox"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
         </button>
       </div>
       <div className="max-h-[640px] overflow-y-auto p-3">
         <div className="space-y-2">
           {items.map((item) => (
-            <article key={item.id} className="rounded-lg border border-surface-border bg-surface-elevated p-3">
+            <article
+              key={item.id}
+              className="rounded-lg border border-surface-border bg-surface-elevated p-3"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <MessageSquareText className="h-3.5 w-3.5 shrink-0 text-matcha-300" />
-                    <span className="truncate text-sm font-medium text-slate-100">{item.recipient_masked}</span>
+                    <span className="truncate text-sm font-medium text-slate-100">
+                      {item.recipient_masked}
+                    </span>
                   </div>
-                  <div className="mt-1 truncate font-mono text-xs text-brand-300">{item.challenge_id}</div>
+                  <div className="mt-1 truncate font-mono text-xs text-brand-300">
+                    {item.challenge_id}
+                  </div>
                 </div>
                 <StatusPill label={item.status} tone="text-matcha-300" />
               </div>
-              <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-slate-400">{item.body}</p>
+              <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-slate-400">
+                {item.body}
+              </p>
               <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-600">
                 <span>{item.app_key}</span>
                 <span>{item.provider}</span>

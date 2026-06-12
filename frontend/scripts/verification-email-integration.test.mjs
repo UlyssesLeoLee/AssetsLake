@@ -32,7 +32,8 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import test from 'node:test';
 
-const API_URL = process.env.ASSETSLAKE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18080';
+const API_URL =
+  process.env.ASSETSLAKE_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:18080';
 
 async function apiRequest(method, path, body, expectedStatuses = [200]) {
   const response = await fetch(`${API_URL}${path}`, {
@@ -43,7 +44,7 @@ async function apiRequest(method, path, body, expectedStatuses = [200]) {
   const data = await response.json().catch(() => null);
   assert.ok(
     expectedStatuses.includes(response.status),
-    `${method} ${path} expected ${expectedStatuses.join('/')} got ${response.status}: ${JSON.stringify(data)}`
+    `${method} ${path} expected ${expectedStatuses.join('/')} got ${response.status}: ${JSON.stringify(data)}`,
   );
   return { status: response.status, data };
 }
@@ -82,13 +83,13 @@ test('email verification registers and changes password', async () => {
       email,
       client_ref: username,
     },
-    [201]
+    [201],
   );
   const registrationCode = await extractCode(registrationChallenge.data.data);
   const registrationVerify = await apiRequest(
     'POST',
     `/api/verification/challenges/${registrationChallenge.data.data.challenge_id}/verify`,
-    { code: registrationCode }
+    { code: registrationCode },
   );
   const registrationToken = registrationVerify.data.data.verification_token;
   assert.ok(registrationToken.startsWith('vfy_'));
@@ -105,7 +106,7 @@ test('email verification registers and changes password', async () => {
       display_name: 'Email Verification Test',
       email,
     },
-    [201]
+    [201],
   );
   assert.equal(registered.data.data.user.email, email);
 
@@ -125,13 +126,13 @@ test('email verification registers and changes password', async () => {
       email,
       client_ref: username,
     },
-    [201]
+    [201],
   );
   const passwordCode = await extractCode(passwordChallenge.data.data);
   const passwordVerify = await apiRequest(
     'POST',
     `/api/verification/challenges/${passwordChallenge.data.data.challenge_id}/verify`,
-    { code: passwordCode }
+    { code: passwordCode },
   );
 
   await apiRequest('POST', '/api/verification/password', {
@@ -150,7 +151,7 @@ test('email verification registers and changes password', async () => {
       password: oldPassword,
       device_label: 'email-verification-old-password',
     },
-    [401]
+    [401],
   );
   await apiRequest('POST', '/api/auth/login', {
     username,

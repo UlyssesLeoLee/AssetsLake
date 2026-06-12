@@ -145,7 +145,8 @@ export default function DataLakeQueryPage() {
         </div>
         <h1 className="mt-1 truncate text-xl font-bold text-white">Data Lake Query</h1>
         <p className="mt-0.5 max-w-3xl text-sm text-slate-400">
-          Query assets, issue evidence, version graph projections, and RAG operation memory with read-only SQL or Cypher.
+          Query assets, issue evidence, version graph projections, and RAG operation memory with
+          read-only SQL or Cypher.
         </p>
       </div>
 
@@ -165,7 +166,9 @@ export default function DataLakeQueryPage() {
                     onClick={() => setEngine(item)}
                     className={cn(
                       'rounded-md px-3 py-1 text-xs font-medium uppercase',
-                      engine === item ? 'bg-brand-500 text-white' : 'text-slate-400 hover:text-white'
+                      engine === item
+                        ? 'bg-brand-500 text-white'
+                        : 'text-slate-400 hover:text-white',
                     )}
                   >
                     {item}
@@ -199,7 +202,9 @@ export default function DataLakeQueryPage() {
             </label>
 
             <div>
-              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Samples</div>
+              <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                Samples
+              </div>
               <div className="flex flex-wrap gap-2">
                 {QUERY_SAMPLES.map((sample) => (
                   <button
@@ -208,7 +213,11 @@ export default function DataLakeQueryPage() {
                     className="btn-secondary"
                     onClick={() => applySample(sample)}
                   >
-                    {sample.engine === 'sql' ? <Table2 className="h-4 w-4" /> : <Network className="h-4 w-4" />}
+                    {sample.engine === 'sql' ? (
+                      <Table2 className="h-4 w-4" />
+                    ) : (
+                      <Network className="h-4 w-4" />
+                    )}
                     {sample.label}
                   </button>
                 ))}
@@ -228,7 +237,11 @@ export default function DataLakeQueryPage() {
               Read-only guard enabled
             </div>
             <button type="button" className="btn-primary" onClick={handleRun} disabled={running}>
-              {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+              {running ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
               Run Query
             </button>
           </div>
@@ -285,7 +298,10 @@ function ResultTable({ result }: { result: DataLakeQueryResponse | null }) {
         <thead className="sticky top-0 bg-surface-secondary">
           <tr>
             {columns.map((column) => (
-              <th key={column} className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th
+                key={column}
+                className="whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500"
+              >
                 {column}
               </th>
             ))}
@@ -295,7 +311,10 @@ function ResultTable({ result }: { result: DataLakeQueryResponse | null }) {
           {result.rows.map((row, index) => (
             <tr key={index} className="hover:bg-surface-elevated/70">
               {columns.map((column) => (
-                <td key={column} className="max-w-[360px] whitespace-pre-wrap px-3 py-2 align-top font-mono text-xs text-slate-300">
+                <td
+                  key={column}
+                  className="max-w-[360px] whitespace-pre-wrap px-3 py-2 align-top font-mono text-xs text-slate-300"
+                >
                   {formatCell(row[column])}
                 </td>
               ))}

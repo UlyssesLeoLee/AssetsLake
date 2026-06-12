@@ -53,7 +53,9 @@ export function AssetTable({ assets }: AssetTableProps) {
                     {TYPE_ICONS[asset.asset_type]}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium text-slate-100 truncate max-w-[180px]">{asset.name}</p>
+                    <p className="font-medium text-slate-100 truncate max-w-[180px]">
+                      {asset.name}
+                    </p>
                     <p className="text-xs text-slate-500 truncate max-w-[180px] font-mono">
                       {asset.original_filename}
                     </p>
@@ -81,9 +83,7 @@ export function AssetTable({ assets }: AssetTableProps) {
               <td className="px-4 py-3 hidden lg:table-cell">
                 <StatusBadge status={asset.status} size="sm" />
               </td>
-              <td className="px-4 py-3 hidden xl:table-cell text-slate-400">
-                {asset.uploader}
-              </td>
+              <td className="px-4 py-3 hidden xl:table-cell text-slate-400">{asset.uploader}</td>
               <td className="px-4 py-3 hidden xl:table-cell text-slate-500 text-xs tabular-nums">
                 {formatDate(asset.created_at)}
               </td>

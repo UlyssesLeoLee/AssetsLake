@@ -29,11 +29,7 @@ export function AssetPreview({ asset }: AssetPreviewProps) {
             />
           </div>
         ) : isVideo ? (
-          <video
-            src={asset.file_url}
-            controls
-            className="w-full max-h-96"
-          >
+          <video src={asset.file_url} controls className="w-full max-h-96">
             Your browser does not support video playback.
           </video>
         ) : isAudio ? (
@@ -48,9 +44,7 @@ export function AssetPreview({ asset }: AssetPreviewProps) {
             <span className="text-6xl">{TYPE_ICONS[asset.asset_type]}</span>
             <div className="text-center">
               <p className="text-slate-300 font-semibold">{ext} File</p>
-              <p className="text-slate-500 text-sm mt-1">
-                No preview available for this file type
-              </p>
+              <p className="text-slate-500 text-sm mt-1">No preview available for this file type</p>
             </div>
             <a
               href={asset.file_url}

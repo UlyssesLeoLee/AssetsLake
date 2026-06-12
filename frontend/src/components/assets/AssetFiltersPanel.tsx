@@ -24,13 +24,7 @@ const ASSET_TYPES: AssetType[] = [
   'other',
 ];
 
-const ASSET_STATUSES: AssetStatus[] = [
-  'pending',
-  'active',
-  'archived',
-  'rejected',
-  'processing',
-];
+const ASSET_STATUSES: AssetStatus[] = ['pending', 'active', 'archived', 'rejected', 'processing'];
 
 export function AssetFiltersPanel({ filters, onChange }: AssetFiltersPanelProps) {
   const hasActiveFilters =
@@ -41,9 +35,7 @@ export function AssetFiltersPanel({ filters, onChange }: AssetFiltersPanelProps)
       {/* Clear all */}
       {hasActiveFilters && (
         <button
-          onClick={() =>
-            onChange({ asset_type: '', status: '', tag: '', project_id: '' })
-          }
+          onClick={() => onChange({ asset_type: '', status: '', tag: '', project_id: '' })}
           className="flex items-center gap-1.5 text-xs text-brand-400 hover:text-brand-300 transition-colors"
         >
           <X className="w-3 h-3" />
@@ -58,14 +50,12 @@ export function AssetFiltersPanel({ filters, onChange }: AssetFiltersPanelProps)
           {ASSET_TYPES.map((type) => (
             <button
               key={type}
-              onClick={() =>
-                onChange({ asset_type: filters.asset_type === type ? '' : type })
-              }
+              onClick={() => onChange({ asset_type: filters.asset_type === type ? '' : type })}
               className={cn(
                 'text-left px-2.5 py-1.5 rounded-md text-xs transition-colors duration-100',
                 filters.asset_type === type
                   ? 'bg-brand-500/20 text-brand-300'
-                  : 'text-slate-400 hover:bg-surface-elevated hover:text-slate-200'
+                  : 'text-slate-400 hover:bg-surface-elevated hover:text-slate-200',
               )}
             >
               {ASSET_TYPE_LABELS[type]}
@@ -81,14 +71,12 @@ export function AssetFiltersPanel({ filters, onChange }: AssetFiltersPanelProps)
           {ASSET_STATUSES.map((status) => (
             <button
               key={status}
-              onClick={() =>
-                onChange({ status: filters.status === status ? '' : status })
-              }
+              onClick={() => onChange({ status: filters.status === status ? '' : status })}
               className={cn(
                 'text-left px-2.5 py-1.5 rounded-md text-xs transition-colors duration-100',
                 filters.status === status
                   ? 'bg-brand-500/20 text-brand-300'
-                  : 'text-slate-400 hover:bg-surface-elevated hover:text-slate-200'
+                  : 'text-slate-400 hover:bg-surface-elevated hover:text-slate-200',
               )}
             >
               {ASSET_STATUS_LABELS[status]}

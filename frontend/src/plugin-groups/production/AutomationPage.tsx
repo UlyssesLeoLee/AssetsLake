@@ -20,7 +20,10 @@ CREATE
 import { Sparkles } from 'lucide-react';
 
 import { useProjectAutomation } from '@/hooks/useProjectManagement';
-import { AutomationExecutionPlanPanel, AutomationRuleCards } from '@/plugin-groups/production/WorkflowAutomationPrimitives';
+import {
+  AutomationExecutionPlanPanel,
+  AutomationRuleCards,
+} from '@/plugin-groups/production/WorkflowAutomationPrimitives';
 import { buildAutomationExecutionPlan } from '@/plugin-groups/production/workflowAutomationModel';
 import {
   DEFAULT_PROJECT_ID,
@@ -35,12 +38,34 @@ export function AutomationPage() {
   const nodes = automation?.langgraph_nodes ?? [];
 
   return (
-    <PageShell title="Automation" subtitle="Rule catalog, LangGraph proposals, AI guardrails, and human approval gates">
+    <PageShell
+      title="Automation"
+      subtitle="Rule catalog, LangGraph proposals, AI guardrails, and human approval gates"
+    >
       <div className="grid gap-4 md:grid-cols-4">
-        <Metric label="Rules" value={executionPlan.rules.length} detail={`${executionPlan.enabledCount} enabled`} />
-        <Metric label="Approvals" value={executionPlan.approvalRequiredCount} detail="human gates" tone="text-amber-300" />
-        <Metric label="Data Lake Reads" value={executionPlan.dataLakeReadCount} detail="evidence checks" tone="text-emerald-300" />
-        <Metric label="Graph Coverage" value={`${executionPlan.graphCoveragePercent}%`} detail={automation?.guardrail ?? 'pending'} tone="text-cyan-300" />
+        <Metric
+          label="Rules"
+          value={executionPlan.rules.length}
+          detail={`${executionPlan.enabledCount} enabled`}
+        />
+        <Metric
+          label="Approvals"
+          value={executionPlan.approvalRequiredCount}
+          detail="human gates"
+          tone="text-amber-300"
+        />
+        <Metric
+          label="Data Lake Reads"
+          value={executionPlan.dataLakeReadCount}
+          detail="evidence checks"
+          tone="text-emerald-300"
+        />
+        <Metric
+          label="Graph Coverage"
+          value={`${executionPlan.graphCoveragePercent}%`}
+          detail={automation?.guardrail ?? 'pending'}
+          tone="text-cyan-300"
+        />
       </div>
       <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_1fr]">
         <AutomationRuleCards plan={executionPlan} />
@@ -50,14 +75,19 @@ export function AutomationPage() {
         <Panel title="LangGraph Nodes" icon={<Sparkles className="h-4 w-4" />}>
           <div className="grid gap-3 md:grid-cols-4">
             {nodes.map((node, index) => (
-              <div key={node} className="flex items-center gap-3 rounded-md border border-surface-border bg-slate-900/40 p-3">
+              <div
+                key={node}
+                className="flex items-center gap-3 rounded-md border border-surface-border bg-slate-900/40 p-3"
+              >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-500/15 text-xs font-semibold text-brand-300">
                   {index + 1}
                 </span>
                 <span className="text-sm text-slate-200">{node}</span>
               </div>
             ))}
-            {nodes.length === 0 && <div className="p-4 text-sm text-slate-500">Loading graph nodes</div>}
+            {nodes.length === 0 && (
+              <div className="p-4 text-sm text-slate-500">Loading graph nodes</div>
+            )}
           </div>
         </Panel>
       </div>

@@ -65,8 +65,14 @@ export function BurndownTrendPanel({ model }: { model: ReportDashboardModel }) {
         ))}
       </div>
       <div className="mt-3 flex gap-3 text-xs text-slate-500">
-        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-cyan-400" />Open</span>
-        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-400" />Closed</span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-sm bg-cyan-400" />
+          Open
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-sm bg-emerald-400" />
+          Closed
+        </span>
       </div>
     </Panel>
   );
@@ -88,7 +94,10 @@ export function CumulativeFlowPanel({ model }: { model: ReportDashboardModel }) 
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {model.flowSegments.map((segment) => (
-            <div key={segment.label} className="rounded-md border border-surface-border bg-slate-900/40 p-3">
+            <div
+              key={segment.label}
+              className="rounded-md border border-surface-border bg-slate-900/40 p-3"
+            >
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span className="inline-flex items-center gap-2">
                   <span className={cn('h-2 w-2 rounded-sm', segment.className)} />
@@ -105,7 +114,13 @@ export function CumulativeFlowPanel({ model }: { model: ReportDashboardModel }) 
   );
 }
 
-export function VelocityPanel({ reports, model }: { reports?: ProjectReportsSnapshot; model: ReportDashboardModel }) {
+export function VelocityPanel({
+  reports,
+  model,
+}: {
+  reports?: ProjectReportsSnapshot;
+  model: ReportDashboardModel;
+}) {
   return (
     <Panel title="Velocity" icon={<Activity className="h-4 w-4" />}>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -115,7 +130,9 @@ export function VelocityPanel({ reports, model }: { reports?: ProjectReportsSnap
         </div>
         <div className="rounded-md border border-surface-border bg-slate-900/40 p-3">
           <div className="text-xs uppercase tracking-wide text-slate-500">Predictability</div>
-          <div className="mt-1 text-xl font-semibold text-cyan-300">{model.velocityPredictability}</div>
+          <div className="mt-1 text-xl font-semibold text-cyan-300">
+            {model.velocityPredictability}
+          </div>
         </div>
       </div>
       <div className="mt-4 space-y-3">
@@ -123,10 +140,17 @@ export function VelocityPanel({ reports, model }: { reports?: ProjectReportsSnap
           <div key={point.sprint} className="space-y-1">
             <div className="flex justify-between text-xs text-slate-500">
               <span>{point.sprint}</span>
-              <span>{point.completed}/{point.committed}</span>
+              <span>
+                {point.completed}/{point.committed}
+              </span>
             </div>
             <div className="h-2 rounded-full bg-slate-800">
-              <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${Math.min(100, Math.round((point.completed / Math.max(1, point.committed)) * 100))}%` }} />
+              <div
+                className="h-2 rounded-full bg-emerald-400"
+                style={{
+                  width: `${Math.min(100, Math.round((point.completed / Math.max(1, point.committed)) * 100))}%`,
+                }}
+              />
             </div>
           </div>
         ))}
@@ -140,7 +164,10 @@ export function CycleSlaPanel({ model }: { model: ReportDashboardModel }) {
     <Panel title="Cycle Time & SLA" icon={<Timer className="h-4 w-4" />}>
       <div className="space-y-4">
         {model.cycleMetrics.map((metric) => (
-          <div key={metric.name} className="rounded-md border border-surface-border bg-slate-900/40 p-3">
+          <div
+            key={metric.name}
+            className="rounded-md border border-surface-border bg-slate-900/40 p-3"
+          >
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-slate-100">{metric.name}</div>
               <div className="text-xs text-slate-500">{metric.sample_size} samples</div>
@@ -152,12 +179,17 @@ export function CycleSlaPanel({ model }: { model: ReportDashboardModel }) {
           </div>
         ))}
         {model.slaMetrics.map((metric) => (
-          <div key={metric.name} className="rounded-md border border-surface-border bg-slate-900/40 p-3">
+          <div
+            key={metric.name}
+            className="rounded-md border border-surface-border bg-slate-900/40 p-3"
+          >
             <div className="flex items-center justify-between text-sm">
               <span className="font-semibold text-slate-100">{metric.name}</span>
               <span className="text-amber-300">{metric.compliance_percent}%</span>
             </div>
-            <div className="mt-1 text-xs text-slate-500">{metric.breached}/{metric.total} breached, target {metric.target_hours}h</div>
+            <div className="mt-1 text-xs text-slate-500">
+              {metric.breached}/{metric.total} breached, target {metric.target_hours}h
+            </div>
           </div>
         ))}
       </div>
@@ -165,7 +197,13 @@ export function CycleSlaPanel({ model }: { model: ReportDashboardModel }) {
   );
 }
 
-export function DeliveryReadinessPanel({ reports, model }: { reports?: ProjectReportsSnapshot; model: ReportDashboardModel }) {
+export function DeliveryReadinessPanel({
+  reports,
+  model,
+}: {
+  reports?: ProjectReportsSnapshot;
+  model: ReportDashboardModel;
+}) {
   const readiness = reports?.delivery_readiness;
 
   return (
@@ -174,14 +212,20 @@ export function DeliveryReadinessPanel({ reports, model }: { reports?: ProjectRe
         <div className="flex items-center justify-between">
           <div>
             <div className="text-xs uppercase tracking-wide text-slate-500">Readiness</div>
-            <div className="mt-1 text-2xl font-semibold text-emerald-300">{model.readinessPercent}%</div>
+            <div className="mt-1 text-2xl font-semibold text-emerald-300">
+              {model.readinessPercent}%
+            </div>
           </div>
-          <span className="badge border-brand-500/30 bg-brand-500/10 text-brand-300">{model.readinessStatus}</span>
+          <span className="badge border-brand-500/30 bg-brand-500/10 text-brand-300">
+            {model.readinessStatus}
+          </span>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-md bg-slate-950/40 p-3">
             <div className="text-slate-500">Dependencies</div>
-            <div className="mt-1 font-semibold text-slate-100">{readiness?.dependency_count ?? 0}</div>
+            <div className="mt-1 font-semibold text-slate-100">
+              {readiness?.dependency_count ?? 0}
+            </div>
           </div>
           <div className="rounded-md bg-slate-950/40 p-3">
             <div className="text-slate-500">Blocked</div>
@@ -189,7 +233,9 @@ export function DeliveryReadinessPanel({ reports, model }: { reports?: ProjectRe
           </div>
           <div className="rounded-md bg-slate-950/40 p-3">
             <div className="text-slate-500">Missing Evidence</div>
-            <div className="mt-1 font-semibold text-slate-100">{readiness?.missing_evidence_count ?? 0}</div>
+            <div className="mt-1 font-semibold text-slate-100">
+              {readiness?.missing_evidence_count ?? 0}
+            </div>
           </div>
           <div className="rounded-md bg-slate-950/40 p-3">
             <div className="text-slate-500">Epics</div>

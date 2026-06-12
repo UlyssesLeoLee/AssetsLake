@@ -58,7 +58,7 @@ function buildSecurityAuditQueryString(query: SecurityAuditQuery = {}): string {
 export const securityAuditApi = {
   list: async (query: SecurityAuditQuery = {}): Promise<SecurityAuditEvent[]> => {
     const { data } = await apiClient.get<ApiResponse<SecurityAuditEvent[]>>(
-      `/api/security/audit-events${buildSecurityAuditQueryString(query)}`
+      `/api/security/audit-events${buildSecurityAuditQueryString(query)}`,
     );
     return data.data;
   },

@@ -41,7 +41,15 @@ CREATE
 */
 
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, BrainCircuit, CheckCircle2, Database, GitBranch, ShieldCheck, Sparkles } from 'lucide-react';
+import {
+  ArrowRight,
+  BrainCircuit,
+  CheckCircle2,
+  Database,
+  GitBranch,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import type {
@@ -98,7 +106,9 @@ export function EmergentCommandPanel({ model }: { model: EmergentOperatingModel 
                 <CheckCircle2 className="h-4 w-4 text-matcha-300" />
                 {primaryRecommendation.title}
               </div>
-              <div className="mt-2 text-xs leading-relaxed text-slate-400">{primaryRecommendation.action}</div>
+              <div className="mt-2 text-xs leading-relaxed text-slate-400">
+                {primaryRecommendation.action}
+              </div>
             </div>
           )}
         </div>
@@ -114,7 +124,9 @@ export function EmergentCommandPanel({ model }: { model: EmergentOperatingModel 
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-slate-100">One-stop Decisions</h2>
-                <p className="mt-1 text-xs text-slate-500">Data lake, project flow, and AI actions in one loop.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Data lake, project flow, and AI actions in one loop.
+                </p>
               </div>
               <span className="rounded-md border border-surface-border bg-surface px-2 py-1 text-xs text-brand-200">
                 {model.riskCount} signals
@@ -122,7 +134,11 @@ export function EmergentCommandPanel({ model }: { model: EmergentOperatingModel 
             </div>
             <div className="mt-3 divide-y divide-surface-border overflow-hidden rounded-lg border border-surface-border bg-surface-elevated">
               {model.recommendations.map((recommendation, index) => (
-                <RecommendationRow key={recommendation.id} recommendation={recommendation} index={index} />
+                <RecommendationRow
+                  key={recommendation.id}
+                  recommendation={recommendation}
+                  index={index}
+                />
               ))}
             </div>
           </div>
@@ -139,13 +155,13 @@ function ModePill({ stage, active }: { stage: EmergentLoopStage; active: boolean
     <div
       className={cn(
         'flex items-center gap-3 rounded-lg border px-3 py-2',
-        active ? 'border-brand-300/50 bg-brand-500/15' : 'border-surface-border bg-surface/55'
+        active ? 'border-brand-300/50 bg-brand-500/15' : 'border-surface-border bg-surface/55',
       )}
     >
       <span
         className={cn(
           'flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
-          active ? 'bg-brand-400/20 text-brand-100' : 'bg-surface-elevated text-slate-400'
+          active ? 'bg-brand-400/20 text-brand-100' : 'bg-surface-elevated text-slate-400',
         )}
       >
         <Icon className="h-4 w-4" />
@@ -168,7 +184,12 @@ function SignalTile({ signal }: { signal: EmergentSignal }) {
     <div className="rounded-lg border border-surface-border bg-surface-elevated p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-md', sourceToneClass(signal.source))}>
+          <span
+            className={cn(
+              'flex h-8 w-8 shrink-0 items-center justify-center rounded-md',
+              sourceToneClass(signal.source),
+            )}
+          >
             <Icon className="h-4 w-4" />
           </span>
           <div className="min-w-0">
@@ -176,13 +197,23 @@ function SignalTile({ signal }: { signal: EmergentSignal }) {
             <div className="mt-0.5 text-xs text-slate-500">{signal.detail}</div>
           </div>
         </div>
-        <span className={cn('rounded-md border px-2 py-0.5 font-mono text-xs', toneClass(signal.tone))}>{signal.value}</span>
+        <span
+          className={cn('rounded-md border px-2 py-0.5 font-mono text-xs', toneClass(signal.tone))}
+        >
+          {signal.value}
+        </span>
       </div>
     </div>
   );
 }
 
-function RecommendationRow({ recommendation, index }: { recommendation: EmergentRecommendation; index: number }) {
+function RecommendationRow({
+  recommendation,
+  index,
+}: {
+  recommendation: EmergentRecommendation;
+  index: number;
+}) {
   return (
     <div className="flex gap-3 p-3">
       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-surface-border bg-surface font-mono text-xs text-slate-400">
@@ -191,7 +222,12 @@ function RecommendationRow({ recommendation, index }: { recommendation: Emergent
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-slate-100">{recommendation.title}</span>
-          <span className={cn('rounded-md border px-2 py-0.5 text-xs capitalize', toneClass(recommendation.tone))}>
+          <span
+            className={cn(
+              'rounded-md border px-2 py-0.5 text-xs capitalize',
+              toneClass(recommendation.tone),
+            )}
+          >
             {recommendation.mode}
           </span>
         </div>
@@ -202,7 +238,9 @@ function RecommendationRow({ recommendation, index }: { recommendation: Emergent
         <div className="mt-1 text-xs text-slate-500">{recommendation.impact}</div>
       </div>
       <div className="hidden shrink-0 text-right sm:block">
-        <div className="font-mono text-xs text-slate-400">{Math.round(recommendation.confidence * 100)}%</div>
+        <div className="font-mono text-xs text-slate-400">
+          {Math.round(recommendation.confidence * 100)}%
+        </div>
         <div className="mt-0.5 text-xs text-slate-600">confidence</div>
       </div>
     </div>

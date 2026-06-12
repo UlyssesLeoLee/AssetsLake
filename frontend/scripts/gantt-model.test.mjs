@@ -149,8 +149,14 @@ test('gantt timeline model lays out blocking path', () => {
   assert.equal(rowsById.get('issue-d').scheduleRisk, 'unscheduled');
   assert.equal(model.formatGanttDateRange('2026-05-01', '2026-05-04'), '2026-05-01 to 2026-05-04');
 
-  const reversed = model.normalizeBlockingEdge(dependencies[1], new Set(items.map((item) => item.id)));
+  const reversed = model.normalizeBlockingEdge(
+    dependencies[1],
+    new Set(items.map((item) => item.id)),
+  );
   assert.equal(reversed.fromIssueId, 'issue-b');
   assert.equal(reversed.toIssueId, 'issue-c');
-  assert.equal(model.normalizeBlockingEdge(dependencies[2], new Set(items.map((item) => item.id))), undefined);
+  assert.equal(
+    model.normalizeBlockingEdge(dependencies[2], new Set(items.map((item) => item.id))),
+    undefined,
+  );
 });

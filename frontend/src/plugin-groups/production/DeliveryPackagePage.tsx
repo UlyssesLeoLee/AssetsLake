@@ -43,14 +43,15 @@ export function DeliveryPackagePage() {
   const { data: assetsData, isLoading } = useAssets({ status: 'active', page_size: 100 });
   const createPackage = useCreateDeliveryPackage();
   const submitPackage = useMutation({
-    mutationFn: (id: string) => productionApi.deliveryPackages.submit(id, { actor: 'delivery-manager' }),
+    mutationFn: (id: string) =>
+      productionApi.deliveryPackages.submit(id, { actor: 'delivery-manager' }),
   });
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [name, setName] = useState('Approved Art Delivery');
 
   const toggleAsset = (assetId: string) => {
     setSelectedAssetIds((prev) =>
-      prev.includes(assetId) ? prev.filter((id) => id !== assetId) : [...prev, assetId]
+      prev.includes(assetId) ? prev.filter((id) => id !== assetId) : [...prev, assetId],
     );
   };
 
@@ -83,7 +84,11 @@ export function DeliveryPackagePage() {
         <section className="rounded-lg border border-surface-border bg-surface-secondary">
           <div className="border-b border-surface-border p-4">
             <label className="label">Package Name</label>
-            <input className="input" value={name} onChange={(event) => setName(event.target.value)} />
+            <input
+              className="input"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
           </div>
           <div className="divide-y divide-surface-border">
             {(assetsData?.data ?? []).map((asset) => (
@@ -135,7 +140,8 @@ export function DeliveryPackagePage() {
               </button>
               {submitPackage.data && (
                 <div className="mt-3 rounded-md border border-brand-300/30 bg-brand-400/10 px-3 py-2 text-xs text-brand-100">
-                  Submitted by {submitPackage.data.submitted_by ?? 'delivery-manager'} / {submitPackage.data.status}
+                  Submitted by {submitPackage.data.submitted_by ?? 'delivery-manager'} /{' '}
+                  {submitPackage.data.status}
                 </div>
               )}
             </section>

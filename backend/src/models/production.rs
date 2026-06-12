@@ -16,29 +16,33 @@ CREATE
   (c11:Class {name: "IssueSummary", type: "class", language: "rust"}),
   (c12:Class {name: "IssueComment", type: "class", language: "rust"}),
   (c13:Class {name: "IssueStatusHistory", type: "class", language: "rust"}),
-  (c14:Class {name: "IssueAssetSummary", type: "class", language: "rust"}),
-  (c15:Class {name: "IssueWorkLog", type: "class", language: "rust"}),
-  (c16:Class {name: "ReviewRound", type: "class", language: "rust"}),
-  (c17:Class {name: "ReviewComment", type: "class", language: "rust"}),
-  (c18:Class {name: "Milestone", type: "class", language: "rust"}),
-  (c19:Class {name: "DeliveryPackage", type: "class", language: "rust"}),
-  (c20:Class {name: "DeliveryPackageAsset", type: "class", language: "rust"}),
-  (c21:Class {name: "CreateIssueRequest", type: "class", language: "rust"}),
-  (c22:Class {name: "UpdateIssueRequest", type: "class", language: "rust"}),
-  (c23:Class {name: "IssueQuery", type: "class", language: "rust"}),
-  (c24:Class {name: "TransitionIssueRequest", type: "class", language: "rust"}),
-  (c25:Class {name: "CreateIssueCommentRequest", type: "class", language: "rust"}),
-  (c26:Class {name: "CreateIssueWorkLogRequest", type: "class", language: "rust"}),
-  (c27:Class {name: "AttachIssueAssetRequest", type: "class", language: "rust"}),
-  (c28:Class {name: "CreateReviewRequest", type: "class", language: "rust"}),
-  (c29:Class {name: "ApproveIssueRequest", type: "class", language: "rust"}),
-  (c30:Class {name: "RequestRevisionRequest", type: "class", language: "rust"}),
-  (c31:Class {name: "MilestoneQuery", type: "class", language: "rust"}),
-  (c32:Class {name: "CreateDeliveryPackageRequest", type: "class", language: "rust"}),
-  (c33:Class {name: "SubmitDeliveryPackageRequest", type: "class", language: "rust"}),
+  (c14:Class {name: "IssueBoardSyncActivity", type: "class", language: "rust"}),
+  (c15:Class {name: "IssueBoardSyncSnapshot", type: "class", language: "rust"}),
+  (c16:Class {name: "IssueAssetSummary", type: "class", language: "rust"}),
+  (c17:Class {name: "IssueWorkLog", type: "class", language: "rust"}),
+  (c18:Class {name: "ReviewRound", type: "class", language: "rust"}),
+  (c19:Class {name: "ReviewComment", type: "class", language: "rust"}),
+  (c20:Class {name: "Milestone", type: "class", language: "rust"}),
+  (c21:Class {name: "DeliveryPackage", type: "class", language: "rust"}),
+  (c22:Class {name: "DeliveryPackageAsset", type: "class", language: "rust"}),
+  (c23:Class {name: "CreateIssueRequest", type: "class", language: "rust"}),
+  (c24:Class {name: "UpdateIssueRequest", type: "class", language: "rust"}),
+  (c25:Class {name: "IssueQuery", type: "class", language: "rust"}),
+  (c26:Class {name: "IssueBoardSyncQuery", type: "class", language: "rust"}),
+  (c27:Class {name: "TransitionIssueRequest", type: "class", language: "rust"}),
+  (c28:Class {name: "CreateIssueCommentRequest", type: "class", language: "rust"}),
+  (c29:Class {name: "CreateIssueWorkLogRequest", type: "class", language: "rust"}),
+  (c30:Class {name: "AttachIssueAssetRequest", type: "class", language: "rust"}),
+  (c31:Class {name: "CreateReviewRequest", type: "class", language: "rust"}),
+  (c32:Class {name: "ApproveIssueRequest", type: "class", language: "rust"}),
+  (c33:Class {name: "RequestRevisionRequest", type: "class", language: "rust"}),
+  (c34:Class {name: "MilestoneQuery", type: "class", language: "rust"}),
+  (c35:Class {name: "CreateDeliveryPackageRequest", type: "class", language: "rust"}),
+  (c36:Class {name: "SubmitDeliveryPackageRequest", type: "class", language: "rust"}),
   (fn1:Function {name: "IssueQuery::page", type: "function", language: "rust", signature: "fn page(&self) -> i64"}),
   (fn2:Function {name: "IssueQuery::page_size", type: "function", language: "rust", signature: "fn page_size(&self) -> i64"}),
   (fn3:Function {name: "IssueQuery::offset", type: "function", language: "rust", signature: "fn offset(&self) -> i64"}),
+  (fn4:Function {name: "IssueBoardSyncQuery::limit", type: "function", language: "rust", signature: "fn limit(&self) -> i64"}),
   (v1:Variable {name: "page", type: "variable"}),
   (v2:Variable {name: "page_size", type: "variable"}),
   (f)-[:CONTAINS]->(m),
@@ -75,9 +79,13 @@ CREATE
   (m)-[:CONTAINS]->(c31),
   (m)-[:CONTAINS]->(c32),
   (m)-[:CONTAINS]->(c33),
-  (c22)-[:HAS_METHOD]->(fn1),
-  (c22)-[:HAS_METHOD]->(fn2),
-  (c22)-[:HAS_METHOD]->(fn3),
+  (m)-[:CONTAINS]->(c34),
+  (m)-[:CONTAINS]->(c35),
+  (m)-[:CONTAINS]->(c36),
+  (c25)-[:HAS_METHOD]->(fn1),
+  (c25)-[:HAS_METHOD]->(fn2),
+  (c25)-[:HAS_METHOD]->(fn3),
+  (c26)-[:HAS_METHOD]->(fn4),
   (fn1)-[:USES]->(v1),
   (fn2)-[:USES]->(v2),
   (fn3)-[:CALLS]->(fn1),
@@ -289,6 +297,27 @@ pub struct IssueStatusHistory {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct IssueBoardSyncActivity {
+    pub id: Uuid,
+    pub issue_id: Uuid,
+    pub issue_key: String,
+    pub title: String,
+    pub from_status: Option<IssueStatus>,
+    pub to_status: IssueStatus,
+    pub actor: String,
+    pub created_at: DateTime<Utc>,
+    pub issue_version: i32,
+    pub issue_updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IssueBoardSyncSnapshot {
+    pub cursor: DateTime<Utc>,
+    pub changed_count: i64,
+    pub recent_activity: Vec<IssueBoardSyncActivity>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct IssueAssetSummary {
     pub id: Uuid,
     pub name: String,
@@ -470,6 +499,18 @@ impl IssueQuery {
 
     pub fn offset(&self) -> i64 {
         (self.page() - 1) * self.page_size()
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IssueBoardSyncQuery {
+    pub since: Option<DateTime<Utc>>,
+    pub limit: Option<i64>,
+}
+
+impl IssueBoardSyncQuery {
+    pub fn limit(&self) -> i64 {
+        self.limit.unwrap_or(6).clamp(1, 20)
     }
 }
 
