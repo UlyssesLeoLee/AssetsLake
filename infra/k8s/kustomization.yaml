@@ -50,3 +50,4 @@ configMapGenerator:
       - migrations/018_wiki_design_requirements.sql
       - migrations/019_people_intelligence.sql
       - migrations/020_people_event_consumer.sql
+      - migrations/021_app_assistant_conversations.sql

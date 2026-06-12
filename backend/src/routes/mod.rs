@@ -274,6 +274,7 @@ fn configure_reporting(cfg: &mut web::ServiceConfig) {
     cfg.service(project_management_handler::reports_snapshot)
         .service(management_handler::management_intelligence)
         .service(management_handler::management_chat)
+        .service(management_handler::management_chat_history)
         .service(management_handler::management_ai_test)
         .service(management_handler::management_autopilot_plan)
         .service(management_handler::management_rag_search)

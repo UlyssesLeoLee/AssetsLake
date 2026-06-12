@@ -8,6 +8,8 @@ CREATE
   (c7:Class {name: "AiChatRequest", type: "class", language: "rust", signature: "struct AiChatRequest"}),
   (c8:Class {name: "AiChatResponse", type: "class", language: "rust", signature: "struct AiChatResponse"}),
   (c9:Class {name: "AiChatAction", type: "class", language: "rust", signature: "struct AiChatAction"}),
+  (c11:Class {name: "PeopleAssistantContext", type: "class", language: "rust", signature: "struct PeopleAssistantContext"}),
+  (c12:Class {name: "AiChatHistoryQuery", type: "class", language: "rust", signature: "struct AiChatHistoryQuery"}),
   (c10:Class {name: "ReplicaActionResponse", type: "class", language: "rust", signature: "struct ReplicaActionResponse"}),
   (c3:Class {name: "LangGraphNode", type: "class", language: "rust", signature: "struct LangGraphNode"}),
   (c4:Class {name: "DataLakeFeed", type: "class", language: "rust", signature: "struct DataLakeFeed"}),
@@ -24,6 +26,9 @@ CREATE
   (fn17:Function {name: "format_rag_context", type: "function", language: "rust", signature: "fn format_rag_context(rag_context: Option<&RagSearchResponse>) -> String"}),
   (fn18:Function {name: "management_replica_action", type: "function", language: "rust", signature: "async fn management_replica_action(state: web::Data<AppState>, req: HttpRequest, body: web::Json<AiReplicaActionInput>) -> Result<HttpResponse, AppError>"}),
   (fn19:Function {name: "is_replica_write_scope", type: "function", language: "rust", signature: "fn is_replica_write_scope(req: &HttpRequest) -> bool"}),
+  (fn20:Function {name: "management_chat_history", type: "function", language: "rust"}),
+  (fn21:Function {name: "load_people_assistant_context", type: "function", language: "rust"}),
+  (fn22:Function {name: "employee_langgraph_nodes", type: "function", language: "rust"}),
   (fn2:Function {name: "build_ai_management_intelligence", type: "function", language: "rust", signature: "async fn build_ai_management_intelligence(config: AiProviderConfig) -> ManagementIntelligenceResponse"}),
   (fn3:Function {name: "build_management_intelligence", type: "function", language: "rust", signature: "fn build_management_intelligence(ai_status: AiCallStatus) -> ManagementIntelligenceResponse"}),
   (fn4:Function {name: "build_response", type: "function", language: "rust", signature: "fn build_response(payload: ManagementIntelligencePayload, ai_status: AiCallStatus) -> ManagementIntelligenceResponse"}),
@@ -48,6 +53,8 @@ CREATE
   (m)-[:CONTAINS]->(c8),
   (m)-[:CONTAINS]->(c9),
   (m)-[:CONTAINS]->(c10),
+  (m)-[:CONTAINS]->(c11),
+  (m)-[:CONTAINS]->(c12),
   (m)-[:CONTAINS]->(fn1),
   (m)-[:CONTAINS]->(fn10),
   (m)-[:CONTAINS]->(fn11),
@@ -59,6 +66,9 @@ CREATE
   (m)-[:CONTAINS]->(fn17),
   (m)-[:CONTAINS]->(fn18),
   (m)-[:CONTAINS]->(fn19),
+  (m)-[:CONTAINS]->(fn20),
+  (m)-[:CONTAINS]->(fn21),
+  (m)-[:CONTAINS]->(fn22),
   (m)-[:CONTAINS]->(fn2),
   (m)-[:CONTAINS]->(fn3),
   (m)-[:CONTAINS]->(fn4),
@@ -107,9 +117,12 @@ use std::time::Instant;
 use actix_web::{get, post, web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use tokio::time::{timeout, Duration as TokioDuration};
+use uuid::Uuid;
 
 use crate::{
     errors::{ApiResponse, AppError},
+    interfaces::{employee_intelligence_if::EmployeeIntelligenceIf, AppActor},
+    models::people_intelligence::{EmployeeEvaluation, EmployeeProfile},
     services::{
         ai_provider_service::{AiProviderConfig, AiProviderService},
         ai_replica_action_service::{AiReplicaActionInput, AiReplicaActionRecord},
@@ -165,6 +178,20 @@ pub struct AiChatRequest {
     context: Option<String>,
     #[serde(default)]
     max_tokens: Option<u16>,
+    #[serde(default)]
+    conversation_id: Option<Uuid>,
+    #[serde(default)]
+    app_id: Option<String>,
+    #[serde(default)]
+    route_id: Option<String>,
+    #[serde(default)]
+    pathname: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AiChatHistoryQuery {
+    app_id: Option<String>,
+    limit: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -198,8 +225,11 @@ struct AiAutopilotSignalSnapshot {
 
 #[derive(Debug, Serialize)]
 struct AiChatResponse {
+    conversation_id: Uuid,
     message: String,
     actions: Vec<AiChatAction>,
+    langgraph_nodes: Vec<LangGraphNode>,
+    people_context: PeopleAssistantContext,
     ai_status: AiCallStatus,
 }
 
@@ -295,6 +325,43 @@ struct AiChatAction {
     label: String,
     action_id: String,
     kind: String,
+    description: String,
+    href: Option<String>,
+    requires_human_approval: bool,
+    status: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct PeopleAssistantContext {
+    available: bool,
+    job_title: Option<String>,
+    level: Option<String>,
+    languages: Vec<String>,
+    availability_status: Option<String>,
+    workload_percent: Option<i32>,
+    capabilities: Vec<PeopleCapabilityContext>,
+    preferred_project_types: Vec<String>,
+    evidence_sample_size: i32,
+    project_count: i32,
+    confidence: f64,
+    emergent_signals: Vec<PeopleSignalContext>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct PeopleCapabilityContext {
+    name: String,
+    kind: String,
+    proficiency: i16,
+    verification_status: String,
+    evidence_count: i32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct PeopleSignalContext {
+    signal_type: String,
+    title: String,
+    confidence: f64,
+    evidence_count: i32,
 }
 
 #[derive(Debug, Serialize)]
@@ -379,19 +446,84 @@ pub async fn management_chat(
     state: web::Data<AppState>,
     req: HttpRequest,
     body: web::Json<AiChatRequest>,
-) -> HttpResponse {
+) -> Result<HttpResponse, AppError> {
     let chat_request = body.into_inner();
+    let session = state.auth_service.authenticate_request(&req).await?;
+    let actor = AppActor::from_session(&session);
     let ai_config = AiProviderConfig::from_headers(req.headers());
     let rag_context = load_rag_context(&state, ai_config.as_ref(), &chat_request).await;
-    let response = match ai_config {
-        Some(config) => build_ai_chat_response(config, &chat_request, rag_context.as_ref()).await,
+    let people_context = load_people_assistant_context(&state, &actor).await;
+    let langgraph_nodes = employee_langgraph_nodes(&chat_request, &people_context);
+    let mut response = match ai_config {
+        Some(config) => {
+            build_ai_chat_response(
+                config,
+                &chat_request,
+                rag_context.as_ref(),
+                &people_context,
+                &langgraph_nodes,
+            )
+            .await
+        }
         None => build_fallback_chat_response(
             &chat_request,
             AiCallStatus::not_configured(),
             rag_context.as_ref(),
+            people_context,
+            langgraph_nodes,
         ),
     };
-    HttpResponse::Ok().json(ApiResponse::ok(response))
+    response
+        .actions
+        .retain(|action| assistant_action_allowed(&actor.role, action));
+
+    let app_id = normalized_context_value(chat_request.app_id.as_deref(), "unified-platform");
+    let route_id = normalized_context_value(chat_request.route_id.as_deref(), "unknown-route");
+    let pathname = normalized_context_value(chat_request.pathname.as_deref(), "/");
+    let metadata = serde_json::json!({
+        "actions": &response.actions,
+        "langgraph_nodes": &response.langgraph_nodes,
+        "people_context": &response.people_context,
+        "ai_status": &response.ai_status,
+    });
+    match state
+        .app_assistant_service
+        .record_exchange(
+            session.user.id,
+            chat_request.conversation_id,
+            &app_id,
+            &route_id,
+            &pathname,
+            chat_request.message.trim(),
+            &response.message,
+            metadata,
+        )
+        .await
+    {
+        Ok(conversation_id) => response.conversation_id = conversation_id,
+        Err(error) => tracing::warn!(error = %error, "assistant history persistence failed"),
+    }
+
+    Ok(HttpResponse::Ok().json(ApiResponse::ok(response)))
+}
+
+/// GET /api/management/chat/history
+#[get("/api/management/chat/history")]
+pub async fn management_chat_history(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    query: web::Query<AiChatHistoryQuery>,
+) -> Result<HttpResponse, AppError> {
+    let session = state.auth_service.authenticate_request(&req).await?;
+    let history = state
+        .app_assistant_service
+        .list_history(
+            session.user.id,
+            query.app_id.as_deref(),
+            query.limit.unwrap_or(8),
+        )
+        .await?;
+    Ok(HttpResponse::Ok().json(ApiResponse::ok(history)))
 }
 
 /// POST /api/management/ai/test
@@ -614,9 +746,11 @@ async fn build_ai_chat_response(
     config: AiProviderConfig,
     request: &AiChatRequest,
     rag_context: Option<&RagSearchResponse>,
+    people_context: &PeopleAssistantContext,
+    langgraph_nodes: &[LangGraphNode],
 ) -> AiChatResponse {
     let service = AiProviderService::new();
-    let prompt = build_chat_prompt(request, rag_context);
+    let prompt = build_chat_prompt(request, rag_context, people_context, langgraph_nodes);
     let max_tokens = request.max_tokens.unwrap_or(420).clamp(8, 420);
     let result = if max_tokens == 420 {
         service
@@ -629,14 +763,19 @@ async fn build_ai_chat_response(
     };
     match result {
         Ok(message) => AiChatResponse {
+            conversation_id: request.conversation_id.unwrap_or_else(Uuid::new_v4),
             message,
-            actions: default_chat_actions(),
+            actions: contextual_chat_actions(request),
+            langgraph_nodes: langgraph_nodes.to_vec(),
+            people_context: people_context.clone(),
             ai_status: AiCallStatus::used(&config),
         },
         Err(error) => build_fallback_chat_response(
             request,
             AiCallStatus::failed(&config, error.to_string()),
             rag_context,
+            people_context.clone(),
+            langgraph_nodes.to_vec(),
         ),
     }
 }
@@ -1314,11 +1453,21 @@ fn build_fallback_chat_response(
     request: &AiChatRequest,
     ai_status: AiCallStatus,
     rag_context: Option<&RagSearchResponse>,
+    people_context: PeopleAssistantContext,
+    langgraph_nodes: Vec<LangGraphNode>,
 ) -> AiChatResponse {
     let trimmed = request.message.trim();
     let memory_count = rag_context
         .map(|context| context.matches.len())
         .unwrap_or(0);
+    let people_hint = if people_context.available {
+        format!(
+            " I also matched {} controlled capability tags against the current app context.",
+            people_context.capabilities.len()
+        )
+    } else {
+        String::new()
+    };
     let focus = if trimmed.is_empty() {
         "Tell me what you want to control, then choose a guarded action button."
     } else if memory_count > 0 {
@@ -1328,8 +1477,11 @@ fn build_fallback_chat_response(
     };
 
     AiChatResponse {
-        message: focus.to_string(),
-        actions: default_chat_actions(),
+        conversation_id: request.conversation_id.unwrap_or_else(Uuid::new_v4),
+        message: format!("{}{}", focus, people_hint),
+        actions: contextual_chat_actions(request),
+        langgraph_nodes,
+        people_context,
         ai_status,
     }
 }
@@ -1367,11 +1519,21 @@ async fn load_rag_context(
     }
 }
 
-fn build_chat_prompt(request: &AiChatRequest, rag_context: Option<&RagSearchResponse>) -> String {
+fn build_chat_prompt(
+    request: &AiChatRequest,
+    rag_context: Option<&RagSearchResponse>,
+    people_context: &PeopleAssistantContext,
+    langgraph_nodes: &[LangGraphNode],
+) -> String {
     format!(
-        "User message:\n{}\n\nCurrent product context:\n{}\n\nRelevant operation memory:\n{}",
+        "User message:\n{}\n\nCurrent app:\n{} / {} / {}\n\nCurrent product context:\n{}\n\nControlled employee context (PII removed):\n{}\n\nLangGraph execution plan:\n{}\n\nRelevant operation memory:\n{}",
         request.message.trim(),
+        request.app_id.as_deref().unwrap_or("unified-platform"),
+        request.route_id.as_deref().unwrap_or("unknown-route"),
+        request.pathname.as_deref().unwrap_or("/"),
         request.context.as_deref().unwrap_or("No context supplied."),
+        serde_json::to_string(people_context).unwrap_or_else(|_| "{}".to_string()),
+        serde_json::to_string(langgraph_nodes).unwrap_or_else(|_| "[]".to_string()),
         format_rag_context(rag_context)
     )
 }
@@ -1404,43 +1566,368 @@ fn default_chat_actions() -> Vec<AiChatAction> {
             label: "Risk Comment".to_string(),
             action_id: "comment-risk".to_string(),
             kind: "issue.comment".to_string(),
+            description: "Review a replica-only risk comment before recording it.".to_string(),
+            href: Some("/ai-control".to_string()),
+            requires_human_approval: true,
+            status: "requires_approval".to_string(),
         },
         AiChatAction {
             label: "Review Transition".to_string(),
             action_id: "transition-review".to_string(),
             kind: "issue.transition".to_string(),
+            description: "Open the guarded issue transition workflow.".to_string(),
+            href: Some("/ai-control".to_string()),
+            requires_human_approval: true,
+            status: "requires_approval".to_string(),
         },
         AiChatAction {
             label: "AI Work Log".to_string(),
             action_id: "log-ai-work".to_string(),
             kind: "issue.work_log".to_string(),
+            description: "Review an AI-authored work-log proposal.".to_string(),
+            href: Some("/ai-control".to_string()),
+            requires_human_approval: true,
+            status: "requires_approval".to_string(),
         },
         AiChatAction {
             label: "Asset Evidence Update".to_string(),
             action_id: "update-asset-evidence".to_string(),
             kind: "asset.update".to_string(),
+            description: "Open the evidence update proposal in AI Control.".to_string(),
+            href: Some("/ai-control".to_string()),
+            requires_human_approval: true,
+            status: "requires_approval".to_string(),
         },
         AiChatAction {
             label: "Lake Index".to_string(),
             action_id: "index-data-lake".to_string(),
             kind: "asset.index".to_string(),
+            description: "Inspect the data-lake indexing action.".to_string(),
+            href: Some("/ai-control".to_string()),
+            requires_human_approval: true,
+            status: "requires_approval".to_string(),
         },
         AiChatAction {
             label: "Version Gate".to_string(),
             action_id: "version-gate".to_string(),
             kind: "asset.version_gate".to_string(),
+            description: "Open the version gate review workflow.".to_string(),
+            href: Some("/ai-control".to_string()),
+            requires_human_approval: true,
+            status: "requires_approval".to_string(),
         },
         AiChatAction {
             label: "Open Issue".to_string(),
             action_id: "create-issue-from-asset".to_string(),
             kind: "issue.create_from_asset".to_string(),
+            description: "Review issue creation from governed asset evidence.".to_string(),
+            href: Some("/ai-control".to_string()),
+            requires_human_approval: true,
+            status: "requires_approval".to_string(),
         },
         AiChatAction {
             label: "Attach Evidence".to_string(),
             action_id: "attach-asset-evidence".to_string(),
             kind: "issue.attach_asset".to_string(),
+            description: "Review an asset-evidence attachment proposal.".to_string(),
+            href: Some("/ai-control".to_string()),
+            requires_human_approval: true,
+            status: "requires_approval".to_string(),
         },
     ]
+}
+
+fn contextual_chat_actions(request: &AiChatRequest) -> Vec<AiChatAction> {
+    let message = request.message.to_lowercase();
+    let mut actions = vec![route_action(
+        "Match People",
+        "search-people",
+        "people.search",
+        "/people-intelligence",
+        "Use verified capability tags, evidence confidence, availability, and project fit.",
+    )];
+
+    if contains_any(&message, &["wiki", "知识", "文档", "协作编辑"]) {
+        actions.push(route_action(
+            "Open Wiki",
+            "open-wiki",
+            "wiki.navigate",
+            "/wiki",
+            "Continue in the collaborative knowledge workspace.",
+        ));
+    }
+    if contains_any(&message, &["requirement", "brief", "需求", "设计要求"]) {
+        actions.push(route_action(
+            "Open Requirements",
+            "open-design-requirements",
+            "design_requirement.navigate",
+            "/design-requirements",
+            "Open asset-bound design requirements with the current context.",
+        ));
+    }
+    if contains_any(&message, &["asset", "version", "素材", "资产", "版本"]) {
+        actions.push(route_action(
+            "Open Assets",
+            "open-assets",
+            "asset.navigate",
+            "/assets",
+            "Inspect governed assets and version evidence.",
+        ));
+    }
+    if contains_any(
+        &message,
+        &["issue", "task", "workflow", "任务", "工单", "流程", "派单"],
+    ) {
+        actions.push(route_action(
+            "Open Work Queue",
+            "open-issues",
+            "issue.navigate",
+            "/issues",
+            "Open the production work queue with the assistant context preserved.",
+        ));
+    }
+
+    if contains_any(
+        &message,
+        &[
+            "create",
+            "update",
+            "assign",
+            "transition",
+            "approve",
+            "deliver",
+            "创建",
+            "修改",
+            "分配",
+            "审批",
+            "交付",
+            "执行",
+        ],
+    ) {
+        actions.extend(default_chat_actions().into_iter().take(2));
+    }
+
+    if actions.len() == 1 {
+        if let Some(pathname) = request
+            .pathname
+            .as_deref()
+            .filter(|value| value.starts_with('/') && *value != "/")
+        {
+            actions.push(route_action(
+                "Focus Current App",
+                "focus-current-app",
+                "app.focus",
+                pathname,
+                "Keep the command scoped to the current app and selected route.",
+            ));
+        }
+    }
+
+    actions.truncate(4);
+    actions
+}
+
+fn route_action(
+    label: &str,
+    action_id: &str,
+    kind: &str,
+    href: &str,
+    description: &str,
+) -> AiChatAction {
+    AiChatAction {
+        label: label.to_string(),
+        action_id: action_id.to_string(),
+        kind: kind.to_string(),
+        description: description.to_string(),
+        href: Some(href.to_string()),
+        requires_human_approval: false,
+        status: "ready".to_string(),
+    }
+}
+
+fn contains_any(message: &str, values: &[&str]) -> bool {
+    values.iter().any(|value| message.contains(value))
+}
+
+fn assistant_action_allowed(role: &str, action: &AiChatAction) -> bool {
+    let role = role.trim().to_ascii_lowercase().replace('_', "-");
+    if role == "admin" {
+        return true;
+    }
+    if action.kind == "people.search" {
+        return matches!(
+            role.as_str(),
+            "producer" | "artist" | "reviewer" | "manager"
+        );
+    }
+    if action.requires_human_approval || action.href.as_deref() == Some("/ai-control") {
+        return role == "producer";
+    }
+    true
+}
+
+async fn load_people_assistant_context(
+    state: &web::Data<AppState>,
+    actor: &AppActor,
+) -> PeopleAssistantContext {
+    let profile = match state
+        .people_intelligence_service
+        .get_profile(actor, actor.user_id)
+        .await
+    {
+        Ok(profile) => profile,
+        Err(error) => {
+            tracing::debug!(error = %error, "employee context is unavailable for assistant");
+            return unavailable_people_context();
+        }
+    };
+    let evaluation = state
+        .people_intelligence_service
+        .get_evaluation(actor, actor.user_id, 90)
+        .await
+        .ok();
+    people_assistant_context(&profile, evaluation.as_ref())
+}
+
+fn people_assistant_context(
+    profile: &EmployeeProfile,
+    evaluation: Option<&EmployeeEvaluation>,
+) -> PeopleAssistantContext {
+    let mut capabilities = profile
+        .capabilities
+        .iter()
+        .map(|capability| PeopleCapabilityContext {
+            name: capability.name.clone(),
+            kind: capability.kind.clone(),
+            proficiency: capability.proficiency,
+            verification_status: capability.verification_status.clone(),
+            evidence_count: capability.evidence_count,
+        })
+        .collect::<Vec<_>>();
+    capabilities.sort_by(|left, right| {
+        right
+            .verification_status
+            .eq("verified")
+            .cmp(&left.verification_status.eq("verified"))
+            .then_with(|| right.proficiency.cmp(&left.proficiency))
+            .then_with(|| right.evidence_count.cmp(&left.evidence_count))
+    });
+    capabilities.truncate(24);
+
+    let emergent_signals = evaluation
+        .map(|value| {
+            value
+                .signals
+                .iter()
+                .take(8)
+                .map(|signal| PeopleSignalContext {
+                    signal_type: signal.signal_type.clone(),
+                    title: signal.title.clone(),
+                    confidence: signal.confidence,
+                    evidence_count: signal.evidence_count,
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    PeopleAssistantContext {
+        available: true,
+        job_title: profile.job_title.clone(),
+        level: profile.level.clone(),
+        languages: profile.languages.clone(),
+        availability_status: Some(profile.availability_status.clone()),
+        workload_percent: Some(profile.workload_percent),
+        capabilities,
+        preferred_project_types: profile.preferences.preferred_project_types.clone(),
+        evidence_sample_size: evaluation.map(|value| value.sample_size).unwrap_or(0),
+        project_count: evaluation.map(|value| value.project_count).unwrap_or(0),
+        confidence: evaluation.map(|value| value.confidence).unwrap_or(0.0),
+        emergent_signals,
+    }
+}
+
+fn unavailable_people_context() -> PeopleAssistantContext {
+    PeopleAssistantContext {
+        available: false,
+        job_title: None,
+        level: None,
+        languages: Vec::new(),
+        availability_status: None,
+        workload_percent: None,
+        capabilities: Vec::new(),
+        preferred_project_types: Vec::new(),
+        evidence_sample_size: 0,
+        project_count: 0,
+        confidence: 0.0,
+        emergent_signals: Vec::new(),
+    }
+}
+
+fn employee_langgraph_nodes(
+    request: &AiChatRequest,
+    people_context: &PeopleAssistantContext,
+) -> Vec<LangGraphNode> {
+    let app_id = normalized_context_value(request.app_id.as_deref(), "unified-platform");
+    vec![
+        LangGraphNode {
+            name: "observe_app_context".to_string(),
+            state: "ready".to_string(),
+            detail: format!("Observed {} route, user intent, ACL boundary, and current selection.", app_id),
+        },
+        LangGraphNode {
+            name: "load_employee_profile".to_string(),
+            state: if people_context.available { "ready" } else { "guarded" }.to_string(),
+            detail: if people_context.available {
+                "Loaded a PII-free profile projection from controlled employee attributes.".to_string()
+            } else {
+                "Employee projection is unavailable; workflow continues without inferred attributes.".to_string()
+            },
+        },
+        LangGraphNode {
+            name: "match_capability_tags".to_string(),
+            state: "ready".to_string(),
+            detail: format!(
+                "Matched {} capability tags with verification, evidence recency, availability, and workload.",
+                people_context.capabilities.len()
+            ),
+        },
+        LangGraphNode {
+            name: "detect_emergent_signals".to_string(),
+            state: "ready".to_string(),
+            detail: format!(
+                "Evaluated {} growth, adjacent-skill, mentor, fit, and team-gap signals without changing formal skills.",
+                people_context.emergent_signals.len()
+            ),
+        },
+        LangGraphNode {
+            name: "propose_guarded_actions".to_string(),
+            state: "planned".to_string(),
+            detail: "Generated app-scoped actions after permission filtering and included match explanations.".to_string(),
+        },
+        LangGraphNode {
+            name: "human_approval".to_string(),
+            state: "guarded".to_string(),
+            detail: "Primary writes, evaluations, assignments, approvals, and deliveries require explicit human approval.".to_string(),
+        },
+        LangGraphNode {
+            name: "execute_allowed_action".to_string(),
+            state: "planned".to_string(),
+            detail: "Navigation may run immediately; approved writes execute through the owning app interface.".to_string(),
+        },
+        LangGraphNode {
+            name: "learn_from_feedback".to_string(),
+            state: "planned".to_string(),
+            detail: "Accept, reject, and correction feedback tunes recommendations without changing formal evaluation data.".to_string(),
+        },
+    ]
+}
+
+fn normalized_context_value(value: Option<&str>, fallback: &str) -> String {
+    let normalized = value.unwrap_or(fallback).trim().replace(['\n', '\r'], " ");
+    if normalized.is_empty() {
+        return fallback.to_string();
+    }
+    normalized.chars().take(160).collect()
 }
 
 fn build_response(
@@ -1549,7 +2036,11 @@ mod tests {
     use actix_web::{http::StatusCode, test, App};
     use serde_json::Value;
 
-    use super::{management_ai_test, management_autopilot_plan, management_intelligence};
+    use super::{
+        assistant_action_allowed, contextual_chat_actions, employee_langgraph_nodes,
+        management_ai_test, management_autopilot_plan, management_intelligence,
+        unavailable_people_context, AiChatRequest,
+    };
 
     const ENDPOINT: &str = "/api/management/intelligence";
 
@@ -1671,5 +2162,37 @@ mod tests {
         assert_eq!(body["data"]["embedding_ok"], false);
         assert_eq!(body["data"]["ai_status"]["configured"], false);
         assert_eq!(body["data"]["ai_status"]["used"], false);
+    }
+
+    #[actix_web::test]
+    async fn employee_aware_chat_graph_keeps_writes_guarded() {
+        let request = AiChatRequest {
+            message: "给角色资产分配合适员工并创建任务".to_string(),
+            context: None,
+            max_tokens: None,
+            conversation_id: None,
+            app_id: Some("asset-library-app".to_string()),
+            route_id: Some("assets.library".to_string()),
+            pathname: Some("/assets".to_string()),
+        };
+        let nodes = employee_langgraph_nodes(&request, &unavailable_people_context());
+        let actions = contextual_chat_actions(&request);
+
+        assert!(nodes
+            .iter()
+            .any(|node| node.name == "match_capability_tags"));
+        assert!(nodes
+            .iter()
+            .any(|node| node.name == "human_approval" && node.state == "guarded"));
+        assert!(actions.iter().any(|action| action.kind == "people.search"));
+        assert!(actions.iter().any(|action| action.requires_human_approval));
+        assert!(actions
+            .iter()
+            .filter(|action| assistant_action_allowed("artist", action))
+            .all(|action| !action.requires_human_approval));
+        assert!(actions
+            .iter()
+            .filter(|action| assistant_action_allowed("vendor", action))
+            .all(|action| action.kind != "people.search"));
     }
 }

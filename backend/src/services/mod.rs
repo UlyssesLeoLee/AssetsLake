@@ -2,6 +2,7 @@ pub mod admin_control_service;
 pub mod ai_index_service;
 pub mod ai_provider_service;
 pub mod ai_replica_action_service;
+pub mod app_assistant_service;
 pub mod asset_analysis_service;
 pub mod asset_if_service;
 pub mod asset_security_service;

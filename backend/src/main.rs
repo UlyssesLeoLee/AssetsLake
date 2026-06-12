@@ -19,6 +19,7 @@ CREATE
   (v12:Variable {name: "asset_if_service", type: "variable"}),
   (v13:Variable {name: "design_ai_if_service", type: "variable"}),
   (v14:Variable {name: "people_intelligence_service", type: "variable"}),
+  (v15:Variable {name: "app_assistant_service", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(c1),
   (m)-[:CONTAINS]->(fn1),
@@ -35,7 +36,8 @@ CREATE
   (fn1)-[:USES]->(v11),
   (fn1)-[:USES]->(v12),
   (fn1)-[:USES]->(v13),
-  (fn1)-[:USES]->(v14);
+  (fn1)-[:USES]->(v14),
+  (fn1)-[:USES]->(v15);
 ```
 */
 
@@ -60,6 +62,7 @@ use services::{
     admin_control_service::AdminControlService,
     ai_index_service::AiIndexService,
     ai_replica_action_service::AiReplicaActionService,
+    app_assistant_service::AppAssistantService,
     asset_analysis_service::AssetAnalysisService,
     asset_if_service::AssetIfService,
     asset_service::AssetService,
@@ -111,6 +114,7 @@ pub struct AppState {
     pub asset_if_service: AssetIfService,
     pub design_ai_if_service: DesignAiIfService,
     pub people_intelligence_service: PeopleIntelligenceService,
+    pub app_assistant_service: AppAssistantService,
 }
 
 #[actix_web::main]
@@ -151,6 +155,7 @@ async fn main() -> std::io::Result<()> {
     let design_requirement_service = DesignRequirementService::new(pool.clone());
     let asset_if_service = AssetIfService::new(pool.clone());
     let design_ai_if_service = DesignAiIfService::new();
+    let app_assistant_service = AppAssistantService::new(pool.clone());
     let people_intelligence_service = PeopleIntelligenceService::new(
         pool.clone(),
         cfg.rag.clone(),
@@ -188,6 +193,7 @@ async fn main() -> std::io::Result<()> {
         asset_if_service,
         design_ai_if_service,
         people_intelligence_service,
+        app_assistant_service,
     });
 
     let default_workers = std::thread::available_parallelism()

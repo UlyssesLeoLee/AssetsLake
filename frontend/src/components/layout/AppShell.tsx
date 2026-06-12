@@ -19,6 +19,7 @@ CREATE
   (v13:Variable {name: "visibleSettingsNavItem", type: "variable"}),
   (v14:Variable {name: "VisibleObservabilityIcon", type: "variable"}),
   (v15:Variable {name: "VisibleSettingsIcon", type: "variable"}),
+  (v16:Variable {name: "currentRoute", type: "variable"}),
   (f)-[:CONTAINS]->(m),
   (m)-[:CONTAINS]->(fn1),
   (fn1)-[:USES]->(v1),
@@ -35,7 +36,8 @@ CREATE
   (fn1)-[:USES]->(v12),
   (fn1)-[:USES]->(v13),
   (fn1)-[:USES]->(v14),
-  (fn1)-[:USES]->(v15);
+  (fn1)-[:USES]->(v15),
+  (fn1)-[:USES]->(v16);
 ```
 */
 
@@ -45,6 +47,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Database, LogOut } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { AppCommandBar } from '@/components/layout/AppCommandBar';
 import { authApi } from '@/lib/authApi';
 import {
   AUTH_SESSION_EVENT,
@@ -54,7 +57,12 @@ import {
 } from '@/lib/authSession';
 import { filterPluginRoutesForRole, roleCanAccessRouteId } from '@/lib/rolePermissions';
 import { cn } from '@/lib/utils';
-import { getDefaultPluginApp, getNavPluginRoutes, getPluginRoutes } from '@/plugin-groups/registry';
+import {
+  getDefaultPluginApp,
+  getNavPluginRoutes,
+  getPluginRoutes,
+  resolvePluginRoute,
+} from '@/plugin-groups/registry';
 
 const NAV_ITEMS = getNavPluginRoutes();
 const OBSERVABILITY_NAV_ITEM = getPluginRoutes().find((route) => route.href === '/observability');
@@ -82,6 +90,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       : undefined;
   const VisibleObservabilityIcon = visibleObservabilityNavItem?.icon;
   const VisibleSettingsIcon = visibleSettingsNavItem?.icon;
+  const currentRoute = resolvePluginRoute(pathname);
+  const currentAppId = currentRoute?.pluginAppId ?? PLUGIN_APP.id;
+  const currentAppLabel = currentRoute?.pluginAppLabel ?? PLUGIN_APP.label;
+  const currentRouteId = currentRoute?.id ?? 'unknown-route';
+  const currentRouteLabel = currentRoute?.label ?? currentAppLabel;
   const displayName = session?.user.display_name ?? session?.user.username;
   const userInitial = displayName?.slice(0, 1).toUpperCase() ?? 'A';
 
@@ -107,7 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen min-h-0 flex-col overflow-hidden">
       {/* Top nav */}
       <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-5 border-b border-surface-border bg-[#0b0f14]/92 px-5 shadow-[0_12px_30px_rgba(0,0,0,0.22)] backdrop-blur">
         {/* Logo */}
@@ -206,7 +219,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main */}
-      <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</main>
+      <AppCommandBar
+        session={session}
+        pathname={pathname}
+        appId={currentAppId}
+        appLabel={currentAppLabel}
+        routeId={currentRouteId}
+        routeLabel={currentRouteLabel}
+      />
     </div>
   );
 }

@@ -345,10 +345,10 @@ fn project_management_permission(method: &Method, path: &str) -> RoutePermission
 }
 
 fn management_permission(method: &Method, path: &str) -> RoutePermission {
-    if is_read_method(method)
-        || path.ends_with("/chat")
-        || path.ends_with("/autopilot-plan")
-        || path.ends_with("/rag/search")
+    if path == "/api/management/chat" || path == "/api/management/chat/history" {
+        return RoutePermission::AuthenticatedSession;
+    }
+    if is_read_method(method) || path.ends_with("/autopilot-plan") || path.ends_with("/rag/search")
     {
         return RoutePermission::AiControlRead;
     }
@@ -634,6 +634,14 @@ mod tests {
         assert_eq!(
             permission_for_route(&Method::POST, "/api/management/rag/search"),
             Some(RoutePermission::AiControlRead)
+        );
+        assert_eq!(
+            permission_for_route(&Method::POST, "/api/management/chat"),
+            Some(RoutePermission::AuthenticatedSession)
+        );
+        assert_eq!(
+            permission_for_route(&Method::GET, "/api/management/chat/history"),
+            Some(RoutePermission::AuthenticatedSession)
         );
         assert_eq!(
             permission_for_route(&Method::POST, "/api/management/replica-actions"),
