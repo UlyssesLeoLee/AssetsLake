@@ -74,6 +74,7 @@ use services::{
     event_publisher_service::EventPublisherService,
     graph_relation_service::GraphRelationService,
     lake_query_service::LakeQueryService,
+    llm_optimizer_service::LlmOptimizerService,
     maintenance_service::{MaintenanceConfig, MaintenanceService},
     people_intelligence_service::PeopleIntelligenceService,
     production_service::ProductionService,
@@ -115,6 +116,7 @@ pub struct AppState {
     pub design_ai_if_service: DesignAiIfService,
     pub people_intelligence_service: PeopleIntelligenceService,
     pub app_assistant_service: AppAssistantService,
+    pub llm_optimizer_service: LlmOptimizerService,
 }
 
 #[actix_web::main]
@@ -168,6 +170,9 @@ async fn main() -> std::io::Result<()> {
         people_intelligence_service.spawn_event_consumer();
     }
 
+    let llm_optimizer_service = LlmOptimizerService::new(pool.clone());
+    llm_optimizer_service.spawn_background_loop();
+
     let app_state = web::Data::new(AppState {
         asset_service,
         storage_service,
@@ -194,6 +199,7 @@ async fn main() -> std::io::Result<()> {
         design_ai_if_service,
         people_intelligence_service,
         app_assistant_service,
+        llm_optimizer_service,
     });
 
     let default_workers = std::thread::available_parallelism()

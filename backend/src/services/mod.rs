@@ -15,6 +15,7 @@ pub mod emergence_service;
 pub mod event_publisher_service;
 pub mod graph_relation_service;
 pub mod lake_query_service;
+pub mod llm_optimizer_service;
 pub mod maintenance_service;
 pub mod people_intelligence_service;
 pub mod production_service;

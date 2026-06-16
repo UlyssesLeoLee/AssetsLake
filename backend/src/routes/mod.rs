@@ -88,9 +88,9 @@ use actix_web::web;
 use crate::handlers::{
     admin_control_handler, asset_analysis_handler, asset_handler, auth_handler,
     data_lake_query_handler, design_requirement_handler, emergence_handler, health_handler,
-    lock_handler, management_handler, people_intelligence_handler, production_handler,
-    project_handler, project_management_handler, security_audit_handler, verification_handler,
-    wiki_handler,
+    llm_optimizer_handler, lock_handler, management_handler, people_intelligence_handler,
+    production_handler, project_handler, project_management_handler, security_audit_handler,
+    verification_handler, wiki_handler,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -161,6 +161,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             configure_wiki(cfg);
             configure_design_requirements(cfg);
             configure_people_intelligence(cfg);
+            configure_llm_optimizer(cfg);
         }
         ServiceRouteSet::Assets => {
             configure_assets(cfg);
@@ -344,4 +345,12 @@ fn configure_people_intelligence(cfg: &mut web::ServiceConfig) {
         .service(people_intelligence_handler::verify_capability)
         .service(people_intelligence_handler::submit_correction)
         .service(people_intelligence_handler::employee_profile);
+}
+
+fn configure_llm_optimizer(cfg: &mut web::ServiceConfig) {
+    cfg.service(llm_optimizer_handler::record_signal)
+        .service(llm_optimizer_handler::trigger_optimization_run)
+        .service(llm_optimizer_handler::get_optimizer_status)
+        .service(llm_optimizer_handler::get_best_prompt)
+        .service(llm_optimizer_handler::list_prompt_versions);
 }

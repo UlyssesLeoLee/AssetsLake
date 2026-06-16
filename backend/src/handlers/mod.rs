@@ -6,6 +6,7 @@ pub mod data_lake_query_handler;
 pub mod design_requirement_handler;
 pub mod emergence_handler;
 pub mod health_handler;
+pub mod llm_optimizer_handler;
 pub mod lock_handler;
 pub mod management_handler;
 pub mod people_intelligence_handler;
