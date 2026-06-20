@@ -132,13 +132,13 @@ cd infra
 docker compose up -d
 ```
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| Frontend | http://localhost:3000 | Next.js management UI |
-| Backend API | http://localhost:8080 | Rust/Actix-Web REST API |
-| MinIO API | http://localhost:9000 | S3-compatible object storage |
-| MinIO Console | http://localhost:9001 | MinIO web management |
-| PostgreSQL | localhost:5432 | Metadata database |
+| Service       | URL                   | Purpose                      |
+| ------------- | --------------------- | ---------------------------- |
+| Frontend      | http://localhost:3000 | Next.js management UI        |
+| Backend API   | http://localhost:8080 | Rust/Actix-Web REST API      |
+| MinIO API     | http://localhost:9000 | S3-compatible object storage |
+| MinIO Console | http://localhost:9001 | MinIO web management         |
+| PostgreSQL    | localhost:5432        | Metadata database            |
 
 ### 3. Verify
 
@@ -153,11 +153,11 @@ The backend image supports route-scoped service roles through `ASSETSLAKE_SERVIC
 Docker Compose keeps `gateway` for local compatibility, while Kubernetes runs separate
 Deployments and Services:
 
-| Service Role | Routes |
-|--------------|--------|
-| `assets` | `/api/assets`, `/api/assets/search`, `/api/assets/upload` |
+| Service Role | Routes                                                     |
+| ------------ | ---------------------------------------------------------- |
+| `assets`     | `/api/assets`, `/api/assets/search`, `/api/assets/upload`  |
 | `production` | `/api/issues`, `/api/milestones`, `/api/delivery-packages` |
-| `projects` | `/api/projects` |
+| `projects`   | `/api/projects`                                            |
 
 Kubernetes manifests live under `infra/k8s`:
 
@@ -179,6 +179,12 @@ Frontend navigation and feature ownership are defined in
 
 Each product contains multiple plugin apps, each app is composed from multiple
 plugin groups, each group owns multiple plugins, and plugins expose page routes.
+Plugin groups define feature ownership, while failure-prone capabilities run
+through the failure-isolation kernel in `frontend/src/plugin-groups/failure-isolation-kernel.ts`.
+The kernel keeps plugin-to-plugin calls out of the core path by registering
+capability contracts with input/output schemas, kernel compatibility, timeout,
+idempotency, retry, and fallback policies, then executing requests through a
+correlated kernel boundary instead of direct plugin chaining.
 The production app is split into management, planning, execution, timeline,
 reporting, workflow, delivery, and enterprise plugin groups. It includes
 `/management`, `/planning`, `/board`, `/issues`, `/reviews`, `/approvals`,
@@ -206,22 +212,24 @@ to verify the management intelligence endpoint through Actix.
 ## Accessing Services
 
 **Frontend** — http://localhost:3000
+
 - `/` Home, `/assets` Library, `/upload` Upload, `/assets/{id}` Detail
 
 **MinIO Console** — http://localhost:9001
+
 - Username: `minioadmin` / Password: `minioadmin_secret` (default, configurable via `.env`)
 
 **Backend API** — http://localhost:8080/api
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Health check |
-| POST | `/api/assets/upload` | Upload asset (multipart/form-data) |
-| GET | `/api/assets` | List assets (paginated, filtered) |
-| GET | `/api/assets/search` | Full-text search |
-| GET | `/api/assets/{id}` | Asset detail |
-| PATCH | `/api/assets/{id}` | Update metadata |
-| DELETE | `/api/assets/{id}` | Soft-delete |
+| Method | Endpoint             | Description                        |
+| ------ | -------------------- | ---------------------------------- |
+| GET    | `/api/health`        | Health check                       |
+| POST   | `/api/assets/upload` | Upload asset (multipart/form-data) |
+| GET    | `/api/assets`        | List assets (paginated, filtered)  |
+| GET    | `/api/assets/search` | Full-text search                   |
+| GET    | `/api/assets/{id}`   | Asset detail                       |
+| PATCH  | `/api/assets/{id}`   | Update metadata                    |
+| DELETE | `/api/assets/{id}`   | Soft-delete                        |
 
 ---
 
@@ -297,69 +305,79 @@ curl "http://localhost:8080/api/assets?tag=pbr&page=2&page_size=12"
 
 ## Currently Implemented
 
-| Capability | Status |
-|-----------|--------|
-| File upload to MinIO (all formats) | ✅ |
-| SHA-256 checksum on upload | ✅ |
-| MIME + extension type detection | ✅ |
-| Object key: `type/date/uuid.ext` | ✅ |
-| PostgreSQL metadata record | ✅ |
-| Paginated asset list | ✅ |
-| Filter by type, status, project, tag | ✅ |
-| Full-text search | ✅ |
-| Asset detail | ✅ |
-| Soft-delete | ✅ |
-| Metadata update (PATCH) | ✅ |
-| `asset_versions` table (schema) | ✅ |
-| `audit_log` table (schema) | ✅ |
-| `asset_uploaded` hook (logs) | ✅ |
-| AI/search/graph extension stubs | ✅ |
-| Frontend grid + table view | ✅ |
-| Frontend upload with progress | ✅ |
-| Frontend image/video/audio preview | ✅ |
-| Frontend filter sidebar | ✅ |
-| Frontend pagination | ✅ |
-| Plugin app/group architecture through project management Phase 5 | ✅ |
-| Project management planning/productization API boundaries | ✅ |
-| Gantt, calendar, reports, workflow, automation, enterprise route surfaces | ✅ |
-| Issue core loop: edit, comments, work logs, soft delete, planning fields | ✅ |
-| Frontend empty + loading states | ✅ |
-| Docker Compose full stack | ✅ |
-| MinIO bucket auto-init | ✅ |
-| PostgreSQL schema auto-init | ✅ |
+| Capability                                                                | Status |
+| ------------------------------------------------------------------------- | ------ |
+| File upload to MinIO (all formats)                                        | ✅     |
+| SHA-256 checksum on upload                                                | ✅     |
+| MIME + extension type detection                                           | ✅     |
+| Object key: `type/date/uuid.ext`                                          | ✅     |
+| PostgreSQL metadata record                                                | ✅     |
+| Paginated asset list                                                      | ✅     |
+| Filter by type, status, project, tag                                      | ✅     |
+| Full-text search                                                          | ✅     |
+| Asset detail                                                              | ✅     |
+| Soft-delete                                                               | ✅     |
+| Metadata update (PATCH)                                                   | ✅     |
+| `asset_versions` table (schema)                                           | ✅     |
+| `audit_log` table (schema)                                                | ✅     |
+| `asset_uploaded` hook (logs)                                              | ✅     |
+| AI/search/graph extension stubs                                           | ✅     |
+| Frontend grid + table view                                                | ✅     |
+| Frontend upload with progress                                             | ✅     |
+| Frontend image/video/audio preview                                        | ✅     |
+| Frontend filter sidebar                                                   | ✅     |
+| Frontend pagination                                                       | ✅     |
+| Plugin app/group architecture through project management Phase 5          | ✅     |
+| Project management planning/productization API boundaries                 | ✅     |
+| Gantt, calendar, reports, workflow, automation, enterprise route surfaces | ✅     |
+| Issue core loop: edit, comments, work logs, soft delete, planning fields  | ✅     |
+| Frontend empty + loading states                                           | ✅     |
+| Docker Compose full stack                                                 | ✅     |
+| MinIO bucket auto-init                                                    | ✅     |
+| PostgreSQL schema auto-init                                               | ✅     |
 
 ---
 
 ## Extension Roadmap
 
 ### Qdrant — Vector Similarity Search
+
 Stub: `ai_index_service.rs` · Column: `embedding_id` · Use case: "Find Similar Assets"
 
 ### OpenSearch — Full-Text & Tag Search
+
 Stub: `search_index_service.rs` · Column: `search_doc_id` · Replaces interim ILIKE search
 
 ### Neo4j — Asset Dependency Graph
+
 Stub: `graph_relation_service.rs` · Column: `graph_node_id` · Use case: impact analysis before deletion
 
 ### Kafka — Event Pipeline
+
 Stub: `event_publisher_service.rs` · Events: `AssetUploadedEvent`, `AssetDeletedEvent` · Consumers: thumbnail worker, AI tagger, audit pipeline
 
 ### Thumbnail Generation
+
 Column: `preview_url` reserved · Workflow: `asset_uploaded` → Kafka → thumbnail worker → MinIO → update preview_url
 
 ### AI Auto-Tagging
+
 Column: `ai_tags[]` reserved · Workflow: `asset_uploaded` → AI model → PATCH ai_tags
 
 ### Version Comparison
+
 Table: `asset_versions` fully schemaed · FK: `parent_id` on assets
 
 ### Review Workflow
+
 Columns: `reviewed_by`, `reviewed_at`, `review_note` · Status: `pending → active | rejected`
 
 ### Outsourcing Delivery
+
 Project-level approval → ZIP export → client-facing expiring links
 
 ### Role-Based Access Control
+
 Table: `users` with `role` column · Future: JWT middleware + per-project permissions
 
 ---
